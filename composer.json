@@ -1,0 +1,36 @@
+{
+    "name": "karmabunny/pdb",
+    "description": "PDO wrapper",
+    "type": "library",
+    "license": "GPL2",
+    "require": {
+        "php": "^7",
+        "ext-dom": "*",
+        "ext-libxml": "*",
+        "ext-pdo": "*",
+        "karmabunny/kb": "dev-master"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "karmabunny\\pdb\\": "src"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": { "karmabunny/*": "dist" },
+        "platform": {
+            "php": "7"
+        }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://packages.bunnysites.com/",
+            "canonical": true
+        }
+    ]
+}
