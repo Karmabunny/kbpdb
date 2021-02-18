@@ -8,55 +8,76 @@ namespace karmabunny\pdb;
 
 use Exception;
 use InvalidArgumentException;
-use PDO;
-use PDOException;
-use PDOStatement;
-
+use karmabunny\kb\Log;
+use karmabunny\kb\Loggable;
+use karmabunny\kb\LoggerTrait;
 use karmabunny\pdb\Exceptions\ConstraintQueryException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
+use PDO;
+use PDOException;
+use PDOStatement;
 
 
 /**
  * Class for doing database queries via PDO (PDO Database => Pdb)
+ *
+ * @package karmabunny\pdb
  */
-class Pdb
+class Pdb implements Loggable
 {
-    protected static $prefix = 'fwc_';
-    protected static $table_prefixes = [];
-    protected static $ro_connection = null;
-    protected static $rw_connection = null;
-    protected static $override_connection = null;
-    protected static $log_func = null;
-    protected static $formatters = [];
-    protected static $in_transaction = false;
-    protected static $last_insert_id;
+    use LoggerTrait;
+
+    /** @var PdbConfig */
+    public $config;
+
+    /** @var PDO|null */
+    protected $connection;
+
+    /** @var PDO|null */
+    protected $override_connection = null;
+
+    /** @var bool */
+    protected $in_transaction = false;
+
+    /** @var int|null */
+    protected $last_insert_id = null;
 
 
     /**
-     * Set a logging handler function
      *
-     * This function will be called after each query
-     * to allow calling code to do extra debugging or logging
-     *
-     * The function signature should be:
-     *    function(string $query, array $params, PDOStatement|QueryException $result)
-     *
-     * @param callable $func The logging function to use
+     * @param PdbConfig|array $config
      */
-    public static function setLogHandler(callable $func)
+    public function __construct($config)
     {
-        self::$log_func = $func;
+        if (!($config instanceof PdbConfig)) {
+            $this->config = new PdbConfig($config);
+        }
+        else {
+            $this->config = clone $config;
+        }
     }
 
 
     /**
-     * Clear the log handler
+     * Log something.
+     *
+     * @param string $query
+     * @param array $params
+     * @param PDOStatement|QueryException $result
+     * @return void
      */
-    public static function clearLogHandler()
+    private function logQuery(string $query, array $params, $result)
     {
-        self::$log_func = null;
+        if ($result instanceof QueryException) {
+            $this->log($result, Log::LEVEL_ERROR);
+        }
+        else {
+            $message = "Query: {$query}\nParams:\n";
+            $message .= print_r($params, true);
+            $this->log($message, Log::LEVEL_DEBUG);
+        }
     }
 
 
@@ -72,9 +93,9 @@ class Pdb
      * @param string $class_name The class to attach the formatter to
      * @param callable $func The formatter function to use
      */
-    public static function setFormatter($class_name, callable $func)
+    public function setFormatter($class_name, callable $func)
     {
-        self::$formatters[$class_name] = $func;
+        $this->config->formatters[$class_name] = $func;
     }
 
 
@@ -83,9 +104,9 @@ class Pdb
      *
      * @param string $class_name The class to remove the formatter from
      */
-    public static function removeFormatter($class_name)
+    public function removeFormatter($class_name)
     {
-        unset(self::$formatters[$class_name]);
+        unset($this->config->formatters[$class_name]);
     }
 
 
@@ -96,23 +117,25 @@ class Pdb
      *
      * @param mixed $value The value to format
      * @return string The formatted value
+     * @throws InvalidArgumentException
      */
-    public static function format($value)
+    protected function format($value)
     {
         if (!is_object($value)) return $value;
 
         $class_name = get_class($value);
-        if (!isset(self::$formatters[$class_name])) {
+        $func = $this->config->formatters[$class_name] ?? null;
+
+        if ($func === null) {
             if (method_exists($value, '__toString')) {
                 return (string) $value;
             }
-            throw new \InvalidArgumentException("Unable to format objects of type '{$class_name}'");
+            throw new InvalidArgumentException("Unable to format objects of type '{$class_name}'");
         }
 
-        $func = self::$formatters[$class_name];
         $value = $func($value);
         if (!is_string($value) and !is_int($value)) {
-            throw new \InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
+            throw new InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
         }
 
         return $value;
@@ -120,58 +143,38 @@ class Pdb
 
 
     /**
-     * Gets the prefix to prepend to table names
-     */
-    public static function prefix()
-    {
-        return self::$prefix;
-    }
-
-
-    /**
-     * Sets the prefix to prepend to table names.
-     * Only use this to override the existing prefix; e.g. in the Preview helper
-     * @param string $prefix The overriding prefix
-     */
-    public static function setPrefix($prefix)
-    {
-        self::$prefix = $prefix;
-    }
-
-
-    /**
-     * Sets an overriding prefix to prepend to an individual table
-     * This supports the Preview helper, which creates temporary copies of one or more tables
+     * Sets an overriding prefix to prepend to an individual table.
+     *
      * @param string $table The table to use a specific prefix for, e.g. 'pages'
      * @param string $prefix The prefix to use, e.g. 'temp_only_'
      */
-    public static function setTablePrefixOverride($table, $prefix)
+    public function setTablePrefixOverride(string $table, string $prefix)
     {
-        self::$table_prefixes[$table] = $prefix;
+        $this->config->table_prefixes[$table] = $prefix;
     }
 
 
     /**
      * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
+     *
      * @param PDO $pdo The database connection, for determining table quoting rules
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
      */
-    public static function insertPrefixes(PDO $pdo, $query)
+    protected function insertPrefixes(PDO $pdo, string $query)
     {
-        $lquote = $rquote = '';
         switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-        case 'mysql':
-            $lquote = $rquote = '`';
-            break;
+            case 'mysql':
+                $lquote = $rquote = '`';
+                break;
+
+            default:
+                $lquote = $rquote = '';
         }
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
-            if (isset(self::$table_prefixes[$matches[1]])) {
-                return $lquote . self::$table_prefixes[$matches[1]] . $matches[1] . $rquote;
-            } else {
-                return $lquote . self::prefix() . $matches[1] . $rquote;
-            }
+            $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
+            return $lquote . $prefix . $matches[1] . $rquote;
         };
         return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
     }
@@ -204,10 +207,7 @@ class Pdb
 
 
     /**
-     * Loads db config and creates a new PDO connection with it
-     *
-     * Note - You probably want {@see Pdb::getConnection} instead as it uses
-     * the same connection across multiple calls.
+     * Loads db config and creates a new PDO connection with it.
      *
      * @param PdbConfig|array $config
      * @return PDO
@@ -215,7 +215,7 @@ class Pdb
     public static function connect($config)
     {
         if (!($config instanceof PdbConfig)) {
-            $config = new PdbConfig(...$config);
+            $config = new PdbConfig($config);
         }
 
         $pdo = new PDO($config->dsn, $config->user, $config->pass);
@@ -225,24 +225,15 @@ class Pdb
 
 
     /**
-     * Set a PDO connection to use instead of the internal connection logic
-     * The specified connection may even be for a different database
+     * Set an override PDO connection.
      *
-     * NOTE: The flag indicating if the driver is currently in a transaction
-     * ({@see inTransaction}) does not get changed by calls to this function,
-     * so it may not produce correct results in that case.
-     *
-     * @example
-     * $mssql = new PDO('obdc:ms-sql-server');
-     * Pdb::setOverrideConnection($mssql);
-     * $res = Pdb::query('SELECT TOP 3 FROM [my table]', [], 'row');
-     *
-     * @param PDO $connection Any PDO connection.
+     * @param PDO $connection
+     * @return void
      */
-    public static function setOverrideConnection(PDO $connection)
+    public function setOverrideConnection(PDO $connection)
     {
         $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        self::$override_connection = $connection;
+        $this->override_connection = $connection;
     }
 
 
@@ -250,37 +241,30 @@ class Pdb
      * Clear any overridden connection, reverting behaviour back to
      * the default connection logic.
      */
-    public static function clearOverrideConnection()
+    public function clearOverrideConnection()
     {
-        self::$override_connection = null;
+        $this->override_connection = null;
     }
 
 
     /**
      * Gets a PDO connection, creating a new one if necessary
      *
-     * @param string $type 'RW': read-write, or 'RO': read-only. If replication
-     *        isn't being used, then only 'RW' is ever necessary.
      * @return PDO
      * @throws PDOException If connection fails
      */
-    public static function getConnection($type = 'RW')
+    public function getConnection()
     {
-        if (self::$override_connection !== null) {
-            return self::$override_connection;
+        if (isset($this->override_connection)) {
+            return $this->override_connection;
         }
 
-        if (strcasecmp($type, 'RO') == 0) {
-            if (!self::$ro_connection) {
-                self::$ro_connection = self::connect('read_only');
-            }
-            return self::$ro_connection;
+        if (isset($this->connection)) {
+            return $this->connection;
         }
 
-        if (!self::$rw_connection) {
-            self::$rw_connection = self::connect('default');
-        }
-        return self::$rw_connection;
+        $this->connection = self::connect($this->config);
+        return $this->connection;
     }
 
 
@@ -306,7 +290,7 @@ class Pdb
      * @param array $binds generic list of binds
      * @return array
      */
-    public static function getBindSubset($q, $binds)
+    public static function getBindSubset(string $q, array $binds)
     {
         $q = self::stripStrings($q);
 
@@ -374,8 +358,9 @@ class Pdb
         $trace = debug_backtrace();
         $caller = null;
         while ($step = array_pop($trace)) {
-            if (@$step['class'] == Pdb::class) {
-                // Provide calling step, as it's useful if the current step doesn't provide file and line num
+            if (@$step['class'] == static::class) {
+                // Provide calling step, as it's useful if the current step
+                // doesn't provide file and line num.
                 $step['caller'] = $caller;
                 return $step;
             }
@@ -394,7 +379,7 @@ class Pdb
      * @return ConstraintQueryException Integrity constraint violation (SQLSTATE 23xxx)
      * @return QueryException All other query errors
      */
-    protected static function createQueryException(PDOException $ex)
+    private static function createQueryException(PDOException $ex)
     {
         $pdo_ex = $ex;
         $state_class = substr($ex->getCode(), 0, 2);
@@ -418,9 +403,9 @@ class Pdb
     /**
      * Alias for {@see Pdb::query}
      **/
-    public static function q($query, array $params, $return_type)
+    public function q($query, array $params, $return_type)
     {
-        return self::query($query, $params, $return_type);
+        return $this->query($query, $params, $return_type);
     }
 
 
@@ -453,16 +438,8 @@ class Pdb
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      */
-    public static function query($query, array $params, $return_type)
+    public function query(string $query, array $params, string $return_type)
     {
-        if (!is_string($query)) {
-            if ($query instanceof PDOStatement) {
-                $err = '$query must be a string. You must call Pdb::execute on a PDOStatement';
-                throw new InvalidArgumentException($err);
-            }
-            throw new InvalidArgumentException('$query must be a string');
-        }
-
         static $types = [
             'pdo', 'prep', 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val', 'col'
         ];
@@ -478,12 +455,12 @@ class Pdb
             throw new InvalidArgumentException($err);
         }
 
-        $pdo = self::getConnection('RW');
-        $query = self::insertPrefixes($pdo, $query);
+        $pdo = $this->getConnection();
+        $query = $this->insertPrefixes($pdo, $query);
 
         // Format objects into strings
         foreach ($params as &$p) {
-            $p = self::format($p);
+            $p = $this->format($p);
         }
         unset($p);
 
@@ -529,7 +506,7 @@ class Pdb
 
             // Save the insert ID specifically, so it doesn't get clobbered by IDs generated by logging
             if (stripos($query, 'INSERT') === 0) {
-                self::$last_insert_id = $pdo->lastInsertId();
+                $this->last_insert_id = $pdo->lastInsertId();
             }
 
             $log_data['rows'] = $res->rowCount();
@@ -543,18 +520,10 @@ class Pdb
             $ex->params = $params;
         }
 
+        // TODO Old note. I don't quite understand it.
         // The log method needs to be disabled so log functions can
         // make queries without logging themselves
-        if (self::$log_func != null) {
-            $func = self::$log_func;
-            self::$log_func = null;
-            if ($ex) {
-                $func($query, $params, $ex);
-            } else {
-                $func($query, $params, $res);
-            }
-            self::$log_func = $func;
-        }
+        $this->logQuery($query, $params, $ex ?? $res);
 
         // This is thrown after logging
         if ($ex) {
@@ -596,8 +565,8 @@ class Pdb
      * @return PDOStatement The prepared statement, for execution with {@see Pdb::execute}
      * @throws QueryException If the query execution or formatting failed
      */
-    public static function prepare($query) {
-        return self::query($query, [], 'prep');
+    public function prepare(string $query) {
+        return $this->query($query, [], 'prep');
     }
 
 
@@ -623,7 +592,7 @@ class Pdb
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      */
-    public static function execute(PDOStatement $st, array $params, $return_type)
+    public function execute(PDOStatement $st, array $params, string $return_type)
     {
         static $types = [
             'pdo', 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val', 'col'
@@ -637,7 +606,7 @@ class Pdb
 
         // Format objects into strings
         foreach ($params as &$p) {
-            $p = self::format($p);
+            $p = $this->format($p);
         }
         unset($p);
 
@@ -650,8 +619,8 @@ class Pdb
 
             // Save the insert ID specifically, so it doesn't get clobbered by IDs generated by logging
             if (stripos($st->queryString, 'INSERT') === 0) {
-                $pdo = self::getConnection('RW');
-                self::$last_insert_id = $pdo->lastInsertId();
+                $pdo = $this->getConnection();
+                $this->last_insert_id = $pdo->lastInsertId();
             }
 
         } catch (PDOException $ex) {
@@ -723,7 +692,7 @@ class Pdb
      * @return string For 'val'
      * @throws RowMissingException If the result set didn't contain the required row
      */
-    public static function formatRs(PDOStatement $rs, $type)
+    public static function formatRs(PDOStatement $rs, string $type)
     {
         switch ($type) {
         case 'arr':
@@ -825,7 +794,7 @@ class Pdb
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public static function insert($table, array $data)
+    public function insert($table, array $data)
     {
         self::validateIdentifier($table);
         if (count($data) == 0) {
@@ -833,7 +802,6 @@ class Pdb
             throw new InvalidArgumentException($err);
         }
 
-        $pf = self::$prefix;
         $q = "INSERT INTO ~{$table}";
 
         $cols = '';
@@ -849,8 +817,8 @@ class Pdb
         }
         $q .= " ({$cols}) VALUES ({$values})";
 
-        self::q($q, $insert, 'count');
-        return self::$last_insert_id;
+        $this->query($q, $insert, 'count');
+        return $this->last_insert_id;
     }
 
 
@@ -860,9 +828,9 @@ class Pdb
      * @return int The record id
      * @return null If there hasn't been an insert yet
      */
-    public static function getLastInsertId()
+    public function getLastInsertId()
     {
-        return self::$last_insert_id;
+        return $this->last_insert_id;
     }
 
 
@@ -922,7 +890,7 @@ class Pdb
     public static function buildClause(array $conditions, array &$values, $combine = 'AND')
     {
         if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
-            throw new InvalidArgumentException('Combine paramater must be of of: "AND", "OR", "XOR"');
+            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
         }
         $combine = " {$combine} ";
 
@@ -1055,7 +1023,7 @@ class Pdb
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public static function update($table, array $data, array $conditions)
+    public function update(string $table, array $data, array $conditions)
     {
         self::validateIdentifier($table);
         if (count($data) == 0) {
@@ -1067,7 +1035,6 @@ class Pdb
             throw new InvalidArgumentException($err);
         }
 
-        $pf = self::$prefix;
         $q = "UPDATE ~{$table} SET ";
 
         $cols = '';
@@ -1082,7 +1049,7 @@ class Pdb
 
         $q .= " WHERE " . self::buildClause($conditions, $values);
 
-        return self::q($q, $values, 'count');
+        return $this->query($q, $values, 'count');
     }
 
 
@@ -1094,7 +1061,7 @@ class Pdb
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public static function delete($table, array $conditions)
+    public function delete(string $table, array $conditions)
     {
         self::validateIdentifier($table);
         if (count($conditions) == 0) {
@@ -1103,8 +1070,9 @@ class Pdb
         }
 
         $values = [];
-        $q = "DELETE FROM ~{$table} WHERE " . self::buildClause($conditions, $values);
-        return self::q($q, $values, 'count');
+        $q = "DELETE FROM ~{$table} WHERE ";
+        $q .= self::buildClause($conditions, $values);
+        return $this->query($q, $values, 'count');
     }
 
 
@@ -1112,9 +1080,9 @@ class Pdb
      * Checks if there's a current transaction in progress
      * @return bool True if inside a transaction
      */
-    public static function inTransaction()
+    public function inTransaction()
     {
-        return self::$in_transaction;
+        return $this->in_transaction;
     }
 
 
@@ -1123,17 +1091,17 @@ class Pdb
      * @return void
      * @throws TransactionRecursionException if already in a transaction
      */
-    public static function transact()
+    public function transact()
     {
-        if (self::$in_transaction) {
+        if ($this->in_transaction) {
             throw new TransactionRecursionException();
         }
 
         // Always use the RW connection, because it makes no sense to run a
         // transaction which doesn't do any writes
-        $pdo = self::getConnection('RW');
+        $pdo = $this->getConnection();
         $pdo->beginTransaction();
-        self::$in_transaction = true;
+        $this->in_transaction = true;
     }
 
 
@@ -1141,11 +1109,11 @@ class Pdb
      * Commits a transaction
      * @return void
      */
-    public static function commit()
+    public function commit()
     {
-        $pdo = self::getConnection('RW');
+        $pdo = $this->getConnection();
         $pdo->commit();
-        self::$in_transaction = false;
+        $this->in_transaction = false;
     }
 
 
@@ -1153,11 +1121,11 @@ class Pdb
      * Rolls a transaction back
      * @return void
      */
-    public static function rollback()
+    public function rollback()
     {
-        $pdo = self::getConnection('RW');
+        $pdo = $this->getConnection();
         $pdo->rollBack();
-        self::$in_transaction = false;
+        $this->in_transaction = false;
     }
 
 
@@ -1180,7 +1148,7 @@ class Pdb
      * @param string $str
      * @return string
      */
-    public static function likeEscape($str)
+    public static function likeEscape(string $str)
     {
         return str_replace(['_', '%'], ['\\_', '\\%'], $str);
     }
@@ -1195,7 +1163,7 @@ class Pdb
      * @param string $name The field to use for the mapped values
      * @return array A lookup table
      **/
-    public static function lookup($table, array $conditions = [], array $order = ['name'], $name = 'name')
+    public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
     {
         self::validateIdentifier($table);
         foreach ($order as $ord) {
@@ -1207,7 +1175,7 @@ class Pdb
         $q = "SELECT id, {$name} FROM ~{$table}";
         if (count($conditions)) $q .= "\nWHERE " . self::buildClause($conditions, $values);
         if (count($order)) $q .= "\nORDER BY " . implode(', ', $order);
-        return self::q($q, $values, 'map');
+        return $this->query($q, $values, 'map');
     }
 
 
@@ -1221,12 +1189,12 @@ class Pdb
      * @throws QueryException If the query fails
      * @throws RowMissingException If there's no row
      */
-    public static function get($table, $id)
+    public function get(string $table, $id)
     {
         self::validateIdentifier($table);
 
         $q = "SELECT * FROM ~{$table} WHERE id = ?";
-        return Pdb::q($q, [(int) $id], 'row');
+        return $this->query($q, [(int) $id], 'row');
     }
 
 
@@ -1241,7 +1209,7 @@ class Pdb
      *     // ...
      * }
      */
-    public static function recordExists($table, array $conditions)
+    public function recordExists(string $table, array $conditions)
     {
         self::validateIdentifier($table);
 
@@ -1252,7 +1220,7 @@ class Pdb
             WHERE {$clause}
             LIMIT 1";
         try {
-            self::query($q, $params, 'row');
+            $this->query($q, $params, 'row');
         } catch (RowMissingException $ex) {
             return false;
         }
@@ -1266,13 +1234,13 @@ class Pdb
      * @param string $column The column name
      * @return array
      */
-    public static function extractEnumArr($table, $column)
+    public function extractEnumArr(string $table, string $column)
     {
         Pdb::validateIdentifier($table);
         Pdb::validateIdentifier($column);
 
         $q = "SHOW COLUMNS FROM ~{$table} LIKE ?";
-        $res = Pdb::q($q, [$column], 'row');
+        $res = $this->query($q, [$column], 'row');
 
         $arr = self::convertEnumArr($res['Type']);
         return array_combine($arr, $arr);
@@ -1312,14 +1280,15 @@ class Pdb
     /**
      * Validates a value meant for an ENUM field, e.g.
      * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
+     *
      * @param string $val The value to find in the ENUM
      * @param array $field [0] Table name [1] Column name
      * @return bool
      */
-    public static function validateEnum($val, $field)
+    public function validateEnum(string $val, array $field)
     {
         list($table, $col) = $field;
-        $enum = self::extractEnumArr($table, $col);
+        $enum = $this->extractEnumArr($table, $col);
         if (count($enum) == 0) return false;
         if (in_array($val, $enum)) return true;
         return false;
@@ -1329,15 +1298,16 @@ class Pdb
     /**
      * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
      * which link to the id column of a specific table
+     *
      * @param string $database
      * @param string $table The table which contains the id column which the foreign key columns link to
      * @return array Each element is an array: ['table' => table_name, 'column' => column_name]
      */
-    public static function getDependentKeys($database, $table)
+    public function getDependentKeys(string $database, string $table)
     {
         $params = [
             $database,
-            self::$prefix . $table,
+            $this->config->prefix . $table,
         ];
 
         $q = "SELECT K.TABLE_NAME, K.COLUMN_NAME
@@ -1351,10 +1321,10 @@ class Pdb
                 AND K.REFERENCED_TABLE_NAME = ?
                 AND K.REFERENCED_COLUMN_NAME = 'id'
             ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = self::query($q, $params, 'pdo');
+        $res = $this->query($q, $params, 'pdo');
 
         $rows = [];
-        $pattern = '/^' . preg_quote(self::$prefix, '/') . '/';
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $rows[] = [
                 'table' => preg_replace($pattern, '', $row[0]),
@@ -1381,11 +1351,11 @@ class Pdb
      * //     ['source_column' => 'file_id', 'target_table' => 'files', 'target_column' => 'id'],
      * // ];
      */
-    public static function getForeignKeys($database, $table)
+    public function getForeignKeys(string $database, string $table)
     {
         $params = [
             $database,
-            self::$prefix . $table,
+            $this->config->prefix . $table,
         ];
 
         $q = "SELECT K.COLUMN_NAME, K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME
@@ -1397,10 +1367,10 @@ class Pdb
                 AND K.CONSTRAINT_NAME != ''
                 AND K.TABLE_NAME = ?
             ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = self::query($q, $params, 'pdo');
+        $res = $this->query($q, $params, 'pdo');
 
         $rows = [];
-        $pattern = '/^' . preg_quote(self::$prefix, '/') . '/';
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $rows[] = [
                 'source_column' => $row[0],
@@ -1424,7 +1394,7 @@ class Pdb
      * @param string $query
      * @return string
      */
-    public static function prettyQueryIndentation($query)
+    public static function prettyQueryIndentation(string $query): string
     {
         $lines = explode("\n", $query);
         $lowest_indent = 10000;

@@ -15,21 +15,35 @@ use karmabunny\kb\Collection;
 class PdbConfig extends Collection
 {
 
-    public string $type;
+    /** @var string */
+    public $type;
 
-    public string $host;
+    /** @var string */
+    public $host;
 
-    public string $user;
+    /** @var string */
+    public $user;
 
-    public string $pass;
+    /** @var string */
+    public $pass;
 
-    public string $database;
+    /** @var string */
+    public $database;
 
-    public string $port = null;
+    /** @var string */
+    public $port = null;
 
-    public string $prefix = 'bloom_';
+    /** @var string */
+    public $prefix = 'bloom_';
 
-    public string $character_set = 'utf8';
+    /** @var string */
+    public $character_set = 'utf8';
+
+    /** @var string[] [table => prefix] */
+    public $table_prefixes = [];
+
+    /** @var callable[] [class => fn] */
+    public $formatters = [];
 
 
     public function getDsn(): string
