@@ -36,6 +36,11 @@ $q = "SELECT id, name
 $params = ['active'];
 $res = $pdb->query($q, $params, 'map');
 
+// Transactions
+$pdb->transact();
+$pdb->commit();
+$pdb->rollback();
+
 // Alternatives
 $res = $pdb->select('id', 'name')->from('clubs')->all(100);
 $res = $pdb->find('clubs', ['status' => 'active'])->keyed('id');
@@ -48,7 +53,7 @@ class ClubModel
     use PdbTrait;
 
     // Create one here, or cache it wherever you please.
-    protected function getPdb(): Pdb
+    protected static function getPdb(): Pdb
     {
         return new Pdb($config['default']);
     }
@@ -64,6 +69,9 @@ $thing = ClubModel::find(['id' => 123])->one();
 // Update the model.
 $thing->name = 'east boat club';
 $thing->save();
+
+// Delete the model.
+$thing->delete();
 
 // Create a model.
 $other = new Model();

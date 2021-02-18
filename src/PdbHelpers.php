@@ -6,7 +6,7 @@
 
 namespace karmabunny\pdb;
 
-use InvalidArgumentException;
+
 /**
  *
  * @package karmabunny\pdb
