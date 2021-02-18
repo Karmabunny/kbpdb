@@ -41,27 +41,28 @@ trait PdbModelTrait
         $pdb = static::getConnection();
         $table = static::getTableName();
 
-        if ($this instanceof PdbModelAudit) {
-            $now = Pdb::now();
-            $this->date_added = $now;
-            $this->date_modified = $now;
-            $this->date_deleted = null;
-            $this->uid = Uuid::uuid4();
-
-            if (!isset($this->active)) {
-                $this->active = true;
-            }
-        }
-
+        $now = Pdb::now();
         $data = iterator_to_array($this);
         $conditions = [ 'id' => $this->id ];
 
         $exists = $pdb->recordExists($table, $conditions);
 
         if ($exists) {
+            $data['date_modified'] = $this->date_modified = $now;
             $pdb->update($table, $data, $conditions);
         }
         else {
+            if ($this instanceof PdbModelAudit) {
+                $data['date_added'] = $this->date_added = $now;
+                $data['date_modified'] = $this->date_modified = $now;
+                $data['date_deleted'] = $this->date_deleted = null;
+                $data['uid'] = $this->uid = Uuid::uuid4();
+
+                if (!isset($this->active)) {
+                    $this->active = true;
+                }
+            }
+
             $this->id = $pdb->insert($table, $data);
         }
 
