@@ -52,7 +52,7 @@ trait PdbModelTrait
             $pdb->update($table, $data, $conditions);
         }
         else {
-            if ($this instanceof PdbModelAudit) {
+            if ($this instanceof PdbAuditTrait) {
                 $data['date_added'] = $this->date_added = $now;
                 $data['date_modified'] = $this->date_modified = $now;
                 $data['date_deleted'] = $this->date_deleted = null;
@@ -81,7 +81,7 @@ trait PdbModelTrait
 
         $conditions = [ 'id' => $this->id ];
 
-        if ($soft and $this instanceof PdbModelAudit) {
+        if ($soft and $this instanceof PdbAuditTrait) {
             // Bump the modified field, right?
             $now = Pdb::now();
 

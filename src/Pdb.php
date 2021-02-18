@@ -72,7 +72,7 @@ class Pdb implements Loggable
             $config = new PdbConfig($config);
         }
 
-        $pdo = new PDO($config->dsn, $config->user, $config->pass);
+        $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         return $pdo;
     }

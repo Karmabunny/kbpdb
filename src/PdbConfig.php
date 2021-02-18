@@ -49,7 +49,7 @@ class PdbConfig extends Collection
     public function getDsn(): string
     {
         $dsn = "{$this->type}:host={$this->host}";
-        $dsn .= ";dbname={$this->db}";
+        $dsn .= ";dbname={$this->database}";
         $dsn .= ";charset={$this->character_set}";
 
         if ($this->port) {
