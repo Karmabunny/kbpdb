@@ -12,13 +12,13 @@
             "source": {
                 "type": "git",
                 "url": "git@github.com:Karmabunny/kbphp.git",
-                "reference": "d0d6c69dc2f8c8b566cb56a45f07d766f9503df9"
+                "reference": "1a0d858f0d3674c1dfe16eb519d2de2ee742dbf1"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-d0d6c69dc2f8c8b566cb56a45f07d766f9503df9-zip-b56a8d.zip",
-                "reference": "d0d6c69dc2f8c8b566cb56a45f07d766f9503df9",
-                "shasum": "9bd3c0b36e694ea26bd72b5449395656a0addf58"
+                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-1a0d858f0d3674c1dfe16eb519d2de2ee742dbf1-zip-d73eb1.zip",
+                "reference": "1a0d858f0d3674c1dfe16eb519d2de2ee742dbf1",
+                "shasum": "7aa43493c092ebf9a207f46ecf0ddb04dcd61590"
             },
             "require-dev": {
                 "phpunit/phpunit": "^9.3"
@@ -48,7 +48,7 @@
                 "source": "https://github.com/Karmabunny/kbphp/tree/master",
                 "issues": "https://github.com/Karmabunny/kbphp/issues"
             },
-            "time": "2021-02-08T05:01:43+00:00"
+            "time": "2021-02-18T11:17:36+00:00"
         }
     ],
     "packages-dev": [

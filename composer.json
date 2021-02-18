@@ -21,10 +21,7 @@
     "config": {
         "sort-packages": true,
         "optimize-autoloader": true,
-        "preferred-install": { "karmabunny/*": "dist" },
-        "platform": {
-            "php": "7"
-        }
+        "preferred-install": { "karmabunny/*": "dist" }
     },
     "repositories": [
         {
