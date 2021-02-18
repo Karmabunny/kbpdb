@@ -61,24 +61,26 @@ class Pdb implements Loggable
 
 
     /**
-     * Log something.
+     * Loads db config and creates a new PDO connection with it.
      *
-     * @param string $query
-     * @param array $params
-     * @param PDOStatement|QueryException $result
-     * @return void
+     * @param PdbConfig|array $config
+     * @return PDO
      */
-    private function logQuery(string $query, array $params, $result)
+    public static function connect($config)
     {
-        if ($result instanceof QueryException) {
-            $this->log($result, Log::LEVEL_ERROR);
+        if (!($config instanceof PdbConfig)) {
+            $config = new PdbConfig($config);
         }
-        else {
-            $message = "Query: {$query}\nParams:\n";
-            $message .= print_r($params, true);
-            $this->log($message, Log::LEVEL_DEBUG);
-        }
+
+        $pdo = new PDO($config->dsn, $config->user, $config->pass);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        return $pdo;
     }
+
+
+    // ===========================================================
+    //     Settings and stuff
+    // ===========================================================
 
 
     /**
@@ -111,38 +113,6 @@ class Pdb implements Loggable
 
 
     /**
-     * Format a object in accordance to the registered formatters.
-     *
-     * Formatters convert objects to saveable types, such as a string or an integer
-     *
-     * @param mixed $value The value to format
-     * @return string The formatted value
-     * @throws InvalidArgumentException
-     */
-    protected function format($value)
-    {
-        if (!is_object($value)) return $value;
-
-        $class_name = get_class($value);
-        $func = $this->config->formatters[$class_name] ?? null;
-
-        if ($func === null) {
-            if (method_exists($value, '__toString')) {
-                return (string) $value;
-            }
-            throw new InvalidArgumentException("Unable to format objects of type '{$class_name}'");
-        }
-
-        $value = $func($value);
-        if (!is_string($value) and !is_int($value)) {
-            throw new InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
-        }
-
-        return $value;
-    }
-
-
-    /**
      * Sets an overriding prefix to prepend to an individual table.
      *
      * @param string $table The table to use a specific prefix for, e.g. 'pages'
@@ -151,76 +121,6 @@ class Pdb implements Loggable
     public function setTablePrefixOverride(string $table, string $prefix)
     {
         $this->config->table_prefixes[$table] = $prefix;
-    }
-
-
-    /**
-     * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
-     *
-     * @param PDO $pdo The database connection, for determining table quoting rules
-     * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
-     * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
-     */
-    protected function insertPrefixes(PDO $pdo, string $query)
-    {
-        switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-            case 'mysql':
-                $lquote = $rquote = '`';
-                break;
-
-            default:
-                $lquote = $rquote = '';
-        }
-
-        $replacer = function(array $matches) use ($lquote, $rquote) {
-            $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
-            return $lquote . $prefix . $matches[1] . $rquote;
-        };
-        return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
-    }
-
-
-    /**
-     * Bind the array of parameters to a PDO statement
-     *
-     * Unlike PDOStatement::execute which binds everything as PARAM_STR,
-     * this method will bind integers as PARAM_INT
-     *
-     * @param PDOStatement $st Statement to bind parameters to
-     * @param array $params Parameters to bind
-     */
-    protected static function bindParams(PDOStatement $st, array $params)
-    {
-        foreach ($params as $key => $val) {
-            // Numeric (question mark) params require 1-based indexing
-            if (!is_string($key)) {
-                $key += 1;
-            }
-
-            if (is_int($val)) {
-                $st->bindValue($key, $val, PDO::PARAM_INT);
-            } else {
-                $st->bindValue($key, $val, PDO::PARAM_STR);
-            }
-        }
-    }
-
-
-    /**
-     * Loads db config and creates a new PDO connection with it.
-     *
-     * @param PdbConfig|array $config
-     * @return PDO
-     */
-    public static function connect($config)
-    {
-        if (!($config instanceof PdbConfig)) {
-            $config = new PdbConfig($config);
-        }
-
-        $pdo = new PDO($config->dsn, $config->user, $config->pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        return $pdo;
     }
 
 
@@ -247,6 +147,11 @@ class Pdb implements Loggable
     }
 
 
+    // ===========================================================
+    //     Query builder
+    // ===========================================================
+
+
     /**
      * Gets a PDO connection, creating a new one if necessary
      *
@@ -265,125 +170,6 @@ class Pdb implements Loggable
 
         $this->connection = self::connect($this->config);
         return $this->connection;
-    }
-
-
-
-    /**
-     * Gets the subset of bind params which are associated with a particular query from a generic list of bind params.
-     * This is used to support the SQL DB tool.
-     * N.B. This probably won't work if you mix named and numbered params in the same query.
-     * @param string $q
-     * @param array $binds generic list of binds
-     * @return array
-     */
-    public static function getBindSubset(string $q, array $binds)
-    {
-        $q = PdbHelpers::stripStrings($q);
-
-        // Strip named params which aren't required
-        // N.B. identifier format matches self::validateIdentifier
-        $params = [];
-        preg_match_all('/:[a-z_][a-z_0-9]*/i', $q, $params);
-        $params = $params[0];
-        foreach ($binds as $key => $val) {
-            if (is_int($key)) continue;
-
-            if (count($params) == 0) {
-                unset($binds[$key]);
-                continue;
-            }
-
-            $required = false;
-            foreach ($params as $param) {
-                if ($key[0] == ':') {
-                    if ($param[0] != ':') {
-                        $param = ':' . $param;
-                    }
-                } else {
-                    $param = ltrim($param, ':');
-                }
-                if ($key == $param) {
-                    $required = true;
-                }
-            }
-            if (!$required) {
-                unset($binds[$key]);
-            }
-        }
-
-        // Strip numbered params which aren't required
-        $params = [];
-        preg_match_all('/\?/', $q, $params);
-        $params = $params[0];
-        if (count($params) == 0) {
-            foreach ($binds as $key => $bind) {
-                if (is_int($key)) {
-                    unset($binds[$key]);
-                }
-            }
-            return $binds;
-        }
-
-        foreach ($binds as $key => $val) {
-            if (!is_int($key)) unset($binds[$key]);
-        }
-        while (count($params) < count($binds)) {
-            array_pop($binds);
-        }
-
-        return $binds;
-    }
-
-
-    /**
-     * Generates a backtrace, and searches it to find the point at which a query was called
-     * @return array The trace entry in which the query was called
-     * @return false If a query call couldn't be found in the trace
-     */
-    private static function backtraceQuery() {
-        $trace = debug_backtrace();
-        $caller = null;
-        while ($step = array_pop($trace)) {
-            if (@$step['class'] == static::class) {
-                // Provide calling step, as it's useful if the current step
-                // doesn't provide file and line num.
-                $step['caller'] = $caller;
-                return $step;
-            }
-            $caller = $step;
-        }
-        return false;
-    }
-
-
-    /**
-     * Create a QueryException from a given PDOException object
-     *
-     * Uses the SQLSTATE code to return different exception classes, which are subclasses of QueryException
-     *
-     * @param PDOException $ex
-     * @return ConstraintQueryException Integrity constraint violation (SQLSTATE 23xxx)
-     * @return QueryException All other query errors
-     */
-    private static function createQueryException(PDOException $ex)
-    {
-        $pdo_ex = $ex;
-        $state_class = substr($ex->getCode(), 0, 2);
-
-        switch ($state_class) {
-            case '23':
-                $ex = new ConstraintQueryException($ex->getMessage());
-                break;
-
-            default:
-                $ex = new QueryException($ex->getMessage());
-                break;
-        }
-
-        $ex->state = $pdo_ex->getCode();
-
-        return $ex;
     }
 
 
@@ -645,132 +431,27 @@ class Pdb implements Loggable
     }
 
 
-    /**
-     * Converts a PDO result set to a common data format:
-     *
-     * arr      An array of rows, where each row is an associative array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * arr-num  An array of rows, where each row is a numeric array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * row      A single row, as an associative array
-     *
-     * row-num  A single row, as a numeric array
-     *
-     * map      An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value is the second
-     *
-     * map-arr  An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value an associative array of name => value pairs
-     *          (if there are multiple subsequent columns)
-     *
-     * val      A single value (i.e. the value of the first column of the
-     *          first row)
-     *
-     * col      All values from the first column, as a numeric array.
-     *          DO NOT USE with boolean columns; see note at
-     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
-     *
-     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
-     * @return array For most types
-     * @return string For 'val'
-     * @throws RowMissingException If the result set didn't contain the required row
-     */
-    protected static function formatRs(PDOStatement $rs, string $type)
-    {
-        switch ($type) {
-        case 'arr':
-            return $rs->fetchAll(PDO::FETCH_ASSOC);
-            break;
-
-        case 'arr-num':
-            return $rs->fetchAll(PDO::FETCH_NUM);
-            break;
-
-        case 'row':
-            $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-            break;
-
-        case 'row-num':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-            break;
-
-        case 'map':
-            if ($rs->columnCount() < 2) {
-                throw new Exception('Two columns required');
-            }
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
-                $map[$row[0]] = $row[1];
-            }
-            return $map;
-            break;
-
-        case 'map-arr':
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = reset($row);
-                $map[$id] = $row;
-            }
-            return $map;
-            break;
-
-        case 'val':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row[0];
-            break;
-
-        case 'col':
-            $arr = [];
-            while (($col = $rs->fetchColumn(0)) !== false) {
-                $arr[] = $col;
-            }
-            return $arr;
-            break;
-
-        default:
-            $err = "Unknown return type: {$type}";
-            throw new InvalidArgumentException($err);
-        }
-    }
+    // ===========================================================
+    //     Core queries
+    // ===========================================================
 
 
     /**
-     * Validates a identifier (column name, table name, etc)
+     * Return all columns for a single row of a table.
+     * The row is specified using its id.
      *
-     * @param string $name The identifier to check
-     * @return void
-     * @throws InvalidArgumentException If the identifier is invalid
+     * @param string $table The table name, not prefixed
+     * @param int $id The id of the record to fetch
+     * @return array The record data
+     * @throws QueryException If the query fails
+     * @throws RowMissingException If there's no row
      */
-    public static function validateIdentifier($name)
+    public function get(string $table, $id)
     {
-        if (!preg_match('/^[a-z_][a-z_0-9]*$/i', $name)) {
-            throw new InvalidArgumentException("Invalid identifier: {$name}");
-        }
-    }
+        self::validateIdentifier($table);
 
-
-    /**
-     * Validates a identifier in extended format -- table.column
-     * Also accepts short format like {@see validateIdentifier} does.
-     *
-     * @param string $name The identifier to check
-     * @return void
-     * @throws InvalidArgumentException If the identifier is invalid
-     */
-    public static function validateIdentifierExtended($name)
-    {
-        if (!preg_match('/^(?:[a-z_][a-z_0-9]*\.)?[a-z_][a-z_0-9]*$/i', $name)) {
-            throw new InvalidArgumentException("Invalid identifier: {$name}");
-        }
+        $q = "SELECT * FROM ~{$table} WHERE id = ?";
+        return $this->query($q, [(int) $id], 'row');
     }
 
 
@@ -812,6 +493,314 @@ class Pdb implements Loggable
 
 
     /**
+     * Runs an UPDATE query
+     * @param string $table The table (without prefix) to insert the data into
+     * @param array $data Data to update, column => value
+     * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
+     * @return int The number of affected rows
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     */
+    public function update(string $table, array $data, array $conditions)
+    {
+        self::validateIdentifier($table);
+        if (count($data) == 0) {
+            $err = 'An UPDATE must apply to at least 1 column';
+            throw new InvalidArgumentException($err);
+        }
+        if (count($conditions) == 0) {
+            $err = 'An UPDATE requires at least 1 condition';
+            throw new InvalidArgumentException($err);
+        }
+
+        $q = "UPDATE ~{$table} SET ";
+
+        $cols = '';
+        $values = [];
+        foreach ($data as $col => $val) {
+            self::validateIdentifier($col);
+            if ($cols) $cols .= ', ';
+            $cols .= "{$col} = ?";
+            $values[] = $val;
+        }
+        $q .= $cols;
+
+        $q .= " WHERE " . self::buildClause($conditions, $values);
+
+        return $this->query($q, $values, 'count');
+    }
+
+
+    /**
+     * Runs a DELETE query
+     * @param string $table The table (without prefix) to insert the data into
+     * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
+     * @return int The number of affected rows
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     */
+    public function delete(string $table, array $conditions)
+    {
+        self::validateIdentifier($table);
+        if (count($conditions) == 0) {
+            $err = 'A DELETE requires at least 1 condition';
+            throw new InvalidArgumentException($err);
+        }
+
+        $values = [];
+        $q = "DELETE FROM ~{$table} WHERE ";
+        $q .= self::buildClause($conditions, $values);
+        return $this->query($q, $values, 'count');
+    }
+
+
+    // ===========================================================
+    //     Transactions
+    // ===========================================================
+
+
+    /**
+     * Checks if there's a current transaction in progress
+     * @return bool True if inside a transaction
+     */
+    public function inTransaction()
+    {
+        return $this->in_transaction;
+    }
+
+
+    /**
+     * Starts a transaction
+     * @return void
+     * @throws TransactionRecursionException if already in a transaction
+     */
+    public function transact()
+    {
+        if ($this->in_transaction) {
+            throw new TransactionRecursionException();
+        }
+
+        // Always use the RW connection, because it makes no sense to run a
+        // transaction which doesn't do any writes
+        $pdo = $this->getConnection();
+        $pdo->beginTransaction();
+        $this->in_transaction = true;
+    }
+
+
+    /**
+     * Commits a transaction
+     * @return void
+     */
+    public function commit()
+    {
+        $pdo = $this->getConnection();
+        $pdo->commit();
+        $this->in_transaction = false;
+    }
+
+
+    /**
+     * Rolls a transaction back
+     * @return void
+     */
+    public function rollback()
+    {
+        $pdo = $this->getConnection();
+        $pdo->rollBack();
+        $this->in_transaction = false;
+    }
+
+
+    // ===========================================================
+    //     Extended queries
+    // ===========================================================
+
+
+    /**
+     * Fetches a mapping of id => value values from a table, using the 'name' values by default
+     *
+     * @param string $table The table name, without prefix
+     * @param array $conditions Optional where clause {@see Pdb::buildClause}
+     * @param array $order Optional columns to ORDER BY. Defaults to 'name'
+     * @param string $name The field to use for the mapped values
+     * @return array A lookup table
+     **/
+    public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
+    {
+        self::validateIdentifier($table);
+        foreach ($order as $ord) {
+            self::validateIdentifier($ord);
+        }
+        self::validateIdentifier($name);
+
+        $values = [];
+        $q = "SELECT id, {$name} FROM ~{$table}";
+        if (count($conditions)) $q .= "\nWHERE " . self::buildClause($conditions, $values);
+        if (count($order)) $q .= "\nORDER BY " . implode(', ', $order);
+        return $this->query($q, $values, 'map');
+    }
+
+
+    /**
+     * Check to see that at least one record exists for certain conditions.
+     *
+     * @param string $table The table name, not prefixed
+     * @param array $conditions Conditions for the WHERE clause, formatted as per {@see Pdb::buildClause}
+     * @return bool True if a matching record exists
+     * @throws QueryException If the query fails
+     * @example if (!Pdb::recordExists('users', ['id' => 123, 'active' => 1])) {
+     *     // ...
+     * }
+     */
+    public function recordExists(string $table, array $conditions)
+    {
+        self::validateIdentifier($table);
+
+        $params = [];
+        $clause = Pdb::buildClause($conditions, $params);
+        $q = "SELECT 1
+            FROM ~{$table}
+            WHERE {$clause}
+            LIMIT 1";
+        try {
+            $this->query($q, $params, 'row');
+        } catch (RowMissingException $ex) {
+            return false;
+        }
+        return true;
+    }
+
+
+    /**
+     * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
+     * which link to the id column of a specific table
+     *
+     * @param string $database
+     * @param string $table The table which contains the id column which the foreign key columns link to
+     * @return array Each element is an array: ['table' => table_name, 'column' => column_name]
+     */
+    public function getDependentKeys(string $database, string $table)
+    {
+        $params = [
+            $database,
+            $this->config->prefix . $table,
+        ];
+
+        $q = "SELECT K.TABLE_NAME, K.COLUMN_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
+            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
+                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
+                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
+                AND C.DELETE_RULE = 'CASCADE'
+            WHERE K.TABLE_SCHEMA = ?
+                AND K.CONSTRAINT_NAME != ''
+                AND K.REFERENCED_TABLE_NAME = ?
+                AND K.REFERENCED_COLUMN_NAME = 'id'
+            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
+        $res = $this->query($q, $params, 'pdo');
+
+        $rows = [];
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+        while ($row = $res->fetch(PDO::FETCH_NUM)) {
+            $rows[] = [
+                'table' => preg_replace($pattern, '', $row[0]),
+                'column' => $row[1]
+            ];
+        }
+        $res->closeCursor();
+        return $rows;
+    }
+
+
+    /**
+     * Gets all of the columns which have foreign key constraints in a table
+     * @param string $database
+     * @param string $table The table to check for columns which link to other tables
+     * @return array Each element is an array with elements as follows:
+     *         source_column => name of column in the specified table
+     *         target_table => name of table that the source column links to
+     *         target_column => name of column that the source column links to
+     * @example
+     * $fks = Pdb::getForeignKeys('files_cat_join');
+     * // $fk has value: [
+     * //     ['source_column' => 'cat_id', 'target_table' => 'files_cat_list', 'target_column' => 'id']
+     * //     ['source_column' => 'file_id', 'target_table' => 'files', 'target_column' => 'id'],
+     * // ];
+     */
+    public function getForeignKeys(string $database, string $table)
+    {
+        $params = [
+            $database,
+            $this->config->prefix . $table,
+        ];
+
+        $q = "SELECT K.COLUMN_NAME, K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
+            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
+                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
+                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
+            WHERE K.TABLE_SCHEMA = ?
+                AND K.CONSTRAINT_NAME != ''
+                AND K.TABLE_NAME = ?
+            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
+        $res = $this->query($q, $params, 'pdo');
+
+        $rows = [];
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+        while ($row = $res->fetch(PDO::FETCH_NUM)) {
+            $rows[] = [
+                'source_column' => $row[0],
+                'target_table' => preg_replace($pattern, '', $row[1]),
+                'target_column' => $row[2],
+            ];
+        }
+        $res->closeCursor();
+        return $rows;
+    }
+
+
+    /**
+     * Returns definition list from column of type ENUM
+     * @param string $table The DB table name, without prefix
+     * @param string $column The column name
+     * @return array
+     */
+    public function extractEnumArr(string $table, string $column)
+    {
+        Pdb::validateIdentifier($table);
+        Pdb::validateIdentifier($column);
+
+        $q = "SHOW COLUMNS FROM ~{$table} LIKE ?";
+        $res = $this->query($q, [$column], 'row');
+
+        $arr = self::convertEnumArr($res['Type']);
+        return array_combine($arr, $arr);
+    }
+
+
+    // ===========================================================
+    //     Generic helpers + validators
+    // ===========================================================
+
+
+    /**
+     * Gets a datetime value for the current time.
+     *
+     * This is used to implement MySQL's NOW() function in PHP, but may change
+     * if the decision is made to use INT columns instead of DATETIMEs. This
+     * will probably happen at some point, so this function should only be used
+     * for generating values right before an INSERT or UPDATE query is run
+     *
+     * @return string
+     */
+    public static function now()
+    {
+        return date('Y-m-d H:i:s');
+    }
+
+
+    /**
      * Return the value from the autoincement of the most recent INSERT query
      *
      * @return int The record id
@@ -820,6 +809,85 @@ class Pdb implements Loggable
     public function getLastInsertId()
     {
         return $this->last_insert_id;
+    }
+
+
+    /**
+     * Validates a identifier (column name, table name, etc)
+     *
+     * @param string $name The identifier to check
+     * @return void
+     * @throws InvalidArgumentException If the identifier is invalid
+     */
+    public static function validateIdentifier($name)
+    {
+        if (!preg_match('/^[a-z_][a-z_0-9]*$/i', $name)) {
+            throw new InvalidArgumentException("Invalid identifier: {$name}");
+        }
+    }
+
+
+    /**
+     * Validates a identifier in extended format -- table.column
+     * Also accepts short format like {@see validateIdentifier} does.
+     *
+     * @param string $name The identifier to check
+     * @return void
+     * @throws InvalidArgumentException If the identifier is invalid
+     */
+    public static function validateIdentifierExtended($name)
+    {
+        if (!preg_match('/^(?:[a-z_][a-z_0-9]*\.)?[a-z_][a-z_0-9]*$/i', $name)) {
+            throw new InvalidArgumentException("Invalid identifier: {$name}");
+        }
+    }
+
+
+    /**
+     * Validates a value meant for an ENUM field, e.g.
+     * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
+     *
+     * @param string $val The value to find in the ENUM
+     * @param array $field [0] Table name [1] Column name
+     * @return bool
+     */
+    public function validateEnum(string $val, array $field)
+    {
+        list($table, $col) = $field;
+        $enum = $this->extractEnumArr($table, $col);
+        if (count($enum) == 0) return false;
+        if (in_array($val, $enum)) return true;
+        return false;
+    }
+
+
+    /**
+     * Convert an ENUM or SET definition from MySQL into an array of values
+     *
+     * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
+     * @return array Numerically indexed
+     */
+    public static function convertEnumArr($enum_defn)
+    {
+        $pattern = '/^(?:ENUM|SET)\s*\(\s*\'/i';
+        if (!preg_match($pattern, $enum_defn)) {
+            throw new InvalidArgumentException("Definition is not an ENUM or SET");
+        }
+
+        // Remove enclosing ENUM('...') or SET('...')
+        $enum_defn = preg_replace($pattern, '', $enum_defn);
+        $enum_defn = preg_replace('/\'\s*\)\s*$/', '', $enum_defn);
+
+        // SQL escapes ' characters with ''
+        // So split on all ',' which aren't followed by a ' character
+        $vals = preg_split("/','(?!')/", $enum_defn);
+
+        // Then convert any '' characters back into ' characters
+        foreach ($vals as &$v) {
+            $v = str_replace("''", "'", $v);
+        }
+
+        return $vals;
     }
 
 
@@ -1004,359 +1072,328 @@ class Pdb implements Loggable
 
 
     /**
-     * Runs an UPDATE query
-     * @param string $table The table (without prefix) to insert the data into
-     * @param array $data Data to update, column => value
-     * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
-     * @return int The number of affected rows
+     * Converts a PDO result set to a common data format:
+     *
+     * arr      An array of rows, where each row is an associative array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * arr-num  An array of rows, where each row is a numeric array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * row      A single row, as an associative array
+     *
+     * row-num  A single row, as a numeric array
+     *
+     * map      An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value is the second
+     *
+     * map-arr  An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value an associative array of name => value pairs
+     *          (if there are multiple subsequent columns)
+     *
+     * val      A single value (i.e. the value of the first column of the
+     *          first row)
+     *
+     * col      All values from the first column, as a numeric array.
+     *          DO NOT USE with boolean columns; see note at
+     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
+     *
+     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @return array For most types
+     * @return string For 'val'
+     * @throws RowMissingException If the result set didn't contain the required row
+     */
+    protected static function formatRs(PDOStatement $rs, string $type)
+    {
+        switch ($type) {
+        case 'arr':
+            return $rs->fetchAll(PDO::FETCH_ASSOC);
+            break;
+
+        case 'arr-num':
+            return $rs->fetchAll(PDO::FETCH_NUM);
+            break;
+
+        case 'row':
+            $row = $rs->fetch(PDO::FETCH_ASSOC);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row;
+            break;
+
+        case 'row-num':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row;
+            break;
+
+        case 'map':
+            if ($rs->columnCount() < 2) {
+                throw new Exception('Two columns required');
+            }
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
+                $map[$row[0]] = $row[1];
+            }
+            return $map;
+            break;
+
+        case 'map-arr':
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                $id = reset($row);
+                $map[$id] = $row;
+            }
+            return $map;
+            break;
+
+        case 'val':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row[0];
+            break;
+
+        case 'col':
+            $arr = [];
+            while (($col = $rs->fetchColumn(0)) !== false) {
+                $arr[] = $col;
+            }
+            return $arr;
+            break;
+
+        default:
+            $err = "Unknown return type: {$type}";
+            throw new InvalidArgumentException($err);
+        }
+    }
+
+
+    // ===========================================================
+    //     Internal helpers
+    // ===========================================================
+
+
+    /**
+     * Format a object in accordance to the registered formatters.
+     *
+     * Formatters convert objects to saveable types, such as a string or an integer
+     *
+     * @param mixed $value The value to format
+     * @return string The formatted value
      * @throws InvalidArgumentException
-     * @throws QueryException
      */
-    public function update(string $table, array $data, array $conditions)
+    protected function format($value)
     {
-        self::validateIdentifier($table);
-        if (count($data) == 0) {
-            $err = 'An UPDATE must apply to at least 1 column';
-            throw new InvalidArgumentException($err);
+        if (!is_object($value)) return $value;
+
+        $class_name = get_class($value);
+        $func = $this->config->formatters[$class_name] ?? null;
+
+        if ($func === null) {
+            if (method_exists($value, '__toString')) {
+                return (string) $value;
+            }
+            throw new InvalidArgumentException("Unable to format objects of type '{$class_name}'");
         }
-        if (count($conditions) == 0) {
-            $err = 'An UPDATE requires at least 1 condition';
-            throw new InvalidArgumentException($err);
+
+        $value = $func($value);
+        if (!is_string($value) and !is_int($value)) {
+            throw new InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
         }
 
-        $q = "UPDATE ~{$table} SET ";
-
-        $cols = '';
-        $values = [];
-        foreach ($data as $col => $val) {
-            self::validateIdentifier($col);
-            if ($cols) $cols .= ', ';
-            $cols .= "{$col} = ?";
-            $values[] = $val;
-        }
-        $q .= $cols;
-
-        $q .= " WHERE " . self::buildClause($conditions, $values);
-
-        return $this->query($q, $values, 'count');
+        return $value;
     }
 
 
     /**
-     * Runs a DELETE query
-     * @param string $table The table (without prefix) to insert the data into
-     * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
-     * @return int The number of affected rows
-     * @throws InvalidArgumentException
-     * @throws QueryException
+     * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
+     *
+     * @param PDO $pdo The database connection, for determining table quoting rules
+     * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
+     * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
      */
-    public function delete(string $table, array $conditions)
+    protected function insertPrefixes(PDO $pdo, string $query)
     {
-        self::validateIdentifier($table);
-        if (count($conditions) == 0) {
-            $err = 'A DELETE requires at least 1 condition';
-            throw new InvalidArgumentException($err);
+        switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
+            case 'mysql':
+                $lquote = $rquote = '`';
+                break;
+
+            default:
+                $lquote = $rquote = '';
         }
 
-        $values = [];
-        $q = "DELETE FROM ~{$table} WHERE ";
-        $q .= self::buildClause($conditions, $values);
-        return $this->query($q, $values, 'count');
+        $replacer = function(array $matches) use ($lquote, $rquote) {
+            $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
+            return $lquote . $prefix . $matches[1] . $rquote;
+        };
+        return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
     }
 
 
     /**
-     * Checks if there's a current transaction in progress
-     * @return bool True if inside a transaction
+     * Bind the array of parameters to a PDO statement
+     *
+     * Unlike PDOStatement::execute which binds everything as PARAM_STR,
+     * this method will bind integers as PARAM_INT
+     *
+     * @param PDOStatement $st Statement to bind parameters to
+     * @param array $params Parameters to bind
      */
-    public function inTransaction()
+    protected static function bindParams(PDOStatement $st, array $params)
     {
-        return $this->in_transaction;
-    }
+        foreach ($params as $key => $val) {
+            // Numeric (question mark) params require 1-based indexing
+            if (!is_string($key)) {
+                $key += 1;
+            }
 
-
-    /**
-     * Starts a transaction
-     * @return void
-     * @throws TransactionRecursionException if already in a transaction
-     */
-    public function transact()
-    {
-        if ($this->in_transaction) {
-            throw new TransactionRecursionException();
+            if (is_int($val)) {
+                $st->bindValue($key, $val, PDO::PARAM_INT);
+            } else {
+                $st->bindValue($key, $val, PDO::PARAM_STR);
+            }
         }
-
-        // Always use the RW connection, because it makes no sense to run a
-        // transaction which doesn't do any writes
-        $pdo = $this->getConnection();
-        $pdo->beginTransaction();
-        $this->in_transaction = true;
     }
 
 
     /**
-     * Commits a transaction
+     * Log something.
+     *
+     * @param string $query
+     * @param array $params
+     * @param PDOStatement|QueryException $result
      * @return void
      */
-    public function commit()
+    protected function logQuery(string $query, array $params, $result)
     {
-        $pdo = $this->getConnection();
-        $pdo->commit();
-        $this->in_transaction = false;
-    }
-
-
-    /**
-     * Rolls a transaction back
-     * @return void
-     */
-    public function rollback()
-    {
-        $pdo = $this->getConnection();
-        $pdo->rollBack();
-        $this->in_transaction = false;
-    }
-
-
-    /**
-     * Gets a datetime value for the current time.
-     * This is used to implement MySQL's NOW() function in PHP, but may change
-     * if the decision is made to use INT columns instead of DATETIMEs. This
-     * will probably happen at some point, so this function should only be used
-     * for generating values right before an INSERT or UPDATE query is run
-     * @return string
-     */
-    public static function now()
-    {
-        return date('Y-m-d H:i:s');
-    }
-
-
-    /**
-     * Fetches a mapping of id => value values from a table, using the 'name' values by default
-     *
-     * @param string $table The table name, without prefix
-     * @param array $conditions Optional where clause {@see Pdb::buildClause}
-     * @param array $order Optional columns to ORDER BY. Defaults to 'name'
-     * @param string $name The field to use for the mapped values
-     * @return array A lookup table
-     **/
-    public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
-    {
-        self::validateIdentifier($table);
-        foreach ($order as $ord) {
-            self::validateIdentifier($ord);
+        if ($result instanceof QueryException) {
+            $this->log($result, Log::LEVEL_ERROR);
         }
-        self::validateIdentifier($name);
-
-        $values = [];
-        $q = "SELECT id, {$name} FROM ~{$table}";
-        if (count($conditions)) $q .= "\nWHERE " . self::buildClause($conditions, $values);
-        if (count($order)) $q .= "\nORDER BY " . implode(', ', $order);
-        return $this->query($q, $values, 'map');
-    }
-
-
-    /**
-     * Return all columns for a single row of a table.
-     * The row is specified using its id.
-     *
-     * @param string $table The table name, not prefixed
-     * @param int $id The id of the record to fetch
-     * @return array The record data
-     * @throws QueryException If the query fails
-     * @throws RowMissingException If there's no row
-     */
-    public function get(string $table, $id)
-    {
-        self::validateIdentifier($table);
-
-        $q = "SELECT * FROM ~{$table} WHERE id = ?";
-        return $this->query($q, [(int) $id], 'row');
-    }
-
-
-    /**
-     * Check to see that at least one record exists for certain conditions.
-     *
-     * @param string $table The table name, not prefixed
-     * @param array $conditions Conditions for the WHERE clause, formatted as per {@see Pdb::buildClause}
-     * @return bool True if a matching record exists
-     * @throws QueryException If the query fails
-     * @example if (!Pdb::recordExists('users', ['id' => 123, 'active' => 1])) {
-     *     // ...
-     * }
-     */
-    public function recordExists(string $table, array $conditions)
-    {
-        self::validateIdentifier($table);
-
-        $params = [];
-        $clause = Pdb::buildClause($conditions, $params);
-        $q = "SELECT 1
-            FROM ~{$table}
-            WHERE {$clause}
-            LIMIT 1";
-        try {
-            $this->query($q, $params, 'row');
-        } catch (RowMissingException $ex) {
-            return false;
+        else {
+            $message = "Query: {$query}\nParams:\n";
+            $message .= print_r($params, true);
+            $this->log($message, Log::LEVEL_DEBUG);
         }
-        return true;
     }
 
 
     /**
-     * Returns definition list from column of type ENUM
-     * @param string $table The DB table name, without prefix
-     * @param string $column The column name
+     * Gets the subset of bind params which are associated with a particular query from a generic list of bind params.
+     * This is used to support the SQL DB tool.
+     * N.B. This probably won't work if you mix named and numbered params in the same query.
+     *
+     * @param string $q
+     * @param array $binds generic list of binds
      * @return array
      */
-    public function extractEnumArr(string $table, string $column)
+    public static function getBindSubset(string $q, array $binds)
     {
-        Pdb::validateIdentifier($table);
-        Pdb::validateIdentifier($column);
+        $q = PdbHelpers::stripStrings($q);
 
-        $q = "SHOW COLUMNS FROM ~{$table} LIKE ?";
-        $res = $this->query($q, [$column], 'row');
+        // Strip named params which aren't required
+        // N.B. identifier format matches self::validateIdentifier
+        $params = [];
+        preg_match_all('/:[a-z_][a-z_0-9]*/i', $q, $params);
+        $params = $params[0];
+        foreach ($binds as $key => $val) {
+            if (is_int($key)) continue;
 
-        $arr = self::convertEnumArr($res['Type']);
-        return array_combine($arr, $arr);
+            if (count($params) == 0) {
+                unset($binds[$key]);
+                continue;
+            }
+
+            $required = false;
+            foreach ($params as $param) {
+                if ($key[0] == ':') {
+                    if ($param[0] != ':') {
+                        $param = ':' . $param;
+                    }
+                } else {
+                    $param = ltrim($param, ':');
+                }
+                if ($key == $param) {
+                    $required = true;
+                }
+            }
+            if (!$required) {
+                unset($binds[$key]);
+            }
+        }
+
+        // Strip numbered params which aren't required
+        $params = [];
+        preg_match_all('/\?/', $q, $params);
+        $params = $params[0];
+        if (count($params) == 0) {
+            foreach ($binds as $key => $bind) {
+                if (is_int($key)) {
+                    unset($binds[$key]);
+                }
+            }
+            return $binds;
+        }
+
+        foreach ($binds as $key => $val) {
+            if (!is_int($key)) unset($binds[$key]);
+        }
+        while (count($params) < count($binds)) {
+            array_pop($binds);
+        }
+
+        return $binds;
     }
 
 
     /**
-     * Convert an ENUM or SET definition from MySQL into an array of values
-     *
-     * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
-     * @return array Numerically indexed
+     * Generates a backtrace, and searches it to find the point at which a query was called
+     * @return array The trace entry in which the query was called
+     * @return false If a query call couldn't be found in the trace
      */
-    public static function convertEnumArr($enum_defn)
-    {
-        $pattern = '/^(?:ENUM|SET)\s*\(\s*\'/i';
-        if (!preg_match($pattern, $enum_defn)) {
-            throw new InvalidArgumentException("Definition is not an ENUM or SET");
+    private static function backtraceQuery() {
+        $trace = debug_backtrace();
+        $caller = null;
+        while ($step = array_pop($trace)) {
+            if (@$step['class'] == static::class) {
+                // Provide calling step, as it's useful if the current step
+                // doesn't provide file and line num.
+                $step['caller'] = $caller;
+                return $step;
+            }
+            $caller = $step;
         }
-
-        // Remove enclosing ENUM('...') or SET('...')
-        $enum_defn = preg_replace($pattern, '', $enum_defn);
-        $enum_defn = preg_replace('/\'\s*\)\s*$/', '', $enum_defn);
-
-        // SQL escapes ' characters with ''
-        // So split on all ',' which aren't followed by a ' character
-        $vals = preg_split("/','(?!')/", $enum_defn);
-
-        // Then convert any '' characters back into ' characters
-        foreach ($vals as &$v) {
-            $v = str_replace("''", "'", $v);
-        }
-
-        return $vals;
-    }
-
-
-    /**
-     * Validates a value meant for an ENUM field, e.g.
-     * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
-     *
-     * @param string $val The value to find in the ENUM
-     * @param array $field [0] Table name [1] Column name
-     * @return bool
-     */
-    public function validateEnum(string $val, array $field)
-    {
-        list($table, $col) = $field;
-        $enum = $this->extractEnumArr($table, $col);
-        if (count($enum) == 0) return false;
-        if (in_array($val, $enum)) return true;
         return false;
     }
 
 
     /**
-     * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
-     * which link to the id column of a specific table
+     * Create a QueryException from a given PDOException object
      *
-     * @param string $database
-     * @param string $table The table which contains the id column which the foreign key columns link to
-     * @return array Each element is an array: ['table' => table_name, 'column' => column_name]
+     * Uses the SQLSTATE code to return different exception classes, which are subclasses of QueryException
+     *
+     * @param PDOException $ex
+     * @return ConstraintQueryException Integrity constraint violation (SQLSTATE 23xxx)
+     * @return QueryException All other query errors
      */
-    public function getDependentKeys(string $database, string $table)
+    private static function createQueryException(PDOException $ex)
     {
-        $params = [
-            $database,
-            $this->config->prefix . $table,
-        ];
+        $pdo_ex = $ex;
+        $state_class = substr($ex->getCode(), 0, 2);
 
-        $q = "SELECT K.TABLE_NAME, K.COLUMN_NAME
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
-            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
-                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
-                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
-                AND C.DELETE_RULE = 'CASCADE'
-            WHERE K.TABLE_SCHEMA = ?
-                AND K.CONSTRAINT_NAME != ''
-                AND K.REFERENCED_TABLE_NAME = ?
-                AND K.REFERENCED_COLUMN_NAME = 'id'
-            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = $this->query($q, $params, 'pdo');
+        switch ($state_class) {
+            case '23':
+                $ex = new ConstraintQueryException($ex->getMessage());
+                break;
 
-        $rows = [];
-        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = [
-                'table' => preg_replace($pattern, '', $row[0]),
-                'column' => $row[1]
-            ];
+            default:
+                $ex = new QueryException($ex->getMessage());
+                break;
         }
-        $res->closeCursor();
-        return $rows;
-    }
 
+        $ex->state = $pdo_ex->getCode();
 
-    /**
-     * Gets all of the columns which have foreign key constraints in a table
-     * @param string $database
-     * @param string $table The table to check for columns which link to other tables
-     * @return array Each element is an array with elements as follows:
-     *         source_column => name of column in the specified table
-     *         target_table => name of table that the source column links to
-     *         target_column => name of column that the source column links to
-     * @example
-     * $fks = Pdb::getForeignKeys('files_cat_join');
-     * // $fk has value: [
-     * //     ['source_column' => 'cat_id', 'target_table' => 'files_cat_list', 'target_column' => 'id']
-     * //     ['source_column' => 'file_id', 'target_table' => 'files', 'target_column' => 'id'],
-     * // ];
-     */
-    public function getForeignKeys(string $database, string $table)
-    {
-        $params = [
-            $database,
-            $this->config->prefix . $table,
-        ];
-
-        $q = "SELECT K.COLUMN_NAME, K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
-            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
-                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
-                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
-            WHERE K.TABLE_SCHEMA = ?
-                AND K.CONSTRAINT_NAME != ''
-                AND K.TABLE_NAME = ?
-            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = $this->query($q, $params, 'pdo');
-
-        $rows = [];
-        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = [
-                'source_column' => $row[0],
-                'target_table' => preg_replace($pattern, '', $row[1]),
-                'target_column' => $row[2],
-            ];
-        }
-        $res->closeCursor();
-        return $rows;
+        return $ex;
     }
 }
