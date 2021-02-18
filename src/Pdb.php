@@ -268,19 +268,6 @@ class Pdb implements Loggable
     }
 
 
-    /**
-     * Strips string elements from a query, e.g. 'hey', "yeah", and 'it\'s nice'.
-     * This function is used to support {@see Pdb::getBindSubset}
-     * @param string $q The query
-     * @return string The modified query
-     */
-    protected static function stripStrings($q)
-    {
-        $q = preg_replace('/\'(?:\\\\\'|[^\'\\\\])*\'/', '', $q);
-        $q = preg_replace('/"(?:\\\\"|[^"\\\\])*"/', '', $q);
-        return $q;
-    }
-
 
     /**
      * Gets the subset of bind params which are associated with a particular query from a generic list of bind params.
@@ -292,7 +279,7 @@ class Pdb implements Loggable
      */
     public static function getBindSubset(string $q, array $binds)
     {
-        $q = self::stripStrings($q);
+        $q = PdbHelpers::stripStrings($q);
 
         // Strip named params which aren't required
         // N.B. identifier format matches self::validateIdentifier
@@ -692,7 +679,7 @@ class Pdb implements Loggable
      * @return string For 'val'
      * @throws RowMissingException If the result set didn't contain the required row
      */
-    public static function formatRs(PDOStatement $rs, string $type)
+    protected static function formatRs(PDOStatement $rs, string $type)
     {
         switch ($type) {
         case 'arr':
@@ -758,6 +745,7 @@ class Pdb implements Loggable
 
     /**
      * Validates a identifier (column name, table name, etc)
+     *
      * @param string $name The identifier to check
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
@@ -788,6 +776,7 @@ class Pdb implements Loggable
 
     /**
      * Runs an INSERT query
+     *
      * @param string $table The table (without prefix) to insert the data into
      * @param array $data Data to insert, column => value
      * @return int The id of the newly-inserted record, if applicable
@@ -987,22 +976,22 @@ class Pdb implements Loggable
 
             case 'CONTAINS':
                 $where .= "{$col} LIKE CONCAT('%', ?, '%')";
-                $values[] = Pdb::likeEscape($val);
+                $values[] = PdbHelpers::likeEscape($val);
                 break;
 
             case 'BEGINS':
                 $where .= "{$col} LIKE CONCAT(?, '%')";
-                $values[] = Pdb::likeEscape($val);
+                $values[] = PdbHelpers::likeEscape($val);
                 break;
 
             case 'ENDS':
                 $where .= "{$col} LIKE CONCAT('%', ?)";
-                $values[] = Pdb::likeEscape($val);
+                $values[] = PdbHelpers::likeEscape($val);
                 break;
 
             case 'IN SET':
                 $where .= "FIND_IN_SET(?, {$col}) > 0";
-                $values[] = Pdb::likeEscape($val);
+                $values[] = PdbHelpers::likeEscape($val);
                 break;
 
             default:
@@ -1140,17 +1129,6 @@ class Pdb implements Loggable
     public static function now()
     {
         return date('Y-m-d H:i:s');
-    }
-
-
-    /**
-     * Escapes the special characters % and _ for use in a LIKE clause
-     * @param string $str
-     * @return string
-     */
-    public static function likeEscape(string $str)
-    {
-        return str_replace(['_', '%'], ['\\_', '\\%'], $str);
     }
 
 
@@ -1380,43 +1358,5 @@ class Pdb implements Loggable
         }
         $res->closeCursor();
         return $rows;
-    }
-
-
-    /**
-     * Makes a query have pretty indentation.
-     *
-     * Typically a query is written as a multiline string embedded within PHP code, and when printed as-is, it looks
-     * horrible as the PHP indentation is basically incorporated into the SQL.
-     *
-     * N.B. All tabs are converted to 4 spaces each
-     *
-     * @param string $query
-     * @return string
-     */
-    public static function prettyQueryIndentation(string $query): string
-    {
-        $lines = explode("\n", $query);
-        $lowest_indent = 10000;
-
-        foreach ($lines as $num => &$line) {
-            if ($num == 0) continue;
-
-            $line = str_replace("\t", '    ', $line);
-
-            $matches = [];
-            preg_match('/^ +/', $line, $matches);
-            $lowest_indent = min($lowest_indent, strlen(@$matches[0]));
-        }
-
-        if ($lowest_indent == 0) return implode("\n", $lines);
-
-        $pattern = '/^' . str_repeat(' ', $lowest_indent) . '/';
-        foreach ($lines as $num => &$line) {
-            if ($num == 0) continue;
-
-            $line = preg_replace($pattern, '', $line);
-        }
-        return implode("\n", $lines);
     }
 }

@@ -274,12 +274,12 @@ class PdbQuery
         $this->injectRaw($sql, '');
 
         if ($this->_select) {
-            $fields = self::aliasAll($this->_select);
+            $fields = PdbHelpers::normalizeAliases($this->_select);
             $fields = implode(',', $fields);
             $sql .= 'SELECT ' . $fields;
 
             if ($this->_and_select and strpos($fields, '*') === 0) {
-                $fields = self::aliasAll($this->_and_select);
+                $fields = PdbHelpers::normalizeAliases($this->_and_select);
                 $fields = implode(',', $fields);
                 $sql .= ',' . $fields;
             }
@@ -287,7 +287,7 @@ class PdbQuery
             $sql .= ' ';
         }
         else if (strtolower(substr(trim($sql), 0, 6)) === 'select') {
-            [$from, $alias] = self::alias($this->_from);
+            [$from, $alias] = PdbHelpers::alias($this->_from);
             if ($from) {
                 $sql .= "SELECT ~{$from}.* ";
             }
@@ -299,7 +299,7 @@ class PdbQuery
         $this->injectRaw($sql, 'select');
 
         if ($this->_from) {
-            [$from, $alias] = self::alias($this->_from);
+            [$from, $alias] = PdbHelpers::alias($this->_from);
 
             $sql .= "FROM ~{$from} ";
             if ($alias) $sql .= "AS {$alias} ";
@@ -310,7 +310,7 @@ class PdbQuery
         // Build joiners.
         foreach ($this->_joins as $type => $join) {
             foreach ($join as $table => [$conditions, $combine]) {
-                [$table, $alias] = self::alias($table);
+                [$table, $alias] = PdbHelpers::alias($table);
 
                 $sql .= "{$type} JOIN ~{$table} ";
                 if ($alias) $sql .= "AS {$alias} ";
@@ -502,37 +502,6 @@ class PdbQuery
     {
         [$sql, $params] = $this->build();
         return $this->pdb->query($sql, $params, 'pdo');
-    }
-
-
-    /**
-     *
-     * @param string $value
-     * @return array [field, alias]
-     */
-    public static function alias(string $value): array
-    {
-        $match = [];
-        if (!preg_match('/([^\s]+)\s+(?:AS\s+)?([^\s]+)/i', $value, $match)) {
-            return [ trim($value), null ];
-        }
-
-        return [ trim($match[1]), trim($match[2]) ];
-    }
-
-
-    /**
-     *
-     * @param string[] $fields
-     * @return string[]
-     */
-    public static function aliasAll(array $fields): array
-    {
-        foreach ($fields as &$field) {
-            [$field, $alias] = self::alias($field);
-            if ($alias) $field .= " AS {$alias}";
-        }
-        return $fields;
     }
 
 
