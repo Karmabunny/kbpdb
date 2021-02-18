@@ -41,6 +41,8 @@ class PdbQuery
 
     private $_last_cmd = '';
 
+    private $_as = null;
+
 
     /**
      *
@@ -375,15 +377,44 @@ class PdbQuery
 
     /**
      *
-     * @return array
+     * @param string $class
+     * @return static
+     */
+    public function as(string $class)
+    {
+        if (
+            !is_subclass_of($class, PdbModelTrait::class) and
+            !is_subclass_of($class, PdbModel::class)
+        ) {
+            throw new InvalidArgumentException("as({$class}) must be a PdbModel");
+        }
+
+        $this->_as = $class;
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param string $class
+     * @return array|object
      * @throws InvalidArgumentException
      */
-    public function one(): array
+    public function one(string $class = null)
     {
         $this->limit(1);
+        if ($class) {
+            $this->as($class);
+        }
 
         [$sql, $params] = $this->build();
-        return $this->pdo->query($sql, $params, 'row');
+        $item = $this->pdo->query($sql, $params, 'row');
+
+        if ($this->_as) {
+            $item = new ($this->_as)($item);
+        }
+
+        return $item;
     }
 
 
@@ -400,7 +431,15 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return $this->pdb->query($sql, $params, 'arr');
+        $items = $this->pdb->query($sql, $params, 'arr');
+
+        if ($this->_as) {
+            foreach ($items as &$item) {
+                $item = new ($this->_as)($item);
+            }
+        }
+
+        return $items;
     }
 
 
@@ -413,6 +452,8 @@ class PdbQuery
      */
     public function map(string $key = null, string $value = null): array
     {
+        // TODO Throw if non-empty 'as'.
+
         if ($key and $value) {
             $this->select($key, $value);
         }
@@ -449,8 +490,16 @@ class PdbQuery
         // Use the first row.
         else {
             [$sql, $params] = $this->build();
-            return $this->pdb->query($sql, $params, 'map-arr');
+            $map = $this->pdb->query($sql, $params, 'map-arr');
         }
+
+        if ($this->_as) {
+            foreach ($map as &$item) {
+                $item = new ($this->_as)($item);
+            }
+        }
+
+        return $map;
     }
 
 
@@ -462,6 +511,8 @@ class PdbQuery
      */
     public function column(string $field = null): array
     {
+        // TODO Throw if non-empty 'as'.
+
         if ($field) {
             $this->select($field);
         }
@@ -479,6 +530,8 @@ class PdbQuery
      */
     public function count(string $table = null, array $conditions = []): int
     {
+        // TODO Throw if non-empty 'as'.
+
         $this->select('1');
 
         if ($table) {
@@ -500,6 +553,8 @@ class PdbQuery
      */
     public function pdo(): PDOStatement
     {
+        // TODO Throw if non-empty 'as'.
+
         [$sql, $params] = $this->build();
         return $this->pdb->query($sql, $params, 'pdo');
     }
