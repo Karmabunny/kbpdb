@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<database
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../src/db_struct.xsd"
+>
+    <table name="clubs">
+        <column name="id" type="INT UNSIGNED" allownull="0" default="1"/>
+        <column name="date_added" type="DATETIME" allownull="0"/>
+        <column name="date_modified" type="DATETIME" allownull="0"/>
+        <column name="date_deleted" type="DATETIME" allownull="1"/>
+        <column name="uid" type="CHAR(36)" allownull="0"/>
+        <column name="active" type="TINYINT UNSIGNED" allownull="0"/>
+
+        <column name="name" type="VARCHAR(200)" allownull="0"/>
+        <column name="status" type="ENUM('new','active','retired')" allownull="0"/>
+        <column name="founded" type="DATETIME" allownull="0"/>
+
+        <primary>
+            <col name="id"/>
+        </primary>
+
+        <index type="unique">
+            <col name="name" />
+        </index>
+    </table>
+</database>

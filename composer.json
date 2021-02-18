@@ -1,4 +1,5 @@
 {
+    "$schema": "https://getcomposer.org/schema.json",
     "name": "karmabunny/pdb",
     "description": "PDO wrapper",
     "type": "library",
@@ -22,6 +23,9 @@
         "sort-packages": true,
         "optimize-autoloader": true,
         "preferred-install": { "karmabunny/*": "dist" }
+    },
+    "scripts": {
+        "tests": "phpunit --testdox tests"
     },
     "repositories": [
         {
