@@ -16,6 +16,8 @@ use PDO;
  */
 class PdbQuery
 {
+    /** @var Pdo|null */
+    protected $pdo;
 
     private $_conditions = [];
 
@@ -38,6 +40,22 @@ class PdbQuery
     private $_offset = 0;
 
     private $_last_cmd = '';
+
+
+    /**
+     *
+     * @param Pdb|PdbConfig|array $pdb
+     * @return void
+     */
+    public function __construct($pdb)
+    {
+        if ($pdb instanceof Pdb) {
+            $this->pdb = $pdb;
+        }
+        else {
+            $this->pdb = new Pdb($pdb);
+        }
+    }
 
 
     /**
@@ -351,7 +369,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'val');
+        return $this->pdb->query($sql, $params, 'val');
     }
 
 
@@ -365,7 +383,7 @@ class PdbQuery
         $this->limit(1);
 
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'row');
+        return $this->pdo->query($sql, $params, 'row');
     }
 
 
@@ -382,7 +400,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'arr');
+        return $this->pdb->query($sql, $params, 'arr');
     }
 
 
@@ -403,7 +421,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'map');
+        return $this->pdb->query($sql, $params, 'map');
     }
 
 
@@ -420,19 +438,18 @@ class PdbQuery
             $this->andSelect($key);
 
             [$sql, $params] = $this->build();
-            $pdo = Pdb::q($sql, $params, 'pdo');
+            $pdo = $this->pdb->query($sql, $params, 'pdo');
 
             $map = [];
             while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
                 $id = $row[$key];
                 $map[$id] = $row;
             }
-            return $map;
         }
         // Use the first row.
         else {
             [$sql, $params] = $this->build();
-            return Pdb::q($sql, $params, 'map-arr');
+            return $this->pdb->query($sql, $params, 'map-arr');
         }
     }
 
@@ -450,7 +467,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return Pdb::query($sql, $params, 'col');
+        return $this->pdb->queryuery($sql, $params, 'col');
     }
 
 
@@ -472,7 +489,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'count');
+        return $this->pdb->query($sql, $params, 'count');
     }
 
 
@@ -484,7 +501,7 @@ class PdbQuery
     public function pdo(): PDOStatement
     {
         [$sql, $params] = $this->build();
-        return Pdb::q($sql, $params, 'pdo');
+        return $this->pdb->query($sql, $params, 'pdo');
     }
 
 
