@@ -104,7 +104,7 @@ class PdbQuery
      */
     public function from(string $table)
     {
-        $this->_table = $table;
+        $this->_from = $table;
         $this->_last_cmd = 'from';
         return $this;
     }
@@ -162,9 +162,10 @@ class PdbQuery
      */
     public function where(array $conditions, $combine = 'AND')
     {
-        if (!is_array($conditions[0])) {
-            $conditions = [$conditions];
-        }
+        // print_r();
+        // if (!is_array(reset($conditions))) {
+        //     $conditions = [$conditions];
+        // }
         $this->_conditions['WHERE'] = [[$conditions, $combine]];
         $this->_last_cmd = 'where';
         return $this;
@@ -257,6 +258,10 @@ class PdbQuery
      */
     public function find(string $table, $conditions = [])
     {
+        if (empty($this->_select)) {
+            $this->select('*');
+        }
+
         $this->from($table);
         $this->where($conditions);
         return $this;
@@ -322,10 +327,12 @@ class PdbQuery
         }
 
         // Build where clauses.
-        foreach ($this->_conditions as $type => [$conditions, $combine]) {
-            $sql .= $type . ' ';
-            $sql .= Pdb::buildClause($conditions, $params, $combine);
-            $sql .= ' ';
+        foreach ($this->_conditions as $type => $clauses) {
+            foreach ($clauses as [$conditions, $combine]) {
+                $sql .= $type . ' ';
+                $sql .= Pdb::buildClause($conditions, $params, $combine);
+                $sql .= ' ';
+            }
         }
 
         $this->injectRaw($sql, 'where');
@@ -408,10 +415,11 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        $item = $this->pdo->query($sql, $params, 'row');
+        $item = $this->pdb->query($sql, $params, 'row');
 
         if ($this->_as) {
-            $item = new ($this->_as)($item);
+            $class = $this->_as;
+            $item = new $class($item);
         }
 
         return $item;
@@ -434,8 +442,9 @@ class PdbQuery
         $items = $this->pdb->query($sql, $params, 'arr');
 
         if ($this->_as) {
+            $class = $this->_as;
             foreach ($items as &$item) {
-                $item = new ($this->_as)($item);
+                $item = new $class($item);
             }
         }
 
@@ -494,8 +503,9 @@ class PdbQuery
         }
 
         if ($this->_as) {
+            $class = $this->_as;
             foreach ($map as &$item) {
-                $item = new ($this->_as)($item);
+                $item = new $class($item);
             }
         }
 
@@ -568,7 +578,7 @@ class PdbQuery
      */
     private function injectRaw(string &$sql, string $type)
     {
-        if ($this->_sql[$type]) {
+        if ($this->_sql[$type] ?? false) {
             $sql .= trim($this->_sql[$type]) . ' ';
         }
     }
