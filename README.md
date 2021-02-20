@@ -48,18 +48,34 @@ $res = $pdb->count('clubs', ['status' => 'active']);
 
 
 // Models
-class ClubModel
+class ClubModel implements PdbModel
 {
-    use PdbTrait;
+    // This trait includes default behaviours.
+    // Or you can implement your own with just the PdbModel interface.
+    use PdbModelTrait;
 
     // Create one here, or cache it wherever you please.
-    protected static function getPdb(): Pdb
+    protected static function getConnection(): Pdb
     {
         return new Pdb($config['default']);
     }
 
-    public $id;
+    // Where this model is stored.
+    public static function getTableName(): string
+    {
+        return 'clubs';
+    }
+
+    // Implicit properties (from PdbModelTrait):
+    // - id
+    // - uid
+    // - active
+    // - date_added
+    // - date_modified
+    // - date_deleted
+
     public $name;
+
     public $status;
 }
 
@@ -74,7 +90,7 @@ $thing->save();
 $thing->delete();
 
 // Create a model.
-$other = new Model();
+$other = new ClubModel();
 $other->name = 'west sailing club';
 $other->active = true;
 $other->save();
