@@ -21,12 +21,19 @@ use karmabunny\pdb\Exceptions\QueryException;
 **/
 class DatabaseSync
 {
+    /** @var Pdb */
+    private $pdb;
+
+    /** @var string */
+    private $database;
+
+    /** @var bool */
+    private $act;
+
     public $tables;
     private $views;
     private $default_attrs;
     private $load_errors;
-    private $database;
-    private $act;
     private $extant_tables = null;
 
     /** Temporarily stores heading to attach to next query generated */
@@ -66,12 +73,20 @@ class DatabaseSync
     /**
      * Initial loading and set-up
      *
-     * @param string $database
+     * @param Pdb|PdbConfig|array $config
      * @param bool $act True if queries should be run, false if they shouldn't (i.e. a dry-run)
      **/
-    public function __construct($database, $act)
+    public function __construct($config, $act)
     {
-        $this->database = $database;
+        if ($config instanceof Pdb) {
+            $this->pdb = $config;
+        }
+        else {
+            $this->pdb = new Pdb($config);
+        }
+
+        $this->database = $this->pdb->config->database;
+        $this->prefix = $this->pdb->config->prefix;
         $this->act = $act;
 
         $this->default_attrs = [
@@ -94,7 +109,7 @@ class DatabaseSync
     public function checkConnPermissions()
     {
         $q = "SHOW GRANTS FOR CURRENT_USER()";
-        $res = Pdb::query($q, [], 'col');
+        $res = $this->pdb->query($q, [], 'col');
 
         $perms = [];
         $matches = null;
@@ -146,9 +161,11 @@ class DatabaseSync
     {
         $spec = $column['type'];
 
+        $pdo = $this->pdb->getConnection();
+
         if ($column['allownull'] == 0) $spec .= ' NOT NULL';
         if ($column['autoinc']) $spec .= ' AUTO_INCREMENT';
-        if ($column['default']) $spec .= ' DEFAULT ' . Pdb::getConnection()->quote($column['default']);
+        if ($column['default']) $spec .= ' DEFAULT ' . $pdo->quote($column['default']);
 
         return $spec;
     }
@@ -175,7 +192,7 @@ class DatabaseSync
     /**
     * Loads the XML definition file
     *
-    * @param string $file DOMDocument or filename to load.
+    * @param string|DOMDocument $file DOMDocument or filename to load.
     **/
     public function loadXml($dom)
     {
@@ -587,7 +604,7 @@ class DatabaseSync
     {
         if ($this->extant_tables === null) {
             $this->extant_tables = [];
-            $res = Pdb::query('SHOW TABLE STATUS', [], 'pdo');
+            $res = $this->pdb->query('SHOW TABLE STATUS', [], 'pdo');
             foreach ($res as $row) {
                 $this->extant_tables[$row['Name']] = $row;
             }
@@ -598,7 +615,7 @@ class DatabaseSync
 
     private function tableExists($table_name)
     {
-        return in_array(Pdb::prefix() . $table_name, $this->listTables());
+        return in_array($this->prefix . $table_name, $this->listTables());
     }
 
     public function fieldList($table)
@@ -607,7 +624,7 @@ class DatabaseSync
         if (isset($known[$table])) return $known[$table];
 
         $q = "SHOW COLUMNS FROM ~{$table}";
-        $res = Pdb::query($q, [], 'arr');
+        $res = $this->pdb->query($q, [], 'arr');
         $known[$table] = $res;
         return $res;
     }
@@ -618,7 +635,7 @@ class DatabaseSync
         if (isset($known[$table])) return $known[$table];
 
         $q = "SHOW INDEX FROM ~{$table}";
-        $res = Pdb::query($q, [], 'arr');
+        $res = $this->pdb->query($q, [], 'arr');
 
         $indexes = [];
         foreach ($res as $row) {
@@ -642,7 +659,7 @@ class DatabaseSync
     public function foreignKeyList($table)
     {
         static $known = null;
-        $table = Pdb::prefix() . $table;
+        $table = $this->prefix . $table;
 
         if ($known !== null) {
             if (isset($known[$table])) return $known[$table];
@@ -650,18 +667,21 @@ class DatabaseSync
         }
 
         $known = [];
-        $q = "SELECT K.TABLE_NAME, K.COLUMN_NAME, K.CONSTRAINT_NAME, K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME,
+        $q = "SELECT
+                K.TABLE_NAME, K.COLUMN_NAME,
+                K.CONSTRAINT_NAME,
+                K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME,
                 C.UPDATE_RULE, C.DELETE_RULE
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
             INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
                 ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
                 AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
-            WHERE K.TABLE_SCHEMA = '{$this->database}'
+            WHERE K.TABLE_SCHEMA = ?
                 AND K.CONSTRAINT_NAME != ''
                 AND K.REFERENCED_TABLE_NAME != ''
                 AND K.REFERENCED_COLUMN_NAME != ''
             ORDER BY K.CONSTRAINT_NAME";
-        $res = Pdb::q($q, [], 'pdo');
+        $res = $this->pdb->query($q, [$table], 'pdo');
         foreach ($res as $row) {
             $known[$row['TABLE_NAME']][] = $row;
         }
@@ -709,7 +729,7 @@ class DatabaseSync
             return false;
         }
 
-        $table_name = Pdb::prefix() . $table_name;
+        $table_name = $this->prefix . $table_name;
         $row = $this->extant_tables[$table_name];
 
         $bad_engine = false;
@@ -783,7 +803,7 @@ class DatabaseSync
 
 
         // Default records
-        $pdo = Pdb::getConnection();
+        $pdo = $this->pdb->getConnection();
         foreach ($table_def['default_records'] as $record) {
             $q = "INSERT INTO ~{$table_name} (";
 
@@ -838,7 +858,7 @@ class DatabaseSync
     **/
     private function changePrimary($table_name, $primary)
     {
-        $table_name = Pdb::prefix() . $table_name;
+        $table_name = $this->prefix . $table_name;
         $columns = implode (', ', $primary);
 
         $q = "ALTER TABLE {$table_name} DROP PRIMARY KEY, ADD PRIMARY KEY ({$columns})";
@@ -1032,7 +1052,7 @@ class DatabaseSync
                 FROM ~{$table_name} AS main
                 LEFT JOIN ~{$foreign_key['to_table']} AS extant ON main.{$foreign_key['from_column']} = extant.{$foreign_key['to_column']}
                 WHERE extant.id IS NULL;";
-            $num_invalid_records = Pdb::query($q, [], 'val');
+            $num_invalid_records = $this->pdb->query($q, [], 'val');
             if ($num_invalid_records > 0) {
                 echo "<p>Warning - {$num_invalid_records} invalid records found ";
                 echo "in <i>{$table_name}</i> table (foreign key on <i>{$foreign_key['from_column']}</i> column)";
@@ -1051,21 +1071,21 @@ class DatabaseSync
                 echo '<div class="column column-4">';
                 echo '<p>Find records:</p>';
                 echo '<pre>';
-                echo Pdb::prettyQueryIndentation($find_q);
+                echo PdbHelpers::prettyQueryIndentation($find_q);
                 echo '</pre>';
                 echo '</div>';
 
                 echo '<div class="column column-4">';
                 echo '<p>Delete records:</p>';
                 echo '<pre>';
-                echo Pdb::prettyQueryIndentation($delete_q);
+                echo PdbHelpers::prettyQueryIndentation($delete_q);
                 echo '</pre>';
                 echo '</div>';
 
                 echo '<div class="column column-4 column-last">';
                 echo '<p>NULL offending values:</p>';
                 echo '<pre>';
-                echo Pdb::prettyQueryIndentation($null_q);
+                echo PdbHelpers::prettyQueryIndentation($null_q);
                 echo '</pre>';
                 echo '</div>';
 
@@ -1092,7 +1112,7 @@ class DatabaseSync
     private function checkRemovedColumns($table_name, $defined_columns)
     {
         $columns = $this->fieldList($table_name);
-        $table_name = Pdb::prefix() . $table_name;
+        $table_name = $this->prefix . $table_name;
 
         foreach ($columns as $col) {
             $found = false;
@@ -1131,7 +1151,7 @@ class DatabaseSync
     private function checkRemovedIndexes($table_name, $defined_indexes)
     {
         $db_indexes = $this->indexList($table_name);
-        $table_name = Pdb::prefix() . $table_name;
+        $table_name = $this->prefix . $table_name;
 
         foreach ($db_indexes as $db_ind) {
             if ($db_ind['Name'] == 'PRIMARY') continue;
@@ -1168,7 +1188,7 @@ class DatabaseSync
     {
         $current_fks = $this->foreignKeyList($table_name);
 
-        $pf = Pdb::prefix();
+        $pf = $this->prefix;
         $table_name = $pf . $table_name;
 
         foreach ($current_fks as $fk) {
@@ -1248,23 +1268,25 @@ class DatabaseSync
         static $log_handler = null;
 
         if (!$log_handler) {
-            $log_handler = function($q, $params, $result) {
+            $log_handler = function($q) {
                 $q = trim($q);
                 $q = preg_replace("/,\n$/", "\n)", $q);
                 $q = preg_replace('/\n\s*/', "\n    ", $q);
                 echo '<pre class="query">', Enc::html($q), "</pre>\n";
             };
+
+            if ($this->act) {
+                $this->pdb->addLogger($log_handler);
+            }
         }
 
         if ($this->act) {
-            Pdb::setLogHandler($log_handler);
-
             $qs = (array) $q;
             $final_key = array_key_last($qs);
 
             foreach ($qs as $key => $q) {
                 try {
-                    Pdb::query($q, [], 'pdo');
+                    $this->pdb->query($q, [], 'pdo');
                     break;
                 } catch (QueryException $ex) {
                     if ($key != $final_key) {
@@ -1275,11 +1297,9 @@ class DatabaseSync
                     }
                 }
             }
-
-            Pdb::clearLogHandler();
         } else {
             if (is_array($q)) $q = end($q);
-            $log_handler($q, [], null);
+            $log_handler($q);
         }
 
         return true;
