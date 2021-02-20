@@ -1,18 +1,24 @@
 <?php
 
+use karmabunny\pdb\DatabaseSync;
 use karmabunny\pdb\Pdb;
 use PHPUnit\Framework\TestCase;
+use kbtests\Models\Club;
 
-require_once __DIR__ . '/Models/Model.php';
-require_once __DIR__ . '/Models/Club.php';
-require_once __DIR__ . '/config.php';
 
 class PdbModelTest extends TestCase
 {
 
     public function setUp(): void
     {
-        // TODO run db sync.
+        $this->config = require __DIR__ . '/config.php';
+        $pdb = new Pdb($this->config);
+        $pdb->query('DROP TABLE ~clubs', [], 'null');
+
+        $sync = new DatabaseSync($pdb, true);
+        $sync->loadXml(__DIR__ . '/db_struct.xml');
+        $sync->sanityCheck();
+        $sync->updateDatabase();
     }
 
 
@@ -34,9 +40,12 @@ class PdbModelTest extends TestCase
         $modified = $model->date_modified;
         $active = $model->active;
 
+        sleep(1);
+
         // Update a property.
         $model->status = 'active';
         $this->assertTrue($model->save());
+
 
         // Some things change, others stay the same.
         $this->assertNotEquals($modified, $model->date_modified);
@@ -57,13 +66,15 @@ class PdbModelTest extends TestCase
 
         $modified = $model->date_modified;
 
+        sleep(1);
+
         // Soft delete.
         $this->assertTrue($model->delete(true));
         $this->assertNotNull($model->date_deleted);
         $this->assertNotEquals($modified, $model->date_modified);
 
         // Still exists.
-        $pdb = new Pdb(CONFIG);
+        $pdb = new Pdb($this->config);
         $exists = $pdb->recordExists($model->getTableName(), ['id' => $model->id]);
         $this->assertTrue($exists);
 

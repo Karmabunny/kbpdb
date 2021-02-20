@@ -1,6 +1,6 @@
 <?php
 
-// namespace Models;
+namespace kbtests\Models;
 
 
 /**
@@ -8,9 +8,10 @@
  */
 class Club extends Model
 {
+
     public static function getTableName(): string
     {
-        return 'club';
+        return 'clubs';
     }
 
     public $name;

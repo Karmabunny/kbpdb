@@ -1,13 +1,14 @@
 <?php
 
-// namespace Models;
+namespace kbtests\Models;
 
+use ArrayIterator;
+use IteratorAggregate;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbModel;
 use karmabunny\pdb\PdbAuditTrait;
 use karmabunny\pdb\PdbModelTrait;
-
-require_once __DIR__ . '/../config.php';
+use Traversable;
 
 /**
  * A base model.
@@ -23,7 +24,6 @@ require_once __DIR__ . '/../config.php';
 abstract class Model implements PdbModel, IteratorAggregate
 {
     use PdbModelTrait;
-    use PdbAuditTrait;
 
     protected static $pdb;
 
@@ -31,7 +31,8 @@ abstract class Model implements PdbModel, IteratorAggregate
     protected static function getConnection(): Pdb
     {
         if (!isset(self::$pdb)) {
-            self::$pdb = new Pdb(CONFIG);
+            $config = require __DIR__ . '/../config.php';
+            self::$pdb = new Pdb($config);
         }
         return self::$pdb;
     }
