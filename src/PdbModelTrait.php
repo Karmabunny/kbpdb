@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use DateTimeImmutable;
 use karmabunny\kb\Uuid;
 
 /**
@@ -16,7 +17,23 @@ trait PdbModelTrait
 {
 
     /** @var int */
-    public $id;
+    public $id = 0;
+
+    /** @var string */
+    public $uid;
+
+    /** @var bool */
+    public $active = true;
+
+    /** @var string */
+    public $date_added;
+
+    /** @var string */
+    public $date_modified;
+
+    /** @var string|null */
+    public $date_deleted;
+
 
     /**
      *
@@ -34,6 +51,45 @@ trait PdbModelTrait
 
     /**
      *
+     * @return DateTimeInterface|null
+     */
+    public function getDateAdded()
+    {
+        if ($this->date_added) {
+            new DateTimeImmutable($this->date_added);
+        }
+        return null;
+    }
+
+
+    /**
+     *
+     * @return DateTimeInterface|null
+     */
+    public function getDateUpdated()
+    {
+        if ($this->date_updated) {
+            new DateTimeImmutable($this->date_updated);
+        }
+        return null;
+    }
+
+
+    /**
+     *
+     * @return DateTimeInterface|null
+     */
+    public function getDateDeleted()
+    {
+        if ($this->date_deleted) {
+            new DateTimeImmutable($this->date_deleted);
+        }
+        return null;
+    }
+
+
+    /**
+     *
      * @return bool
      */
     public function save(): bool
@@ -45,22 +101,18 @@ trait PdbModelTrait
         $data = iterator_to_array($this);
         $conditions = [ 'id' => $this->id ];
 
-        $exists = $pdb->recordExists($table, $conditions);
-
-        if ($exists) {
+        if ($this->id > 0) {
             $data['date_modified'] = $this->date_modified = $now;
             $pdb->update($table, $data, $conditions);
         }
         else {
-            if ($this instanceof PdbAuditTrait) {
-                $data['date_added'] = $this->date_added = $now;
-                $data['date_modified'] = $this->date_modified = $now;
-                $data['date_deleted'] = $this->date_deleted = null;
-                $data['uid'] = $this->uid = Uuid::uuid4();
+            $data['date_added'] = $this->date_added = $now;
+            $data['date_modified'] = $this->date_modified = $now;
+            $data['date_deleted'] = $this->date_deleted = null;
+            $data['uid'] = $this->uid = Uuid::uuid4();
 
-                if (!isset($this->active)) {
-                    $this->active = true;
-                }
+            if (!isset($this->active)) {
+                $this->active = true;
             }
 
             $this->id = $pdb->insert($table, $data);
@@ -81,7 +133,7 @@ trait PdbModelTrait
 
         $conditions = [ 'id' => $this->id ];
 
-        if ($soft and $this instanceof PdbAuditTrait) {
+        if ($soft) {
             // Bump the modified field, right?
             $now = Pdb::now();
 
