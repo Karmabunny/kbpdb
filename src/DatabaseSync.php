@@ -56,11 +56,11 @@ class DatabaseSync
     /**
     * MySQL names for the foreign key actions
     **/
-    private static $foreign_key_actions = array(
+    private static $foreign_key_actions = [
         'restrict' => 'RESTRICT',
         'set-null' => 'SET NULL',
         'cascade' => 'CASCADE',
-    );
+    ];
 
 
     /**
@@ -74,15 +74,15 @@ class DatabaseSync
         $this->database = $database;
         $this->act = $act;
 
-        $this->default_attrs = array (
-            'table' => array('engine' => 'InnoDB', 'charset' => 'utf8', 'collate' => 'utf8_unicode_ci'),
-            'column' => array('allownull' => 1),
-            'index' => array('type' => 'index')
-        );
+        $this->default_attrs = [
+            'table' => ['engine' => 'InnoDB', 'charset' => 'utf8', 'collate' => 'utf8_unicode_ci'],
+            'column' => ['allownull' => 1],
+            'index' => ['type' => 'index']
+        ];
 
-        $this->tables = array();
-        $this->views = array();
-        $this->load_errors = array();
+        $this->tables = [];
+        $this->views = [];
+        $this->load_errors = [];
     }
 
 
@@ -96,7 +96,7 @@ class DatabaseSync
         $q = "SHOW GRANTS FOR CURRENT_USER()";
         $res = Pdb::query($q, [], 'col');
 
-        $perms = array();
+        $perms = [];
         $matches = null;
         foreach ($res as $val) {
             preg_match('!GRANT (.+) ON!', $val, $matches);
@@ -108,7 +108,7 @@ class DatabaseSync
             return true;
         }
 
-        $require = array('SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP');
+        $require = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'];
         $missing = array_diff($require, $perms);
         if (count($missing) == 0) return true;
 
@@ -123,7 +123,7 @@ class DatabaseSync
     **/
     private function mergeDefaultAttrs($node)
     {
-        $default = @$this->default_attrs[$node->tagName];
+        $default = $this->default_attrs[$node->tagName] ?? null;
         if (! is_array($default)) return;
 
         foreach ($default as $name => $value) {
@@ -187,7 +187,7 @@ class DatabaseSync
             $tmp = new DOMDocument();
             $tmp->loadXML(file_get_contents($filename));
             if ($tmp == null) {
-                $this->load_errors[$filename] = array('XML parse error');
+                $this->load_errors[$filename] = ['XML parse error'];
                 return;
             }
             $dom = $tmp;
@@ -197,7 +197,7 @@ class DatabaseSync
         libxml_use_internal_errors(true);
         $result = $dom->schemaValidateSource(file_get_contents(__DIR__ . '/db_struct.xsd'));
         if (! $result) {
-            $this->load_errors[$filename] = array();
+            $this->load_errors[$filename] = [];
 
             $errors = libxml_get_errors();
             foreach ($errors as $error) {
@@ -235,12 +235,12 @@ class DatabaseSync
             // It may already exist if doing a cross-module db structure merge
             $is_new = false;
             if (empty($this->tables[$table_name])) {
-                $this->tables[$table_name] = array();
-                $this->tables[$table_name]['columns'] = array();
-                $this->tables[$table_name]['primary_key'] = array();
-                $this->tables[$table_name]['indexes'] = array();
-                $this->tables[$table_name]['foreign_keys'] = array();
-                $this->tables[$table_name]['default_records'] = array();
+                $this->tables[$table_name] = [];
+                $this->tables[$table_name]['columns'] = [];
+                $this->tables[$table_name]['primary_key'] = [];
+                $this->tables[$table_name]['indexes'] = [];
+                $this->tables[$table_name]['foreign_keys'] = [];
+                $this->tables[$table_name]['default_records'] = [];
                 $is_new = true;
             }
 
@@ -253,14 +253,14 @@ class DatabaseSync
                     $col_name = $node->getAttribute('name');
 
                     $type = $this->typeToUpper($node->getAttribute('type'));
-                    $this->tables[$table_name]['columns'][$col_name] = array(
+                    $this->tables[$table_name]['columns'][$col_name] = [
                         'name' => $col_name,
                         'type' => $type,
                         'allownull' => (int) $node->getAttribute('allownull'),
                         'autoinc' => (int) $node->getAttribute('autoinc'),
                         'default' => $node->getAttribute('default'),
                         'previous-names' => $node->getAttribute('previous-names'),
-                    );
+                    ];
                 }
             }
 
@@ -269,7 +269,7 @@ class DatabaseSync
             foreach ($index_nodes as $node) {
                 $this->mergeDefaultAttrs($node);
 
-                $index = array();
+                $index = [];
 
                 $col_nodes = $node->getElementsByTagName('col');
                 foreach ($col_nodes as $col) {
@@ -284,7 +284,7 @@ class DatabaseSync
 
                 $fk_nodes = $node->getElementsByTagName('foreign-key');
                 if ($fk_nodes->length == 1) {
-                    $fk = array();
+                    $fk = [];
                     $fk['from_column'] = $index[0];
                     $fk['to_table'] = $fk_nodes->item(0)->getAttribute('table');
                     $fk['to_column'] = $fk_nodes->item(0)->getAttribute('column');
@@ -407,7 +407,7 @@ class DatabaseSync
     public function updateDatabase($do = null)
     {
         if ($do == null) {
-            $do = array('create' => 1, 'primary' => 1, 'column' => 1, 'index' => 1, 'foreign_key' => 1, 'remove' => 1);
+            $do = ['create' => 1, 'primary' => 1, 'column' => 1, 'index' => 1, 'foreign_key' => 1, 'remove' => 1];
         }
 
         $out = '';
@@ -500,7 +500,7 @@ class DatabaseSync
     **/
     private function tableSanityCheck($table_name, $table_def)
     {
-        $errors = array();
+        $errors = [];
 
         if (count($table_def['columns']) == 0) {
             $errors[] = 'No columns defined';
@@ -620,7 +620,7 @@ class DatabaseSync
         $q = "SHOW INDEX FROM ~{$table}";
         $res = Pdb::query($q, [], 'arr');
 
-        $indexes = array();
+        $indexes = [];
         foreach ($res as $row) {
             $indexes[$row['Key_name']]['Name'] = $row['Key_name'];
             $indexes[$row['Key_name']]['Type'] = $row['Non_unique'] ? 'INDEX' : 'UNIQUE';
@@ -815,7 +815,7 @@ class DatabaseSync
     {
         $columns = $this->fieldList($table_name);
 
-        $key = array();
+        $key = [];
         foreach ($columns as $col) {
             if ($col['Key'] == 'PRI') {
                 $key[] = $col['Field'];
@@ -860,7 +860,7 @@ class DatabaseSync
     **/
     private function checkColumnMatches($table_name, $column, $prev_column)
     {
-        $current_columns = array();
+        $current_columns = [];
         $res = $this->fieldList($table_name);
         foreach ($res as $row) {
             $current_columns[$row['Field']] = $row;
@@ -947,7 +947,7 @@ class DatabaseSync
     private function checkIndexMatches($table_name, $index)
     {
         $indexes = $this->indexList($table_name);
-        $table_name = Pdb::prefix() . $table_name;
+        $table_name = $this->prefix . $table_name;
 
         $type = strtoupper($index['type']);
         unset ($index['type']);
@@ -1000,7 +1000,7 @@ class DatabaseSync
         $delete = self::$foreign_key_actions[$foreign_key['delete']];
         $update = self::$foreign_key_actions[$foreign_key['update']];
 
-        $pf = Pdb::prefix();
+        $pf = $this->prefix;
         $current_fks = $this->foreignKeyList($this->database, $table_name);
         foreach ($current_fks as $id => $fk) {
             $ignore = false;
@@ -1260,8 +1260,8 @@ class DatabaseSync
             Pdb::setLogHandler($log_handler);
 
             $qs = (array) $q;
-            $keys = array_keys($qs);
-            $final_key = end($keys);
+            $final_key = array_key_last($qs);
+
             foreach ($qs as $key => $q) {
                 try {
                     Pdb::query($q, [], 'pdo');
