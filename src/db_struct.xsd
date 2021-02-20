@@ -41,13 +41,13 @@
 			<xs:element minOccurs="1" maxOccurs="unbounded" name="col" type="colType" />
 		</xs:sequence>
 	</xs:complexType>
-	
+
 	<!-- Indexes -->
-	<xs:simpleType name="indexType_Type"> 
+	<xs:simpleType name="indexType_Type">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="index"/>
-			<xs:enumeration value="unique"/> 
-		</xs:restriction>  
+			<xs:enumeration value="unique"/>
+		</xs:restriction>
 	</xs:simpleType>
 	<xs:complexType name="indexType">
 		<xs:sequence>
@@ -63,12 +63,12 @@
 	</xs:complexType>
 
 	<!-- Foreign keys -->
-	<xs:simpleType name="foreignKeyType_Action"> 
+	<xs:simpleType name="foreignKeyType_Action">
 		<xs:restriction base="xs:string">
 			<xs:enumeration value="restrict"/>
-			<xs:enumeration value="set-null"/> 
-			<xs:enumeration value="cascade"/> 
-		</xs:restriction>  
+			<xs:enumeration value="set-null"/>
+			<xs:enumeration value="cascade"/>
+		</xs:restriction>
 	</xs:simpleType>
 	<xs:complexType name="foreignKeyType">
 		<xs:attribute name="table" type="xs:string" use="required" />
@@ -86,7 +86,7 @@
 	<xs:complexType name="recordType">
 		<xs:anyAttribute processContents="skip" />
 	</xs:complexType>
-	
+
 	<!-- Views -->
 	<xs:complexType name="viewType">
 		<xs:simpleContent>
