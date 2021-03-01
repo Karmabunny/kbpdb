@@ -136,6 +136,25 @@ New stuff:
   - rollback prevents any commits
     - throws an error? returns bool?
 
+PdbQuery:
+- Should everything be a generator?
+- Maybe remove raw SQL stuff.
+- Do we need more escaping?
+- Support for select(['column' => 'as'])
+  - Or should it be 'as' => 'column' ?
+- Support for:
+  - from('table', 'as')
+  - from(['table' => 'as'])
+  - join('inner', ['table' => 'as'], ['id' => 'abc'])
+
+Pdb:
+- create consts for row/arr/row-arr/map-arr/etc
+- move PdbQuery::as() to Pdb::query()
+  - something like:
+    - `\ns\class` -> one
+    - `\ns\class[]` -> all
+    - ?? -> keyed
+
 Fixes:
 - Pdb::find() should respect 'date_deleted'
 
@@ -153,5 +172,6 @@ The idea being:
 
 Result:
 - UUIDs are now deterministic, hurrah!
+- Although not reversible (ID -> UUID, UUID !-> ID)
 - But requires two writes per new record
 
