@@ -13,7 +13,7 @@ class PdbModelTest extends TestCase
     {
         $this->config = require __DIR__ . '/config.php';
         $pdb = new Pdb($this->config);
-        $pdb->query('DROP TABLE ~clubs', [], 'null');
+        $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
 
         $sync = new DatabaseSync($pdb, true);
         $sync->loadXml(__DIR__ . '/db_struct.xml');
