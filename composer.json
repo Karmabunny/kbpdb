@@ -9,7 +9,7 @@
         "ext-dom": "*",
         "ext-libxml": "*",
         "ext-pdo": "*",
-        "karmabunny/kb": "dev-master"
+        "karmabunny/kb": "^2|dev-master"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5"
