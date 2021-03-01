@@ -67,6 +67,8 @@ class PdbQuery
 
     private $_order = [];
 
+    private $_direction = '';
+
     private $_group = '';
 
     private $_limit = 0;
@@ -255,6 +257,18 @@ class PdbQuery
      */
     public function orderBy(...$fields)
     {
+        // Extract 'direction' tokens.
+        $fields = array_filter($fields, function(string $field) {
+            switch (strtoupper($field)) {
+                case 'DESC':
+                case 'ASC':
+                    $this->_direction = $field;
+                    return false;
+                default:
+                    return true;
+            }
+        });
+
         array_push($this->_order, ...$fields);
         $this->_last_cmd = __METHOD__;
         return $this;
@@ -377,6 +391,10 @@ class PdbQuery
             $sql .= 'ORDER BY ';
             $sql .= implode(',', $this->_order);
             $sql .= ' ';
+
+            if ($this->_direction) {
+                $sql .= "{$this->_direction} ";
+            }
 
             $sql .= $this->raw('order');
         }
