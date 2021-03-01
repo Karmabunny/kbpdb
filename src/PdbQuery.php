@@ -6,9 +6,11 @@
 
 namespace karmabunny\pdb;
 
+use Exception;
 use InvalidArgumentException;
 use PDOStatement;
 use PDO;
+use ReflectionClass;
 
 /**
  *
@@ -200,10 +202,6 @@ class PdbQuery
      */
     public function where(array $conditions, $combine = 'AND')
     {
-        // print_r();
-        // if (!is_array(reset($conditions))) {
-        //     $conditions = [$conditions];
-        // }
         $this->_conditions['WHERE'] = [[$conditions, $combine]];
         $this->_last_cmd = __METHOD__;
         return $this;
@@ -427,11 +425,13 @@ class PdbQuery
      */
     public function as(string $class)
     {
-        if (
-            !is_subclass_of($class, PdbModelTrait::class) and
-            !is_subclass_of($class, PdbModel::class)
-        ) {
-            throw new InvalidArgumentException("as({$class}) must be a PdbModel");
+        if (!class_exists($class)) {
+            throw new InvalidArgumentException("as({$class}) class does not exist");
+        }
+
+        $reflect = new ReflectionClass($class);
+        if (!$reflect->isInstantiable()) {
+            throw new InvalidArgumentException("as({$class}) is not a concrete class");
         }
 
         $this->_as = $class;
@@ -477,15 +477,21 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        $items = $this->pdb->query($sql, $params, 'arr');
+        $pdo = $this->pdb->query($sql, $params, 'pdo');
 
         if ($this->_as) {
             $class = $this->_as;
-            foreach ($items as &$item) {
-                $item = new $class($item);
+
+            $items = [];
+            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                $items[] = new $class($row);
             }
         }
+        else {
+            $items = $pdo->fetchAll(PDO::FETCH_ASSOC);
+        }
 
+        $pdo->closeCursor();
         return $items;
     }
 
@@ -499,11 +505,17 @@ class PdbQuery
      */
     public function map(string $key = null, string $value = null): array
     {
-        // TODO Throw if non-empty 'as'.
+        // Guard against bad usage.
+        if ($this->_as) {
+            // Hint: Use keyed().
+            throw new InvalidArgumentException('map() cannot be used with as().');
+        }
 
+        // Replace select with key->value.
         if ($key and $value) {
             $this->select($key, $value);
         }
+        // ak. no.
         else if ($key or $value) {
             throw new InvalidArgumentException('map() accepts exactly 2 arguments or none.');
         }
@@ -524,31 +536,30 @@ class PdbQuery
     public function keyed(string $key = null): array
     {
         // Explicitly defined key.
-        if ($key) {
-            $this->andSelect($key);
+        if (!$key) $key = 'id';
 
-            [$sql, $params] = $this->build();
-            $pdo = $this->pdb->query($sql, $params, 'pdo');
+        $this->andSelect($key);
 
-            $map = [];
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                $id = $row[$key];
-                $map[$id] = $row;
-            }
-        }
-        // Use the first row.
-        else {
-            [$sql, $params] = $this->build();
-            $map = $this->pdb->query($sql, $params, 'map-arr');
-        }
+        [$sql, $params] = $this->build();
+        $pdo = $this->pdb->query($sql, $params, 'pdo');
 
+        // Convert into objects.
         if ($this->_as) {
             $class = $this->_as;
-            foreach ($map as &$item) {
-                $item = new $class($item);
-            }
         }
 
+        $map = [];
+        while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+            $id = $row[$key];
+
+            if (isset($class)) {
+                $row = new $class($row);
+            }
+
+            $map[$id] = $row;
+        }
+
+        $pdo->closeCursor();
         return $map;
     }
 
@@ -561,8 +572,12 @@ class PdbQuery
      */
     public function column(string $field = null): array
     {
-        // TODO Throw if non-empty 'as'.
+        // Guard against bad usage.
+        if ($this->_as) {
+            throw new InvalidArgumentException('column() cannot be used with as().');
+        }
 
+        // Insert field if missing.
         if ($field) {
             $this->select($field);
         }
@@ -580,8 +595,12 @@ class PdbQuery
      */
     public function count(string $table = null, array $conditions = []): int
     {
-        // TODO Throw if non-empty 'as'.
+        // Guard against bad usage.
+        if ($this->_as) {
+            throw new InvalidArgumentException('count() cannot be used with as().');
+        }
 
+        // Counts never need a complex select.
         $this->select('1');
 
         if ($table) {
@@ -603,7 +622,10 @@ class PdbQuery
      */
     public function pdo(): PDOStatement
     {
-        // TODO Throw if non-empty 'as'.
+        // Guard against bad usage.
+        if ($this->_as) {
+            throw new InvalidArgumentException('pdo() cannot be used with as().');
+        }
 
         [$sql, $params] = $this->build();
         return $this->pdb->query($sql, $params, 'pdo');
