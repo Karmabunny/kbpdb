@@ -12,12 +12,46 @@ use PDO;
 
 /**
  *
+ * Query elements:
+ * - `select(...$fields)`
+ * - `andSelect(...$fields)`
+ * - `from($table)`
+ * - `join($type, $table, $conditions, $combine)`
+ * - `leftJoin($table, $conditions, $combine)`
+ * - `innerJoin($table, $conditions, $combine)`
+ * - `where($conditions, $combine)`
+ * - `andWhere($conditions, $combine)`
+ * - `orWhere($conditions, $combine)`
+ * - `groupBy($field)`
+ * - `orderBy(...$fields)`
+ * - `limit($limit)`
+ * - `offset($limit)`
+ *
+ * Shorthands:
+ * - `find($table, $conditions)`
+ *
+ * Terminator methods:
+ * - `build(): string`
+ * - `value($field): string`
+ * - `one($class): array|object`
+ * - `all($limit): array`
+ * - `map($key, $value): array`
+ * - `keyed($key): array`
+ * - `column(): array`
+ * - `count(): int`
+ * - `pdo(): PDO`
+ *
+ * Class builders:
+ * - `one(): object`
+ * - `all(): object[]`
+ * - `keyed(): [key => object]`
+ *
  * @package karmabunny\pdb
  */
 class PdbQuery
 {
-    /** @var Pdo|null */
-    protected $pdo;
+    /** @var Pdb|null */
+    protected $pdb;
 
     private $_conditions = [];
 
@@ -47,7 +81,6 @@ class PdbQuery
     /**
      *
      * @param Pdb|PdbConfig|array $pdb
-     * @return void
      */
     public function __construct($pdb)
     {
@@ -73,6 +106,9 @@ class PdbQuery
 
 
     /**
+     * Select a list of fields.
+     *
+     * Note, this will replace any previous select().
      *
      * @param string[] $fields
      * @return static
@@ -477,6 +513,8 @@ class PdbQuery
 
     /**
      *
+     * This ends a query.
+     *
      * @param string|null $key
      * @return array
      * @throws InvalidArgumentException
@@ -528,7 +566,7 @@ class PdbQuery
         }
 
         [$sql, $params] = $this->build();
-        return $this->pdb->queryuery($sql, $params, 'col');
+        return $this->pdb->query($sql, $params, 'col');
     }
 
 
