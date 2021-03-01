@@ -61,8 +61,6 @@ class PdbQuery
 
     private $_select = [];
 
-    private $_and_select = [];
-
     private $_from = '';
 
     private $_joins = [];
@@ -126,13 +124,16 @@ class PdbQuery
 
 
     /**
+     * Select more things.
+     *
+     * This does _not_ replace previous select(), only adds.
      *
      * @param string[] $fields
      * @return static
      */
     public function andSelect(...$fields)
     {
-        array_push($this->_and_select, $fields);
+        array_push($this->_select, $fields);
         return $this;
     }
 
@@ -294,10 +295,6 @@ class PdbQuery
      */
     public function find(string $table, $conditions = [])
     {
-        if (empty($this->_select)) {
-            $this->select('*');
-        }
-
         $this->from($table);
         $this->where($conditions);
         return $this;
@@ -316,20 +313,16 @@ class PdbQuery
 
         $sql .= $this->raw('__construct');
 
+        // Build 'select'.
         if ($this->_select) {
             $fields = PdbHelpers::normalizeAliases($this->_select);
             $fields = implode(',', $fields);
             $sql .= 'SELECT ' . $fields;
-
-            if ($this->_and_select and strpos($fields, '*') === 0) {
-                $fields = PdbHelpers::normalizeAliases($this->_and_select);
-                $fields = implode(',', $fields);
-                $sql .= ',' . $fields;
-            }
-
             $sql .= ' ';
         }
-        else if (strtolower(substr(trim($sql), 0, 6)) === 'select') {
+
+        // No select? Build a wildcard.
+        if (strtolower(substr(trim($sql), 0, 6)) !== 'select') {
             [$from, $alias] = PdbHelpers::alias($this->_from);
             if ($from) {
                 $sql .= "SELECT ~{$from}.* ";
@@ -341,6 +334,7 @@ class PdbQuery
 
         $sql .= $this->raw('select');
 
+        // Build 'from'.
         if ($this->_from) {
             [$from, $alias] = PdbHelpers::alias($this->_from);
 
