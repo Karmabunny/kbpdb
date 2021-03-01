@@ -250,12 +250,12 @@ class PdbQuery
 
     /**
      *
-     * @param string $field
+     * @param string[] $fields
      * @return static
      */
-    public function orderBy(string $field)
+    public function orderBy(...$fields)
     {
-        $this->_order[] = $field;
+        array_push($this->_order, ...$fields);
         $this->_last_cmd = __METHOD__;
         return $this;
     }
@@ -374,7 +374,9 @@ class PdbQuery
         }
 
         if ($this->_order) {
-            $sql .= "ORDER BY {$this->_order} ";
+            $sql .= 'ORDER BY ';
+            $sql .= implode(',', $this->_order);
+            $sql .= ' ';
 
             $sql .= $this->raw('order');
         }
