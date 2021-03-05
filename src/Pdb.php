@@ -640,6 +640,8 @@ class Pdb implements Loggable
     /**
      * Fetches a mapping of id => value values from a table, using the 'name' values by default
      *
+     * @deprecated Use PdbQuery::map()
+     *
      * @param string $table The table name, without prefix
      * @param array $conditions Optional where clause {@see Pdb::buildClause}
      * @param array $order Optional columns to ORDER BY. Defaults to 'name'
@@ -648,17 +650,10 @@ class Pdb implements Loggable
      **/
     public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
     {
-        self::validateIdentifier($table);
-        foreach ($order as $ord) {
-            self::validateIdentifier($ord);
-        }
-        self::validateIdentifier($name);
-
-        $values = [];
-        $q = "SELECT id, {$name} FROM ~{$table}";
-        if (count($conditions)) $q .= "\nWHERE " . self::buildClause($conditions, $values);
-        if (count($order)) $q .= "\nORDER BY " . implode(', ', $order);
-        return $this->query($q, $values, 'map');
+        return (new PdbQuery($this))
+            ->find($table, $conditions)
+            ->orderBy(...$order)
+            ->map('id', $name);
     }
 
 
@@ -675,20 +670,10 @@ class Pdb implements Loggable
      */
     public function recordExists(string $table, array $conditions)
     {
-        self::validateIdentifier($table);
+        $count = (new PdbQuery($this))
+            ->count($table, $conditions);
 
-        $params = [];
-        $clause = Pdb::buildClause($conditions, $params);
-        $q = "SELECT 1
-            FROM ~{$table}
-            WHERE {$clause}
-            LIMIT 1";
-        try {
-            $this->query($q, $params, 'row');
-        } catch (RowMissingException $ex) {
-            return false;
-        }
-        return true;
+        return $count !== 0;
     }
 
 
