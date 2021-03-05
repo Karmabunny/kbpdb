@@ -29,6 +29,7 @@ class Pdb implements Loggable
 {
     use LoggerTrait;
 
+    const UUID_NAMESPACE = '3afdd7bd-b030-4c46-a3b6-f4d600670865';
 
     const QUOTE_VALUE = 'value';
 

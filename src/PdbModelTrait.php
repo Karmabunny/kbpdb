@@ -90,6 +90,23 @@ trait PdbModelTrait
 
     /**
      *
+     * @param int $id
+     * @return string
+     */
+    public static function generateUid(int $id)
+    {
+        if ($id == 0) return Uuid::nil();
+
+        $pdb = static::getConnection();
+        $scheme = $pdb->config->database . '.';
+        $scheme .= $pdb->config->prefix . static::getTableName() . '.';
+        $scheme .= $id;
+        return Uuid::uuid5(Pdb::UUID_NAMESPACE, $scheme);
+    }
+
+
+    /**
+     *
      * @return bool
      */
     public function save(): bool
@@ -101,22 +118,45 @@ trait PdbModelTrait
         $data = iterator_to_array($this);
         $conditions = [ 'id' => $this->id ];
 
+
         if ($this->id > 0) {
-            $data['date_modified'] = $this->date_modified = $now;
+            $data['date_modified'] = $now;
             $pdb->update($table, $data, $conditions);
         }
         else {
-            $data['date_added'] = $this->date_added = $now;
-            $data['date_modified'] = $this->date_modified = $now;
-            $data['date_deleted'] = $this->date_deleted = null;
-            $data['uid'] = $this->uid = Uuid::uuid4();
+            $data['date_added'] = $now;
+            $data['date_modified'] = $now;
+            $data['uid'] = Uuid::uuid4();
 
-            if (!isset($this->active)) {
-                $this->active = true;
+            if (!isset($data['active'])) {
+                $data['active'] = true;
+            }
+
+            // TODO Add nested transaction support with IDs.
+            $ts_id = 0;
+            if ($pdb->inTransaction()) {
+                $ts_id = 1;
+                $pdb->transact();
             }
 
             $this->id = $pdb->insert($table, $data);
+
+            // Replace it with a UUID5.
+            $this->uid = self::generateUid($this->id);
+
+            $pdb->update(
+                $table,
+                ['uid' => $this->uid],
+                ['id' => $this->id]
+            );
+
+            if ($ts_id === 1) {
+                $pdb->commit();
+            }
         }
+
+        $this->date_added = $data['date_added'];
+        $this->date_modified = $data['date_modified'];
 
         return $this->id;
     }
