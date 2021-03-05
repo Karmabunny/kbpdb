@@ -560,6 +560,20 @@ class Pdb implements Loggable
     }
 
 
+    /**
+     * Shorthand for creating a new PdbQuery.
+     *
+     * @param mixed $string
+     * @param mixed $table
+     * @param array $conditions
+     * @return void
+     */
+    public function find(string $table, array $conditions)
+    {
+        return (new PdbQuery($this))->find($table, $conditions);
+    }
+
+
     // ===========================================================
     //     Transactions
     // ===========================================================
