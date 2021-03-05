@@ -29,6 +29,12 @@ class Pdb implements Loggable
 {
     use LoggerTrait;
 
+
+    const QUOTE_VALUE = 'value';
+
+    const QUOTE_FIELD = 'field';
+
+
     /** @var PdbConfig */
     public $config;
 
@@ -480,7 +486,7 @@ class Pdb implements Loggable
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
             if ($cols) $cols .= ', ';
-            $cols .= $col;
+            $cols .= $this->quote($col, self::QUOTE_FIELD);
             if ($values) $values .= ', ';
             $values .= ":{$col}";
             $insert[":{$col}"] = $val;
@@ -809,6 +815,39 @@ class Pdb implements Loggable
     public function getLastInsertId()
     {
         return $this->last_insert_id;
+    }
+
+
+    /**
+     *
+     * @param string $field
+     * @param string $type
+     * @return string
+     * @throws PDOException
+     */
+    public function quote(string $field, string $type = self::QUOTE_VALUE): string
+    {
+        $pdo = $this->getConnection();
+
+        // Integers are valid column names, so we escape them all the same.
+        if (is_int($field)) {
+            return $pdo->quote($field, PDO::PARAM_INT);
+        }
+
+        // Escape fields.
+        if ($type === self::QUOTE_FIELD) {
+            [$left, $right] = $this->getFieldQuotes($pdo);
+            $field = trim($field, $left . $right);
+
+            $out = '';
+            foreach (explode('.', $field, 2) as $part) {
+                $out .= "{$left}{$part}{$right}";
+            }
+            return $out;
+        }
+
+        // Catch all.
+        return $pdo->quote($field, PDO::PARAM_INT);
     }
 
 
@@ -1207,13 +1246,14 @@ class Pdb implements Loggable
 
 
     /**
-     * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
+     * Get parameter quotes as appropriate for the underlying DBMS.
      *
-     * @param PDO $pdo The database connection, for determining table quoting rules
-     * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
-     * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
+     * For things like fields, tables, etc.
+     *
+     * @param PDO $pdo
+     * @return string[] [left, right]
      */
-    protected function insertPrefixes(PDO $pdo, string $query)
+    protected function getFieldQuotes(PDO $pdo)
     {
         switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
             case 'mysql':
@@ -1224,10 +1264,26 @@ class Pdb implements Loggable
                 $lquote = $rquote = '';
         }
 
+        return [$lquote, $rquote];
+    }
+
+
+    /**
+     * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
+     *
+     * @param PDO $pdo The database connection, for determining table quoting rules
+     * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
+     * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
+     */
+    protected function insertPrefixes(PDO $pdo, string $query)
+    {
+        [$lquote, $rquote] = $this->getFieldQuotes($pdo);
+
         $replacer = function(array $matches) use ($lquote, $rquote) {
             $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
             return $lquote . $prefix . $matches[1] . $rquote;
         };
+
         return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
     }
 
