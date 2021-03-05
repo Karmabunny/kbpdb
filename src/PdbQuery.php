@@ -119,6 +119,13 @@ class PdbQuery
      */
     public function select(...$fields)
     {
+        foreach ($fields as $field) {
+            // This feels hacky.
+            if (!(is_numeric($field) and intval($field) == floatval($field))) {
+                Pdb::validateIdentifierExtended($field);
+            }
+        }
+
         $this->_select = $fields;
         $this->_last_cmd = __METHOD__;
         return $this;
@@ -130,12 +137,18 @@ class PdbQuery
      *
      * This does _not_ replace previous select(), only adds.
      *
-     * @param string[] $fields
+     * @param string ...$fields
      * @return static
      */
     public function andSelect(...$fields)
     {
-        array_push($this->_select, $fields);
+        foreach ($fields as $field) {
+            if (!(is_numeric($field) and intval($field) == floatval($field))) {
+                Pdb::validateIdentifierExtended($field);
+            }
+
+            $this->_select[] = $field;
+        }
         return $this;
     }
 
@@ -147,6 +160,8 @@ class PdbQuery
      */
     public function from(string $table)
     {
+        Pdb::validateIdentifier($table);
+
         $this->_from = $table;
         $this->_last_cmd = __METHOD__;
         return $this;
@@ -163,6 +178,8 @@ class PdbQuery
      */
     public function join(string $type, string $table, array $conditions, string $combine = 'AND')
     {
+        Pdb::validateIdentifier($table);
+
         $this->_joins[$type][$table] = [$conditions, $combine];
         $this->_last_cmd = __METHOD__;
         return $this;
@@ -205,21 +222,25 @@ class PdbQuery
      */
     public function where(array $conditions, $combine = 'AND')
     {
-        $this->_conditions['WHERE'] = [[$conditions, $combine]];
-        $this->_last_cmd = __METHOD__;
+        if (!empty($conditions)) {
+            $this->_conditions['WHERE'] = [[$conditions, $combine]];
+            $this->_last_cmd = __METHOD__;
+        }
         return $this;
     }
 
 
     /**
      *
-     * @param array $condition
+     * @param array $conditions
      * @param string $combine
      * @return static
      */
-    public function andWhere(array $condition, $combine = 'AND')
+    public function andWhere(array $conditions, $combine = 'AND')
     {
-        $this->_conditions['AND'][] = [$condition, $combine];
+        if (!empty($conditions)) {
+            $this->_conditions['AND'][] = [$conditions, $combine];
+        }
         return $this;
     }
 
@@ -232,7 +253,9 @@ class PdbQuery
      */
     public function orWhere(array $condition, $combine = 'OR')
     {
-        $this->_conditions['OR'][] = [$condition, $combine];
+        if (!empty($conditions)) {
+            $this->_conditions['OR'][] = [$condition, $combine];
+        }
         return $this;
     }
 
@@ -257,19 +280,19 @@ class PdbQuery
      */
     public function orderBy(...$fields)
     {
-        // Extract 'direction' tokens.
-        $fields = array_filter($fields, function(string $field) {
+        foreach ($fields as $field) {
+            // Extract 'direction' tokens.
             switch (strtoupper($field)) {
                 case 'DESC':
                 case 'ASC':
                     $this->_direction = $field;
-                    return false;
-                default:
-                    return true;
+                    continue 2;
             }
-        });
 
-        array_push($this->_order, ...$fields);
+            Pdb::validateIdentifierExtended($field);
+            $this->_order[] = $field;
+        }
+
         $this->_last_cmd = __METHOD__;
         return $this;
     }
