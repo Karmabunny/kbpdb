@@ -428,16 +428,16 @@ class PdbQuery
             $sql .= $this->raw('order');
         }
 
-        if ($this->_offset) {
-            $sql .= "OFFSET {$this->_offset} ";
-
-            $sql .= $this->raw('offset');
-        }
-
         if ($this->_limit) {
             $sql .= "LIMIT {$this->_limit} ";
 
             $sql .= $this->raw('limit');
+        }
+
+        if ($this->_offset) {
+            $sql .= "OFFSET {$this->_offset} ";
+
+            $sql .= $this->raw('offset');
         }
 
         return [trim($sql), $params];
