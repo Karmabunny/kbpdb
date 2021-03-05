@@ -154,15 +154,25 @@ trait PdbModelTrait
 
     /**
      *
-     * @return static
+     * @param array $conditions
+     * @return PdbQuery
      */
-    public static function find(array $conditions = [])
+    public static function find(array $conditions = []): PdbQuery
     {
         $pdb = static::getConnection();
         $table = static::getTableName();
-
         return (new PdbQuery($pdb))
-            ->find($table, $conditions)
+            ->find($table, $conditions);
+    }
+
+
+    /**
+     *
+     * @return static
+     */
+    public static function findOne(array $conditions = [])
+    {
+        return self::find($conditions)
             ->as(static::class)
             ->one();
     }
@@ -174,11 +184,7 @@ trait PdbModelTrait
      */
     public static function findAll(array $conditions = [])
     {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
-
-        return (new PdbQuery($pdb))
-            ->find($table, $conditions)
+        return self::find($conditions)
             ->as(static::class)
             ->all();
     }

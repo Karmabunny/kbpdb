@@ -36,10 +36,17 @@ interface PdbModel
 
 
     /**
+     *
+     * @param array $conditions
+     * @return PdbQuery
+     */
+    public static function find(array $conditions = []): PdbQuery;
+
+    /**
      * @param array $conditions
      * @return static
      */
-    public static function find(array $conditions);
+    public static function findOne(array $conditions);
 
 
     /**
