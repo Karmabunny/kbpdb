@@ -1323,13 +1323,11 @@ class Pdb implements Loggable
      */
     protected function logQuery(string $query, array $params, $result)
     {
+        $query .= ' with ' . json_encode($params);
+        $this->log($query, Log::LEVEL_DEBUG);
+
         if ($result instanceof QueryException) {
             $this->log($result, Log::LEVEL_ERROR);
-        }
-        else {
-            $message = "Query: {$query}\nParams:\n";
-            $message .= print_r($params, true);
-            $this->log($message, Log::LEVEL_DEBUG);
         }
     }
 
