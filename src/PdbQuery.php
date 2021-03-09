@@ -553,11 +553,6 @@ class PdbQuery
     public function map(string $key = null, string $value = null): array
     {
         $query = clone $this;
-        // Guard against bad usage.
-        if ($this->_as) {
-            // Hint: Use keyed().
-            throw new InvalidArgumentException('map() cannot be used with as().');
-        }
 
         // Replace select with key->value.
         if ($key and $value) {
@@ -623,10 +618,6 @@ class PdbQuery
     public function column(string $field = null): array
     {
         $query = clone $this;
-        // Guard against bad usage.
-        if ($this->_as) {
-            throw new InvalidArgumentException('column() cannot be used with as().');
-        }
 
         // Insert field if missing.
         if ($field) {
@@ -647,10 +638,6 @@ class PdbQuery
     public function count(string $table = null, array $conditions = []): int
     {
         $query = clone $this;
-        // Guard against bad usage.
-        if ($this->_as) {
-            throw new InvalidArgumentException('count() cannot be used with as().');
-        }
 
         // Counts never need a complex select.
         $query->select('1');
@@ -674,10 +661,6 @@ class PdbQuery
      */
     public function pdo(): PDOStatement
     {
-        // Guard against bad usage.
-        if ($this->_as) {
-            throw new InvalidArgumentException('pdo() cannot be used with as().');
-        }
         $query = clone $this;
         [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'pdo');
