@@ -238,7 +238,10 @@ class PdbQuery
      */
     public function andWhere(array $conditions, $combine = 'AND')
     {
-        if (!empty($conditions)) {
+        if (empty($this->_conditions)) {
+            $this->where($conditions, $combine);
+        }
+        else if (!empty($conditions)) {
             $this->_conditions['AND'][] = [$conditions, $combine];
         }
         return $this;
@@ -247,14 +250,17 @@ class PdbQuery
 
     /**
      *
-     * @param array $condition
+     * @param array $conditions
      * @param string $combine
      * @return static
      */
-    public function orWhere(array $condition, $combine = 'OR')
+    public function orWhere(array $conditions, $combine = 'OR')
     {
-        if (!empty($conditions)) {
-            $this->_conditions['OR'][] = [$condition, $combine];
+        if (empty($this->_conditions)) {
+            $this->where($conditions, $combine);
+        }
+        else if (!empty($conditions)) {
+            $this->_conditions['OR'][] = [$conditions, $combine];
         }
         return $this;
     }
