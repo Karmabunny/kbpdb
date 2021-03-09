@@ -490,16 +490,18 @@ class PdbQuery
      */
     public function one(string $class = null)
     {
-        $this->limit(1);
+        $query = clone $this;
+
+        $query->limit(1);
         if ($class) {
-            $this->as($class);
+            $query->as($class);
         }
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         $item = $this->pdb->query($sql, $params, 'row');
 
-        if ($this->_as) {
-            $class = $this->_as;
+        if ($query->_as) {
+            $class = $query->_as;
             $item = new $class($item);
         }
 
@@ -515,15 +517,17 @@ class PdbQuery
      */
     public function all(int $limit = null): array
     {
+        $query = clone $this;
+
         if ($limit) {
-            $this->limit($limit);
+            $query->limit($limit);
         }
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         $pdo = $this->pdb->query($sql, $params, 'pdo');
 
-        if ($this->_as) {
-            $class = $this->_as;
+        if ($query->_as) {
+            $class = $query->_as;
 
             $items = [];
             while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
@@ -548,6 +552,7 @@ class PdbQuery
      */
     public function map(string $key = null, string $value = null): array
     {
+        $query = clone $this;
         // Guard against bad usage.
         if ($this->_as) {
             // Hint: Use keyed().
@@ -556,14 +561,14 @@ class PdbQuery
 
         // Replace select with key->value.
         if ($key and $value) {
-            $this->select($key, $value);
+            $query->select($key, $value);
         }
         // ak. no.
         else if ($key or $value) {
             throw new InvalidArgumentException('map() accepts exactly 2 arguments or none.');
         }
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'map');
     }
 
@@ -578,17 +583,19 @@ class PdbQuery
      */
     public function keyed(string $key = null): array
     {
+        $query = clone $this;
+
         // Explicitly defined key.
         if (!$key) $key = 'id';
 
-        $this->andSelect($key);
+        $query->andSelect($key);
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         $pdo = $this->pdb->query($sql, $params, 'pdo');
 
         // Convert into objects.
-        if ($this->_as) {
-            $class = $this->_as;
+        if ($query->_as) {
+            $class = $query->_as;
         }
 
         $map = [];
@@ -615,6 +622,7 @@ class PdbQuery
      */
     public function column(string $field = null): array
     {
+        $query = clone $this;
         // Guard against bad usage.
         if ($this->_as) {
             throw new InvalidArgumentException('column() cannot be used with as().');
@@ -622,10 +630,10 @@ class PdbQuery
 
         // Insert field if missing.
         if ($field) {
-            $this->select($field);
+            $query->select($field);
         }
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'col');
     }
 
@@ -638,22 +646,23 @@ class PdbQuery
      */
     public function count(string $table = null, array $conditions = []): int
     {
+        $query = clone $this;
         // Guard against bad usage.
         if ($this->_as) {
             throw new InvalidArgumentException('count() cannot be used with as().');
         }
 
         // Counts never need a complex select.
-        $this->select('1');
+        $query->select('1');
 
         if ($table) {
-            $this->from($table);
+            $query->from($table);
         }
         if ($conditions) {
-            $this->where($conditions);
+            $query->where($conditions);
         }
 
-        [$sql, $params] = $this->build();
+        [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'count');
     }
 
@@ -669,8 +678,8 @@ class PdbQuery
         if ($this->_as) {
             throw new InvalidArgumentException('pdo() cannot be used with as().');
         }
-
-        [$sql, $params] = $this->build();
+        $query = clone $this;
+        [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'pdo');
     }
 
