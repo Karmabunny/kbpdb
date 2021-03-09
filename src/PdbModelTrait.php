@@ -56,7 +56,7 @@ trait PdbModelTrait
     public function getDateAdded()
     {
         if ($this->date_added) {
-            new DateTimeImmutable($this->date_added);
+            return new DateTimeImmutable($this->date_added);
         }
         return null;
     }
@@ -69,7 +69,7 @@ trait PdbModelTrait
     public function getDateUpdated()
     {
         if ($this->date_updated) {
-            new DateTimeImmutable($this->date_updated);
+            return new DateTimeImmutable($this->date_updated);
         }
         return null;
     }
@@ -82,7 +82,7 @@ trait PdbModelTrait
     public function getDateDeleted()
     {
         if ($this->date_deleted) {
-            new DateTimeImmutable($this->date_deleted);
+            return new DateTimeImmutable($this->date_deleted);
         }
         return null;
     }
