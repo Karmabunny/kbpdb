@@ -413,7 +413,7 @@ class PdbQuery
         if ($this->_group) {
             $sql .= "GROUP BY {$this->_group} ";
 
-            $sql .= $this->raw('group');
+            $sql .= $this->raw('groupBy');
         }
 
         if ($this->_order) {
@@ -425,7 +425,7 @@ class PdbQuery
                 $sql .= "{$this->_direction} ";
             }
 
-            $sql .= $this->raw('order');
+            $sql .= $this->raw('orderBy');
         }
 
         if ($this->_limit) {
