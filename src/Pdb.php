@@ -543,6 +543,33 @@ class Pdb implements Loggable
 
 
     /**
+     *
+     * @param string $table
+     * @param array $data
+     * @param array $conditions
+     * @return int
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     */
+    public function upsert(string $table, array $data, array $conditions)
+    {
+        self::validateIdentifier($table);
+
+        try {
+            $params = [];
+            $clause = self::buildClause($conditions, $params);
+            $id = $this->query("SELECT id from {$table} WHERE {$clause}", $params, 'val');
+
+            $this->update($table, $data, ['id' => $id]);
+            return $id;
+        }
+        catch (RowMissingException $exception) {
+            return $this->insert($table, $data);
+        }
+    }
+
+
+    /**
      * Runs a DELETE query
      * @param string $table The table (without prefix) to insert the data into
      * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
