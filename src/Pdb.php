@@ -295,20 +295,19 @@ class Pdb implements Loggable
         } catch (PDOException $ex) {
             unset($log_data['rows']);
             $log_data['error'] = $ex->getMessage();
-            $ex = self::createQueryException($ex);
-            $ex->query = $query;
-            $ex->params = $params;
+
+            $ex = QueryException::create($ex)
+                ->setQuery($query)
+                ->setParams($params);
         }
 
-        // TODO Old note. I don't quite understand it.
-        // The log method needs to be disabled so log functions can
-        // make queries without logging themselves
+        // The log method needs to be disabled so log functions
+        // (that use pdb to create logs) can make queries without
+        // logging themselves.
         $this->logQuery($query, $params, $ex ?? $res);
 
         // This is thrown after logging
-        if ($ex) {
-            throw $ex;
-        }
+        if ($ex) throw $ex;
 
         if ($return_type == 'pdo') {
             $res->setFetchMode(PDO::FETCH_ASSOC);
@@ -326,8 +325,8 @@ class Pdb implements Loggable
             $ret = self::formatRs($res, $return_type);
         } catch (RowMissingException $ex) {
             $res->closeCursor();
-            $ex->query = $query;
-            $ex->params = $params;
+            $ex->setQuery($query);
+            $ex->setParams($params);
             throw $ex;
         }
         $res->closeCursor();
@@ -404,14 +403,18 @@ class Pdb implements Loggable
             }
 
         } catch (PDOException $ex) {
-            $ex = self::createQueryException($ex);
-            $ex->params = $params;
+            $ex = QueryException::create($ex)
+                ->setParams($params)
+                ->setQuery($st->queryString);
         }
 
+        // The log method needs to be disabled so log functions
+        // (that use pdb to create logs) can make queries without
+        // logging themselves.
+        $this->logQuery($st->queryString, $params, $ex ?? $res);
+
         // This is thrown after logging
-        if ($ex) {
-            throw $ex;
-        }
+        if ($ex) throw $ex;
 
         if ($return_type == 'pdo') {
             $res->setFetchMode(PDO::FETCH_ASSOC);
@@ -429,7 +432,8 @@ class Pdb implements Loggable
             $ret = self::formatRs($res, $return_type);
         } catch (RowMissingException $ex) {
             $res->closeCursor();
-            $ex->params = $params;
+            $ex->setQuery($st->queryString);
+            $ex->setParams($params);
             throw $ex;
         }
         $res->closeCursor();
@@ -1169,7 +1173,7 @@ class Pdb implements Loggable
 
         case 'map':
             if ($rs->columnCount() < 2) {
-                throw new Exception('Two columns required');
+                throw new InvalidArgumentException('Two columns required');
             }
             $map = array();
             while ($row = $rs->fetch(PDO::FETCH_NUM)) {
@@ -1419,35 +1423,5 @@ class Pdb implements Loggable
             $caller = $step;
         }
         return false;
-    }
-
-
-    /**
-     * Create a QueryException from a given PDOException object
-     *
-     * Uses the SQLSTATE code to return different exception classes, which are subclasses of QueryException
-     *
-     * @param PDOException $ex
-     * @return ConstraintQueryException Integrity constraint violation (SQLSTATE 23xxx)
-     * @return QueryException All other query errors
-     */
-    private static function createQueryException(PDOException $ex)
-    {
-        $pdo_ex = $ex;
-        $state_class = substr($ex->getCode(), 0, 2);
-
-        switch ($state_class) {
-            case '23':
-                $ex = new ConstraintQueryException($ex->getMessage());
-                break;
-
-            default:
-                $ex = new QueryException($ex->getMessage());
-                break;
-        }
-
-        $ex->state = $pdo_ex->getCode();
-
-        return $ex;
     }
 }
