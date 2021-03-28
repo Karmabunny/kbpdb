@@ -7,7 +7,9 @@
 namespace karmabunny\pdb;
 
 use Exception;
+use Generator;
 use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\QueryException;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
@@ -546,6 +548,36 @@ class PdbQuery
 
         $pdo->closeCursor();
         return $items;
+    }
+
+
+    /**
+     *
+     * @return Generator
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     */
+    public function iterator(): Generator
+    {
+        $query = clone $this;
+
+        [$sql, $params] = $query->build();
+        $pdo = $this->pdb->query($sql, $params, 'pdo');
+
+        if ($query->_as) {
+            $class = $query->_as;
+
+            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                yield new $class($row);
+            }
+        }
+        else {
+            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                yield $row;
+            }
+        }
+
+        $pdo->closeCursor();
     }
 
 
