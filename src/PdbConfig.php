@@ -45,17 +45,33 @@ class PdbConfig extends Collection
     /** @var callable[] [class => fn] */
     public $formatters = [];
 
+    /** @var string */
+    public $dsn;
+
 
     public function getDsn(): string
     {
-        $dsn = "{$this->type}:host={$this->host}";
-        $dsn .= ";dbname={$this->database}";
-        $dsn .= ";charset={$this->character_set}";
+        if ($this->dsn) {
+            return $this->type . ':' . $this->dsn;
+        }
+        else {
+            $parts = [];
 
-        if ($this->port) {
-            $dsn .= ";port={$this->port}";
+            if ($this->host) {
+                $parts[] = 'hosts=' . $this->host;
+            }
+            if ($this->database) {
+                $parts[] = 'dbname=' . $this->database;
+            }
+            if ($this->character_set) {
+                $parts[] = 'charset=' . $this->character_set;
+            }
+            if ($this->port) {
+                $parts[] = 'port=' . $this->port;
+            }
+
+            return $this->type . ':' . implode(';', $parts);
         }
 
-        return $dsn;
     }
 }
