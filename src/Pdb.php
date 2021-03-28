@@ -598,9 +598,9 @@ class Pdb implements Loggable
      * @param mixed $string
      * @param mixed $table
      * @param array $conditions
-     * @return void
+     * @return PdbQuery
      */
-    public function find(string $table, array $conditions)
+    public function find(string $table, array $conditions = [])
     {
         return (new PdbQuery($this))->find($table, $conditions);
     }
