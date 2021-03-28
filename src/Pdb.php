@@ -1291,8 +1291,15 @@ class Pdb implements Loggable
                 $lquote = $rquote = '`';
                 break;
 
+            case 'mssql':
+                $lquote = '[';
+                $rquote = ']';
+                break;
+
+            case 'sqlite':
+            case 'pgsql':
             default:
-                $lquote = $rquote = '';
+                $lquote = $rquote = '"';
         }
 
         return [$lquote, $rquote];
