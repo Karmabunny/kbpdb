@@ -6,15 +6,19 @@
 
 namespace karmabunny\pdb;
 
-use Exception;
 use InvalidArgumentException;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
-use karmabunny\pdb\Exceptions\ConstraintQueryException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
+use karmabunny\pdb\Drivers\PdbMysql;
+use karmabunny\pdb\Drivers\PdbNoDriver;
+use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Models\PdbColumn;
+use karmabunny\pdb\Models\PdbForeignKey;
+use karmabunny\pdb\Models\PdbIndex;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -25,7 +29,7 @@ use PDOStatement;
  *
  * @package karmabunny\pdb
  */
-class Pdb implements Loggable
+abstract class Pdb implements Loggable
 {
     use LoggerTrait;
 
@@ -100,6 +104,30 @@ class Pdb implements Loggable
         }
         else {
             $this->config = clone $config;
+        }
+    }
+
+
+    /**
+     *
+     * @param PdConfig|array $config
+     * @return PdbExtended
+     */
+    public static function create($config)
+    {
+        if (!($config instanceof PdbConfig)) {
+            $config = new PdbConfig($config);
+        }
+
+        switch ($config->type) {
+            case 'mysql':
+                return new PdbMysql($config);
+
+            case 'sqlite':
+                return new PdbSqlite($config);
+
+            default:
+                return new PdbNoDriver($config);
         }
     }
 
@@ -214,6 +242,12 @@ class Pdb implements Loggable
 
         $this->connection = self::connect($this->config);
         return $this->connection;
+    }
+
+
+    public function getPrefix(): string
+    {
+        return $this->config->prefix;
     }
 
 
@@ -625,111 +659,72 @@ class Pdb implements Loggable
     }
 
 
+    // ===========================================================
+    //     Driver specific methods
+    // ===========================================================
+
+
     /**
-     * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
-     * which link to the id column of a specific table
+     * Fetches the current list of tables
      *
-     * @param string $database
-     * @param string $table The table which contains the id column which the foreign key columns link to
-     * @return array Each element is an array: ['table' => table_name, 'column' => column_name]
+     * @return string[] Each element is a table name (with the prefix removed)
      */
-    public function getDependentKeys(string $database, string $table)
-    {
-        $params = [
-            $database,
-            $this->config->prefix . $table,
-        ];
+    public abstract function listTables();
 
-        $q = "SELECT K.TABLE_NAME, K.COLUMN_NAME
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
-            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
-                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
-                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
-                AND C.DELETE_RULE = 'CASCADE'
-            WHERE K.TABLE_SCHEMA = ?
-                AND K.CONSTRAINT_NAME != ''
-                AND K.REFERENCED_TABLE_NAME = ?
-                AND K.REFERENCED_COLUMN_NAME = 'id'
-            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = $this->query($q, $params, 'pdo');
 
-        $rows = [];
-        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = [
-                'table' => preg_replace($pattern, '', $row[0]),
-                'column' => $row[1]
-            ];
-        }
-        $res->closeCursor();
-        return $rows;
-    }
+    /**
+     *
+     * @param string $table
+     * @return bool
+     */
+    public abstract function tableExists(string $table);
+
+
+    /**
+     *
+     * @param string $table
+     * @return PdbIndex[]
+     */
+    public abstract function indexList(string $table);
+
+
+    /**
+     *
+     * @param string $table
+     * @return PdbColumn[]
+     */
+    public abstract function fieldList(string $table);
 
 
     /**
      * Gets all of the columns which have foreign key constraints in a table
-     * @param string $database
+     *
      * @param string $table The table to check for columns which link to other tables
-     * @return array Each element is an array with elements as follows:
-     *         source_column => name of column in the specified table
-     *         target_table => name of table that the source column links to
-     *         target_column => name of column that the source column links to
-     * @example
-     * $fks = Pdb::getForeignKeys('files_cat_join');
-     * // $fk has value: [
-     * //     ['source_column' => 'cat_id', 'target_table' => 'files_cat_list', 'target_column' => 'id']
-     * //     ['source_column' => 'file_id', 'target_table' => 'files', 'target_column' => 'id'],
-     * // ];
+     * @return PdbForeignKey[]
      */
-    public function getForeignKeys(string $database, string $table)
-    {
-        $params = [
-            $database,
-            $this->config->prefix . $table,
-        ];
+    public abstract function getForeignKeys(string $table);
 
-        $q = "SELECT K.COLUMN_NAME, K.REFERENCED_TABLE_NAME, K.REFERENCED_COLUMN_NAME
-            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
-            INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
-                ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
-                AND K.TABLE_SCHEMA = C.CONSTRAINT_SCHEMA
-            WHERE K.TABLE_SCHEMA = ?
-                AND K.CONSTRAINT_NAME != ''
-                AND K.TABLE_NAME = ?
-            ORDER BY K.TABLE_NAME, K.COLUMN_NAME";
-        $res = $this->query($q, $params, 'pdo');
 
-        $rows = [];
-        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = [
-                'source_column' => $row[0],
-                'target_table' => preg_replace($pattern, '', $row[1]),
-                'target_column' => $row[2],
-            ];
-        }
-        $res->closeCursor();
-        return $rows;
-    }
+
+    /**
+     * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
+     * which link to the id column of a specific table
+     *
+     * @param string $table The table which contains the id column which the foreign key columns link to
+     * @return PdbForeignKey[]
+     */
+    public abstract function getDependentKeys(string $table);
+
 
 
     /**
      * Returns definition list from column of type ENUM
+     *
      * @param string $table The DB table name, without prefix
      * @param string $column The column name
-     * @return array
+     * @return string[]
      */
-    public function extractEnumArr(string $table, string $column)
-    {
-        Pdb::validateIdentifier($table);
-        Pdb::validateIdentifier($column);
-
-        $q = "SHOW COLUMNS FROM ~{$table} LIKE ?";
-        $res = $this->query($q, [$column], 'row');
-
-        $arr = self::convertEnumArr($res['Type']);
-        return array_combine($arr, $arr);
-    }
+    public abstract function extractEnumArr(string $table, string $column);
 
 
     // ===========================================================
@@ -786,11 +781,12 @@ class Pdb implements Loggable
             [$left, $right] = $this->getFieldQuotes($pdo);
             $field = trim($field, $left . $right);
 
-            $out = '';
-            foreach (explode('.', $field, 2) as $part) {
-                $out .= "{$left}{$part}{$right}";
+            $parts = explode('.', $field, 2);
+            foreach ($parts as &$part) {
+                $part = "{$left}{$part}{$right}";
             }
-            return $out;
+            unset($part);
+            return implode('.', $parts);
         }
 
         // Catch all.
@@ -865,35 +861,6 @@ class Pdb implements Loggable
         return false;
     }
 
-
-    /**
-     * Convert an ENUM or SET definition from MySQL into an array of values
-     *
-     * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
-     * @return array Numerically indexed
-     */
-    public static function convertEnumArr($enum_defn)
-    {
-        $pattern = '/^(?:ENUM|SET)\s*\(\s*\'/i';
-        if (!preg_match($pattern, $enum_defn)) {
-            throw new InvalidArgumentException("Definition is not an ENUM or SET");
-        }
-
-        // Remove enclosing ENUM('...') or SET('...')
-        $enum_defn = preg_replace($pattern, '', $enum_defn);
-        $enum_defn = preg_replace('/\'\s*\)\s*$/', '', $enum_defn);
-
-        // SQL escapes ' characters with ''
-        // So split on all ',' which aren't followed by a ' character
-        $vals = preg_split("/','(?!')/", $enum_defn);
-
-        // Then convert any '' characters back into ' characters
-        foreach ($vals as &$v) {
-            $v = str_replace("''", "'", $v);
-        }
-
-        return $vals;
-    }
 
 
     /**
@@ -1266,6 +1233,25 @@ class Pdb implements Loggable
         };
 
         return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
+    }
+
+
+    /**
+     *
+     * @param string $value
+     * @return string
+     */
+    protected function stripPrefix(string $value)
+    {
+        static $patterns = [];
+
+        $pattern = $patterns[$this->config->prefix] ?? null;
+        if (!$pattern) {
+            $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+            $patterns[$this->config->prefix] = $pattern;
+        }
+
+        return preg_replace($pattern, '', $value) ?? '';
     }
 
 

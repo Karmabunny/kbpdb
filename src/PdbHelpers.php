@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use InvalidArgumentException;
 
 /**
  *
@@ -88,6 +89,36 @@ class PdbHelpers
     public static function likeEscape(string $str)
     {
         return str_replace(['_', '%'], ['\\_', '\\%'], $str);
+    }
+
+
+    /**
+     * Convert an ENUM or SET definition from MySQL into an array of values
+     *
+     * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
+     * @return array Numerically indexed
+     */
+    public static function convertEnumArr($enum_defn)
+    {
+        $pattern = '/^(?:ENUM|SET)\s*\(\s*\'/i';
+        if (!preg_match($pattern, $enum_defn)) {
+            throw new InvalidArgumentException("Definition is not an ENUM or SET");
+        }
+
+        // Remove enclosing ENUM('...') or SET('...')
+        $enum_defn = preg_replace($pattern, '', $enum_defn);
+        $enum_defn = preg_replace('/\'\s*\)\s*$/', '', $enum_defn);
+
+        // SQL escapes ' characters with ''
+        // So split on all ',' which aren't followed by a ' character
+        $vals = preg_split("/','(?!')/", $enum_defn);
+
+        // Then convert any '' characters back into ' characters
+        foreach ($vals as &$v) {
+            $v = str_replace("''", "'", $v);
+        }
+
+        return $vals;
     }
 
 
