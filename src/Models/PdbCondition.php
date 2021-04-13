@@ -7,7 +7,7 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
-use karmabunny\kb\Arrays;
+use PDOException;
 
 /**
  *
@@ -35,83 +35,112 @@ class PdbCondition
 
     const OPERATORS = [
         self::EQUAL,
+        self::LESS_THAN_EQUAL,
+        self::GREATER_THAN_EQUAL,
+        self::LESS_THAN,
+        self::GREATER_THAN,
+        self::NOT_EQUAL,
+        self::NOT_EQUAL_ALT,
+        self::IS,
+        self::IS_NOT,
+        self::BETWEEN,
+        self::IN,
+        self::NOT_IN,
+        self::CONTAINS,
+        self::BEGINS,
+        self::ENDS,
+        self::IN_SET,
     ];
 
 
+    /** @var string */
     public $operator;
 
+    /** @var string */
     public $column;
 
+    /** @var mixed */
     public $value;
 
 
-    public function __construct(array $config)
+    /**
+     * Create a condition.
+     *
+     * @param string $operator
+     * @param string $column
+     * @param mixed $value
+     */
+    public function __construct($operator, $column, $value)
     {
-        foreach ($config as $key => $value) {
-            $this->$key = $value;
-        }
+        $this->operator = $operator;
+        $this->column = $column;
+        $this->value = $value;
     }
 
 
     /**
+     * Create a condition object from a shorthand array.
+     *
+     * A 'shorthand' array is one 3 forms:
+     * 1. [column, operator, value]
+     * 2. [operator, column => value]
+     * 3. [column => value]
+     *
+     * The third is only for equality or IS NULL conditions.
      *
      * @param string|int $key
-     * @param array|string|int|float $item
+     * @param PdbCondition|array|string|int|float $item
      * @return static
      * @throws InvalidArgumentException
      */
     public static function fromShorthand($key, $item)
     {
+        // Pass-through.
+        if ($item instanceof self) {
+            return clone $item;
+        }
+
         // Value-style conditions.
         if (is_numeric($key) and is_array($item)) {
 
             // Modified key-style condition.
-            // => [OPERATOR, FIELD => VALUE]
+            // => [OPERATOR, COLUMN => VALUE]
             if (count($item) == 2) {
                 /** @var string $operator */
                 $operator = array_shift($item);
 
-                $field = key($item);
-                $value = $item[$field];
+                $column = key($item);
+                $value = $item[$column];
 
-                return new PdbCondition([
-                    'operator' => $operator,
-                    'field' => $field,
-                    'value' => $value,
-                ]);
+                return new PdbCondition($operator, $column, $value);
             }
 
             // Value-style condition.
             // [FIELD, OPERATOR, VALUE]
             if (count($item) == 3) {
-                [$field, $operator, $value] = $item;
+                [$column, $operator, $value] = $item;
 
-                return new PdbCondition([
-                    'operator' => $operator,
-                    'field' => $field,
-                    'value' => $value,
-                ]);
+                return new PdbCondition($operator, $column, $value);
             }
 
-            // TODO Not sure if this is helpful, but it means all the
-            // validations are in one place.
-            // throw new InvalidArgumentException('Conditions must have 2 or 3 items, not: ' . count($item));
-            return new PdbCondition([]);
+            throw new InvalidArgumentException('Conditions must have 2 or 3 items, not: ' . count($item));
         }
 
         // Key-style conditions.
         // OPERATOR => VALUE
-        else {
-            return new PdbCondition([
-                'operator' => PdbCondition::EQUAL,
-                'field' => $key,
-                'value' => $item,
-            ]);
+        $operator = PdbCondition::EQUAL;
+
+        if ($item === null) {
+            $operator = PdbCondition::IS;
         }
+
+        return new PdbCondition($operator, $key, $item);
     }
 
 
     /**
+     * Create a list of conditions objects from a list of configuration
+     * shorthand arrays.
      *
      * @param array $clauses
      * @return static[]
@@ -121,13 +150,16 @@ class PdbCondition
     {
         $conditions = [];
         foreach ($clauses as $key => $item) {
-            $conditions[] = self::fromShorthand($key, $item);
+            $item = self::fromShorthand($key, $item);
+            $item->validate();
+            $conditions[] = $item;
         }
         return $conditions;
     }
 
 
     /**
+     * Validate this condition.
      *
      * @return void
      * @throws InvalidArgumentException
@@ -142,8 +174,8 @@ class PdbCondition
             throw new InvalidArgumentException('Operator unknown: ' . gettype($this->operator));
         }
 
-        if (!isset(self::OPERATORS[$this->operator]) {
-            throw new InvalidArgumentException('Operator must be scalar, not ' . $this->operator);
+        if (!isset(self::OPERATORS[$this->operator])) {
+            throw new InvalidArgumentException('Operator unknown: ' . $this->operator);
         }
 
         if (!is_scalar($this->column)) {
@@ -158,100 +190,116 @@ class PdbCondition
     }
 
 
-    public function build(): string
+    /**
+     * Build an appropriate SQL clause for this condition.
+     *
+     * The values will be created as ? and added to the $values parameter to
+     * permit one to bind the values later in an safe manner.
+     *
+     * @param Pdb $pdb
+     * @param array &$values
+     * @return string
+     * @throws PDOException
+     * @throws InvalidArgumentException
+     */
+    public function build(Pdb $pdb, array &$values): string
     {
-        $operator = $this->operator;
-        $column = $this->column;
-        $value = $this->value;
+        $column = $pdb->quote($this->column, Pdb::QUOTE_FIELD);
 
-        switch ($operator) {
-            case '=':
-            case '<=':
-            case '>=':
-            case '<':
-            case '>':
-            case '!=':
-            case '<>':
-                if (!is_scalar($value)) {
-                    $err = "Operator {$operator} needs a scalar value";
+        switch ($this->operator) {
+            case self::EQUAL:
+            case self::NOT_EQUAL;
+            case self::NOT_EQUAL_ALT;
+            case self::GREATER_THAN_EQUAL:
+            case self::LESS_THAN_EQUAL:
+            case self::LESS_THAN:
+            case self::GREATER_THAN:
+                if (!is_scalar($this->value)) {
+                    $err = "Operator {$this->operator} needs a scalar value";
                     throw new InvalidArgumentException($err);
                 }
 
-                $where .= "{$column} {$operator} ?";
-                $values[] = $value;
-                break;
+                $values[] = $this->value;
+                return "{$column} {$this->operator} ?";
 
-            case 'IS':
+            case self::IS:
+                $value = $this->value;
                 if ($value === null) $value = 'NULL';
-                if ($value )
-                if ($value == 'NULL' or $value == 'NOT NULL') {
-                    $where .= "{$column} {$operator} {$value}";
-                } else {
+
+                if (!in_array($value, ['NULL', 'NOT NULL'])) {
                     $err = "Operator IS value must be NULL or NOT NULL";
                     throw new InvalidArgumentException($err);
                 }
-                break;
 
-            case 'IS NOT':
-                if ($value !== null) {
+                return "{$column} {$this->operator} {$value}";
+
+            case self::IS_NOT:
+                if ($this->value !== null) {
                     $err = "Operator IS NOT value must be NULL";
                     throw new InvalidArgumentException($err);
                 }
-                $where .= "{$column} {$operator} NULL";
-                break;
+                return "{$column} {$this->operator} NULL";
 
-            case 'BETWEEN':
+            case self::BETWEEN:
                 $err = "Operator BETWEEN value must be an array of two scalars";
-                if (!is_array($value)) {
-                    throw new InvalidArgumentException($err);
-                } else if (count($value) != 2 or !is_scalar($value[0]) or !is_scalar($value[1])) {
+
+                if (!is_array($this->value) or count($this->value) != 2) {
                     throw new InvalidArgumentException($err);
                 }
-                $where .= "{$column} BETWEEN ? AND ?";
-                $values[] = $value[0];
-                $values[] = $value[1];
-                break;
 
-            case 'IN':
-            case 'NOT IN';
-                $err = "Operator {$operator} value must be an array of scalars";
-                if (!is_array($value)) {
+                [$low, $high] = array_values($this->value);
+
+                if (!is_scalar($low) or !is_scalar($high)) {
                     throw new InvalidArgumentException($err);
-                } else {
-                       foreach ($value as $idx => $v) {
-                        if (!is_scalar($v)) {
-                            throw new InvalidArgumentException($err . " (index {$idx})");
-                        }
+                }
+
+                $values[] = $low;
+                $values[] = $high;
+                return "{$column} BETWEEN ? AND ?";
+
+            case self::IN:
+            case self::NOT_IN:
+                $items = $this->value;
+                $err = "Operator {$this->operator} value must be an array of scalars";
+
+                if (!is_array($items)) {
+                    throw new InvalidArgumentException($err);
+                }
+
+                foreach ($items as $index => $item) {
+                    if (!is_scalar($item)) {
+                        throw new InvalidArgumentException($err . " (index {$index})");
                     }
                 }
-                $where .= "{$column} {$operator} (" . rtrim(str_repeat('?, ', count($value)), ', ') . ')';
-                foreach ($value as $v) {
-                    $values[] = $v;
+
+                if (empty($items)) return '';
+
+                $where = implode(', ', array_fill(0, count($items), '?'));
+                $where = "{$column} {$this->operator} ({$where})";
+
+                foreach ($items as $item) {
+                    $values[] = $item;
                 }
-                break;
+                return $where;
 
-            case 'CONTAINS':
-                $where .= "{$column} LIKE CONCAT('%', ?, '%')";
-                $values[] = PdbHelpers::likeEscape($value);
-                break;
+            case self::CONTAINS:
+                $values[] = PdbHelpers::likeEscape($this->value);
+                return "{$column} LIKE CONCAT('%', ?, '%')";
 
-            case 'BEGINS':
-                $where .= "{$column} LIKE CONCAT(?, '%')";
-                $values[] = PdbHelpers::likeEscape($value);
-                break;
+            case self::BEGINS:
+                $values[] = PdbHelpers::likeEscape($this->value);
+                return "{$column} LIKE CONCAT(?, '%')";
 
-            case 'ENDS':
-                $where .= "{$column} LIKE CONCAT('%', ?)";
-                $values[] = PdbHelpers::likeEscape($value);
-                break;
+            case self::ENDS:
+                $values[] = PdbHelpers::likeEscape($this->value);
+                return "{$column} LIKE CONCAT('%', ?)";
 
-            case 'IN SET':
-                $where .= "FIND_IN_SET(?, {$column}) > 0";
-                $values[] = PdbHelpers::likeEscape($value);
-                break;
+            case self::IN_SET:
+                $values[] = PdbHelpers::likeEscape($this->value);
+                return "FIND_IN_SET(?, {$column}) > 0";
 
             default:
-                $err = 'Operator not implemented: ' . $operator;
+                $err = "Operator not implemented: {$this->operator}";
                 throw new InvalidArgumentException($err);
         }
     }
