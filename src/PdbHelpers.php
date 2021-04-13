@@ -65,6 +65,25 @@ class PdbHelpers
 
 
     /**
+    * Converts a column type definition to its uppercase variant, leaving the
+    * data for ENUM and SET fields alone
+    */
+    public static function typeToUpper(string $type): string
+    {
+        // Don't force ENUM or SET values to be uppercase
+        if (preg_match('/^enum\s*\(/i', $type)) {
+            $type = 'ENUM' . substr($type, 4);
+            return str_replace("', '", "','", $type);
+        } else if (preg_match('/^set\s*\(/i', $type)) {
+            $type = 'SET' . substr($type, 3);
+            return str_replace("', '", "','", $type);
+        } else {
+            return strtoupper($type);
+        }
+    }
+
+
+    /**
      * Strips string elements from a query, e.g. 'hey', "yeah", and 'it\'s nice'.
      *
      * This function is used to support {@see Pdb::getBindSubset}.
