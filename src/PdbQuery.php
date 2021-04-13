@@ -402,7 +402,7 @@ class PdbQuery
 
                 $sql .= "{$type} JOIN ~{$table} ";
                 if ($alias) $sql .= "AS {$alias} ";
-                $sql .= 'ON ' . Pdb::buildClause($conditions, $combine);
+                $sql .= 'ON ' . $this->pdb->buildClause($conditions, $combine);
                 $sql .= ' ';
             }
         }
@@ -411,7 +411,7 @@ class PdbQuery
         foreach ($this->_conditions as $type => $clauses) {
             foreach ($clauses as [$conditions, $combine]) {
                 $sql .= $type . ' ';
-                $sql .= Pdb::buildClause($conditions, $params, $combine);
+                $sql .= $this->pdb->buildClause($conditions, $params, $combine);
                 $sql .= ' ';
             }
         }

@@ -488,7 +488,7 @@ abstract class Pdb implements Loggable
         }
         $q .= $cols;
 
-        $q .= " WHERE " . self::buildClause($conditions, $values);
+        $q .= " WHERE " . $this->buildClause($conditions, $values);
 
         return $this->query($q, $values, 'count');
     }
@@ -509,7 +509,7 @@ abstract class Pdb implements Loggable
 
         try {
             $params = [];
-            $clause = self::buildClause($conditions, $params);
+            $clause = $this->buildClause($conditions, $params);
             $id = $this->query("SELECT id from {$table} WHERE {$clause}", $params, 'val');
 
             $this->update($table, $data, ['id' => $id]);
@@ -539,7 +539,7 @@ abstract class Pdb implements Loggable
 
         $values = [];
         $q = "DELETE FROM ~{$table} WHERE ";
-        $q .= self::buildClause($conditions, $values);
+        $q .= $this->buildClause($conditions, $values);
         return $this->query($q, $values, 'count');
     }
 
@@ -903,7 +903,7 @@ abstract class Pdb implements Loggable
      * @example
      * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
      * $params = [];
-     * $where = Pdb::buildClause($conditions, $params);
+     * $where = $pdb->buildClause($conditions, $params);
      * //
      * // Variable contents:
      * // $where == "active = ? AND date_added BETWEEN ? AND ?"
@@ -916,129 +916,24 @@ abstract class Pdb implements Loggable
      * }
      * $res->closeCursor();
      */
-    public static function buildClause(array $conditions, array &$values, $combine = 'AND')
+    public function buildClause(array $conditions, array &$values, $combine = 'AND')
     {
         if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
             throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
         }
+
+        $conditions = PdbCondition::fromArray($conditions);
         $combine = " {$combine} ";
-
         $where = '';
-        foreach ($conditions as $key => $cond) {
+
+        foreach ($conditions as $condition) {
+            $clause = $condition->build($this, $values);
+            if (!$clause) continue;
+
             if ($where) $where .= $combine;
-            if (is_scalar($cond) or is_null($cond)) {
-                if (preg_match('/^[0-9]+$/', $key)) {
-                    $cond = (string) $cond;
-                    if ($cond != '1' and $cond != '0') {
-                        $err = '1 and 0 are the only accepted scalar conditions';
-                        throw new InvalidArgumentException($err);
-                    }
-                    $where .= $cond;
-                } else {
-                    self::validateIdentifierExtended($key);
-                    if (is_null($cond)) {
-                        $where .= "{$key} IS NULL";
-                    } else {
-                        $where .= "{$key} = ?";
-                        $values[] = $cond;
-                    }
-                }
-                continue;
-            }
-
-            if (!is_array($cond)) {
-                throw new InvalidArgumentException('Condition must be scalar, array, or null - not ' . gettype($cond));
-            }
-
-            if (count($cond) != 3) {
-                $err = 'An array condition needs exactly 3 elements: ';
-                $err .= 'column, operator, value(s); ' . count($cond) . ' provided';
-                throw new InvalidArgumentException($err);
-            }
-            list($col, $op, $val) = $cond;
-            self::validateIdentifierExtended($col);
-
-            switch ($op) {
-            case '=':
-            case '<=':
-            case '>=':
-            case '<':
-            case '>':
-            case '!=':
-            case '<>':
-                if (!is_scalar($val)) {
-                    $err = "Operator {$op} needs a scalar value";
-                    throw new InvalidArgumentException($err);
-                }
-                $where .= "{$col} {$op} ?";
-                $values[] = $val;
-                break;
-
-            case 'IS':
-                if ($val === null) $val = 'NULL';
-                if ($val == 'NULL' or $val == 'NOT NULL') {
-                    $where .= "{$col} {$op} {$val}";
-                } else {
-                    $err = "Operator IS value must be NULL or NOT NULL";
-                    throw new InvalidArgumentException($err);
-                }
-                break;
-
-            case 'BETWEEN':
-                $err = "Operator BETWEEN value must be an array of two scalars";
-                if (!is_array($val)) {
-                    throw new InvalidArgumentException($err);
-                } else if (count($val) != 2 or !is_scalar($val[0]) or !is_scalar($val[1])) {
-                    throw new InvalidArgumentException($err);
-                }
-                $where .= "{$col} BETWEEN ? AND ?";
-                $values[] = $val[0];
-                $values[] = $val[1];
-                break;
-
-            case 'IN':
-            case 'NOT IN';
-                $err = "Operator {$op} value must be an array of scalars";
-                if (!is_array($val)) {
-                    throw new InvalidArgumentException($err);
-                } else {
-                       foreach ($val as $idx => $v) {
-                        if (!is_scalar($v)) {
-                            throw new InvalidArgumentException($err . " (index {$idx})");
-                        }
-                    }
-                }
-                $where .= "{$col} {$op} (" . rtrim(str_repeat('?, ', count($val)), ', ') . ')';
-                foreach ($val as $v) {
-                    $values[] = $v;
-                }
-                break;
-
-            case 'CONTAINS':
-                $where .= "{$col} LIKE CONCAT('%', ?, '%')";
-                $values[] = PdbHelpers::likeEscape($val);
-                break;
-
-            case 'BEGINS':
-                $where .= "{$col} LIKE CONCAT(?, '%')";
-                $values[] = PdbHelpers::likeEscape($val);
-                break;
-
-            case 'ENDS':
-                $where .= "{$col} LIKE CONCAT('%', ?)";
-                $values[] = PdbHelpers::likeEscape($val);
-                break;
-
-            case 'IN SET':
-                $where .= "FIND_IN_SET(?, {$col}) > 0";
-                $values[] = PdbHelpers::likeEscape($val);
-                break;
-
-            default:
-                $err = 'Operator not implemented: ' . $op;
-                throw new InvalidArgumentException($err);
-            }
+            $where .= $clause;
         }
+
         return $where;
     }
 
