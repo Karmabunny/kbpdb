@@ -4,7 +4,7 @@
  * @copyright Copyright (c) 2021 Karmabunny
  */
 
-namespace karmabunny\pdb;
+namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
 use PDOException;
