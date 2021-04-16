@@ -7,6 +7,8 @@
 namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
+use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbHelpers;
 use PDOException;
 
 /**
@@ -89,14 +91,14 @@ class PdbCondition
      * The third is only for equality or IS NULL conditions.
      *
      * @param string|int $key
-     * @param PdbCondition|array|string|int|float $item
-     * @return static
+     * @param PdbCondition|array|string|int|float|null $item
+     * @return PdbCondition
      * @throws InvalidArgumentException
      */
     public static function fromShorthand($key, $item)
     {
         // Pass-through.
-        if ($item instanceof self) {
+        if ($item instanceof static) {
             return clone $item;
         }
 
@@ -143,7 +145,7 @@ class PdbCondition
      * shorthand arrays.
      *
      * @param array $clauses
-     * @return static[]
+     * @return PdbCondition[]
      * @throws InvalidArgumentException
      */
     public static function fromArray(array $clauses)
@@ -197,7 +199,7 @@ class PdbCondition
      * permit one to bind the values later in an safe manner.
      *
      * @param Pdb $pdb
-     * @param array &$values
+     * @param array $values
      * @return string
      * @throws PDOException
      * @throws InvalidArgumentException

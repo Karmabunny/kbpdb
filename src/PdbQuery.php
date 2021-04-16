@@ -116,7 +116,7 @@ class PdbQuery
      *
      * Note, this will replace any previous select().
      *
-     * @param string[] $fields
+     * @param string $fields
      * @return static
      */
     public function select(...$fields)
@@ -283,7 +283,7 @@ class PdbQuery
 
     /**
      *
-     * @param string[] $fields
+     * @param string $fields
      * @return static
      */
     public function orderBy(...$fields)
@@ -708,7 +708,7 @@ class PdbQuery
     /**
      *
      * @param string $method
-     * @return void
+     * @return string
      */
     private function raw(string $method)
     {
