@@ -63,4 +63,35 @@ class PdbTable extends Collection
         $this->columns[$column->name] = $column;
         return $this;
     }
+
+
+    /**
+     *
+     * @param PdbTable[] $tables
+     * @return string[]
+     */
+    public function check(array $tables): array
+    {
+        $errors = [];
+
+
+        if (empty($this->columns)) {
+            $errors[] = 'No columns defined';
+            return $errors;
+        }
+
+        if (empty($this->primary_key)) {
+            $errors[] = 'No primary key defined';
+        }
+
+        foreach ($this->columns as $column) {
+            array_push($errors, ...$column->check($tables, $this));
+        }
+
+        foreach ($this->foreign_keys as $fk) {
+            array_push($errors, ...$fk->check($tables, $this));
+        }
+
+        return $errors;
+    }
 }

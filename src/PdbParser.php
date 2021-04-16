@@ -213,9 +213,7 @@ class PdbParser
     public function sanityCheck()
     {
         foreach ($this->tables as $table) {
-            // TODO Wouldn't this be nice? Kind of?
-            // $errors = $table->check($this->tables);
-            $errors = $this->tableSanityCheck($table);
+            $errors = $table->check($this->tables);
 
             if (!empty($errors)) {
                 $this->errors["table \"{$table->name}\""] = $errors;
@@ -258,123 +256,5 @@ class PdbParser
     public function getErrors()
     {
         return $this->errors;
-    }
-
-
-    /**
-     *
-     * @param string $table_name
-     * @param string $column_name
-     * @return PdbColumn|null
-     */
-    private function getColumn(string $table_name, string $column_name)
-    {
-        /** @var PdbTable|null $table */
-        $table = $this->tables[$table_name] ?? null;
-        if (!$table) return null;
-        return $table->columns[$column_name] ?? null;
-    }
-
-
-    /**
-    * Do a sanity check on the table definition
-    *
-    * @param PdbTable $table The table definition
-    * @return string[] Any errors which were detected
-    **/
-    private function tableSanityCheck(PdbTable $table)
-    {
-        $errors = [];
-
-        if (empty($table->columns)) {
-            $errors[] = 'No columns defined';
-            return $errors;
-        }
-
-        if (empty($table->primary_key)) {
-            $errors[] = 'No primary key defined';
-        }
-
-        // If we have an ID column, do some additional checks.
-        if ($id = $table->columns['id'] ?? null) {
-            if (!preg_match('/^(BIG)?INT UNSIGNED$/i', $id->type)) {
-                $errors[] = 'Bad type for "id" column, use INT UNSIGNED or BIGINT UNSIGNED';
-            }
-
-            // If the PK is autoinc, then it can't have one column.
-            // TODO Just because ID is autoinc, we shouldn't also enforce it to
-            // be a PK. Despite it almost always being the case.
-            if ($id->auto_increment) {
-                $primary = $table->primary_key[0] ?? null;
-
-                if (
-                    count($table->primary_key) !== 1 or
-                    $primary !== 'id'
-                ) {
-                    $errors[] = 'Column is autoinc, but isn\'t only column in primary key';
-                }
-            }
-        }
-
-        // Check types match on both sites of the reference
-        // Check column is nullable if SET NULL is used
-        // Check the TO side of the reference is indexed
-        foreach ($table->foreign_keys as $fk) {
-
-            $from_column = $this->getColumn($fk->from_table, $fk->from_column);
-            $to_column = $this->getColumn($fk->to_table, $fk->to_column);
-
-            if (!$from_column) {
-                $errors[] = "Foreign key \"{$fk->from_column}\" on unknown column \"{$fk->from_table}.{$fk->from_column}\"";
-                continue;
-            }
-
-            if (!$to_column) {
-                $errors[] = "Foreign key \"{$fk->from_column}\" points to unknown column \"{$fk->to_table}.{$fk->to_column}\"";
-                continue;
-            }
-
-            if ($to_column->type != $from_column->type) {
-                $errors[] = "Foreign key \"{$fk->from_column}\" column type mismatch ({$to_column->type} vs {$from_column->type}))";
-            }
-
-            if ($fk->update_rule === 'set-null' and !$from_column->is_nullable) {
-                $errors[] = "Foreign key \"{$fk->from_column}\" update action to SET NULL but column doesn't allow nulls";
-            }
-
-            if ($fk->delete_rule == 'set-null' and !$from_column->is_nullable) {
-                $errors[] = "Foreign key \"{$fk->from_column}\" delete action to SET NULL but column doesn't allow nulls";
-            }
-
-            $to_table = $this->tables[$fk->to_table] ?? null;
-            $index_found = false;
-
-            if ($to_table) {
-                // Lucky us, it's a classic FK => PK relation.
-                if ($to_table->primary_key[0] == $fk->to_column) {
-                    $index_found = true;
-                }
-                // Or it points to an index somewhere.
-                else {
-                    foreach ($to_table->indexes as $index) {
-                        // Apparently only the first column on index.
-                        $column = $index->columns[0] ?? null;
-                        if (!$column) continue;
-
-                        // Found it!
-                        if ($column == $fk->to_column) {
-                            $index_found = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (!$index_found) {
-                $errors[] = "Foreign key \"{$fk->from_column} referenced column ({$fk->to_table}.{$fk->to_column})) is not first column in an index";
-            }
-        }
-
-        return $errors;
     }
 }
