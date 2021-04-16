@@ -12,6 +12,7 @@
         "karmabunny/kb": "^2|dev-master"
     },
     "require-dev": {
+        "phpstan/phpstan": "^0.12.83",
         "phpunit/phpunit": "^9.5"
     },
     "autoload": {
@@ -32,7 +33,8 @@
     "scripts": {
         "tests": "phpunit --testdox tests",
         "create-db": "bash scripts/create_db.sh",
-        "publish": "bash scripts/publish.sh"
+        "publish": "bash scripts/publish.sh",
+        "analyse": "phpstan analyse --level 5 src"
     },
     "repositories": [
         {
