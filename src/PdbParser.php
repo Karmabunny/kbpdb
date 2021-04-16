@@ -26,9 +26,6 @@ use karmabunny\pdb\Models\PdbTable;
 **/
 class PdbParser
 {
-    /** @var Pdb */
-    private $pdb;
-
     /** @var PdbTable[] name => PdbTable */
     public $tables = [];
 
@@ -37,22 +34,6 @@ class PdbParser
 
     /** @var array[] name => string[] */
     private $errors = [];
-
-
-    /**
-     * Initial loading and set-up
-     *
-     * @param Pdb|PdbConfig|array $config
-     **/
-    public function __construct($config)
-    {
-        if ($config instanceof Pdb) {
-            $this->pdb = $config;
-        }
-        else {
-            $this->pdb = Pdb::create($config);
-        }
-    }
 
 
     /**

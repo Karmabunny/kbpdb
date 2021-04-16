@@ -1,7 +1,6 @@
 <?php
 
 use karmabunny\pdb\PdbParser;
-use kbtests\Database;
 use PHPUnit\Framework\TestCase;
 
 
@@ -10,9 +9,7 @@ class PdbParserTest extends TestCase
 
     public function testLoad()
     {
-        $pdb = Database::getConnection();
-
-        $parser = new PdbParser($pdb);
+        $parser = new PdbParser();
         $parser->loadXml(__DIR__ . '/db_struct.xml');
         $parser->sanityCheck();
 
