@@ -3,10 +3,10 @@
 namespace kbtests\Models;
 
 use ArrayIterator;
+use kbtests\Database;
 use IteratorAggregate;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbModel;
-use karmabunny\pdb\PdbAuditTrait;
 use karmabunny\pdb\PdbModelTrait;
 use Traversable;
 
@@ -30,11 +30,7 @@ abstract class Model implements PdbModel, IteratorAggregate
 
     protected static function getConnection(): Pdb
     {
-        if (!isset(self::$pdb)) {
-            $config = require __DIR__ . '/../config.php';
-            self::$pdb = new Pdb($config);
-        }
-        return self::$pdb;
+        return Database::getConnection();
     }
 
 
