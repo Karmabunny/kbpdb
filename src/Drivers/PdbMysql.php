@@ -75,7 +75,7 @@ class PdbMysql extends Pdb
             $this->config->prefix . $table,
         ];
 
-        $res = $this->pdb->query($q, $params, 'pdo');
+        $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
@@ -111,7 +111,7 @@ class PdbMysql extends Pdb
             $this->config->prefix . $table,
         ];
 
-        $res = $this->pdb->query($q, $params, 'pdo');
+        $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {

@@ -18,7 +18,7 @@ class PdbSqlite extends Pdb
     public function listTables()
     {
         $q = 'SELECT name FROM sqlite_master';
-        $res = $this->pdb->query($q, [], 'col');
+        $res = $this->query($q, [], 'col');
         $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
 
         foreach ($res as &$row) {
@@ -41,7 +41,7 @@ class PdbSqlite extends Pdb
             LIMIT 1
         ";
 
-        $res = $this->pdb->query($q, [], 'count');
+        $res = $this->query($q, [], 'count');
         return (bool) $res;
     }
 
@@ -59,7 +59,7 @@ class PdbSqlite extends Pdb
         ";
 
         $params = [$this->config->prefix . $table];
-        $res = $this->pdb->query($q, $params, 'pdo');
+        $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
