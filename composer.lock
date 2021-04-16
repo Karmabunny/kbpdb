@@ -8,25 +8,31 @@
     "packages": [
         {
             "name": "karmabunny/kb",
-            "version": "v2.3.0",
+            "version": "v2.6.0",
             "source": {
                 "type": "git",
                 "url": "git@github.com:Karmabunny/kbphp.git",
-                "reference": "1799cf2153cb65081e568f526f8f70f8670adcbf"
+                "reference": "690ee5d432f14d309122ecd173e14ec4af8132aa"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-1799cf2153cb65081e568f526f8f70f8670adcbf-zip-79ff0d.zip",
-                "reference": "1799cf2153cb65081e568f526f8f70f8670adcbf",
-                "shasum": "bbd69f3210d7b8818d1e93f6e8c565124e538bf1"
+                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-690ee5d432f14d309122ecd173e14ec4af8132aa-zip-1f3c22.zip",
+                "reference": "690ee5d432f14d309122ecd173e14ec4af8132aa",
+                "shasum": "54d410c24cef503247fcdefea5d8a65c3e6abda9"
             },
             "require-dev": {
+                "phpstan/phpstan": "^0.12.82",
                 "phpunit/phpunit": "^9.3"
             },
             "type": "library",
             "autoload": {
                 "psr-4": {
                     "karmabunny\\kb\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Test\\": "test/Test"
                 }
             },
             "scripts": {
@@ -38,6 +44,9 @@
                 ],
                 "docs": [
                     "bash scripts/docs.sh"
+                ],
+                "analyse": [
+                    "phpstan analyse --level 5 src"
                 ]
             },
             "license": [
@@ -45,10 +54,10 @@
             ],
             "description": "Common KB utilities",
             "support": {
-                "source": "https://github.com/Karmabunny/kbphp/tree/v2.3.0",
+                "source": "https://github.com/Karmabunny/kbphp/tree/v2.6.0",
                 "issues": "https://github.com/Karmabunny/kbphp/issues"
             },
-            "time": "2021-03-01T22:37:41+00:00"
+            "time": "2021-04-06T07:06:24+00:00"
         }
     ],
     "packages-dev": [
