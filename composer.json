@@ -16,7 +16,11 @@
     },
     "autoload": {
         "psr-4": {
-            "karmabunny\\pdb\\": "src",
+            "karmabunny\\pdb\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
             "kbtests\\": "tests"
         }
     },
