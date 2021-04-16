@@ -92,7 +92,7 @@ class PdbQuery
             $this->pdb = $pdb;
         }
         else {
-            $this->pdb = new Pdb($pdb);
+            $this->pdb = Pdb::create($pdb);
         }
 
         $this->_last_cmd = __METHOD__;
