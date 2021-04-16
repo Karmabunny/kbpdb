@@ -10,11 +10,12 @@ use karmabunny\kb\Collection;
  */
 class PdbIndex extends Collection
 {
-    /** @var string */
-    public $name;
+
+    const TYPE_INDEX = 'index';
+    const TYPE_UNIQUE = 'unique';
 
     /** @var string */
-    public $type;
+    public $type = 'index';
 
     /** @var string[] */
     public $columns = [];

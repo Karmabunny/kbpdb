@@ -14,16 +14,16 @@ class PdbForeignKey extends Collection
     public $constraint_name;
 
     /** @var string */
-    public $source_table;
+    public $from_table;
 
     /** @var string */
-    public $source_column;
+    public $from_column;
 
     /** @var string */
-    public $referenced_table;
+    public $to_table;
 
     /** @var string */
-    public $referenced_column;
+    public $to_column;
 
     /** @var string */
     public $update_rule;

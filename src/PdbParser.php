@@ -6,10 +6,16 @@
 
 namespace karmabunny\pdb;
 
+use DOMAttr;
 use DOMDocument;
+use DOMElement;
 use Exception;
 use karmabunny\kb\Enc;
-
+use karmabunny\kb\XML;
+use karmabunny\pdb\Models\PdbColumn;
+use karmabunny\pdb\Models\PdbForeignKey;
+use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbTable;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -23,210 +29,179 @@ class PdbParser
     /** @var Pdb */
     private $pdb;
 
-    public $tables;
-    private $views;
-    private $default_attrs;
-    private $load_errors;
+    /** @var PdbTable[] name => PdbTable */
+    public $tables = [];
+
+    /** @var array[] name => array */
+    private $views = [];
+
+    /** @var array[] name => string[] */
+    private $errors = [];
 
 
     /**
      * Initial loading and set-up
      *
      * @param Pdb|PdbConfig|array $config
-     * @param bool $act True if queries should be run, false if they shouldn't (i.e. a dry-run)
      **/
-    public function __construct($config, $act)
+    public function __construct($config)
     {
         if ($config instanceof Pdb) {
             $this->pdb = $config;
         }
         else {
-            $this->pdb = new Pdb($config);
+            $this->pdb = Pdb::create($config);
         }
-
-        $this->database = $this->pdb->config->database;
-        $this->prefix = $this->pdb->config->prefix;
-        $this->act = $act;
-
-        $this->default_attrs = [
-            'table' => ['engine' => 'InnoDB', 'charset' => 'utf8', 'collate' => 'utf8_unicode_ci'],
-            'column' => ['allownull' => 1],
-            'index' => ['type' => 'index']
-        ];
-
-        $this->tables = [];
-        $this->views = [];
-        $this->load_errors = [];
     }
 
 
     /**
     * Loads the XML definition file
     *
-    * @param string|DOMDocument $file DOMDocument or filename to load.
+    * @param string|DOMDocument $dom DOMDocument or filename to load.
     **/
     public function loadXml($dom)
     {
         // If its not a DOMDocument, assume a filename
-        if ($dom instanceof DOMDocument) {
-            $filename = $dom->documentURI;
-        } else {
-            $filename = $dom;
-            $tmp = new DOMDocument();
-            $tmp->loadXML(file_get_contents($filename));
-            if ($tmp == null) {
-                $this->load_errors[$filename] = ['XML parse error'];
-                return;
-            }
-            $dom = $tmp;
+        if (!($dom instanceof DOMDocument)) {
+            $dom = XML::parse(file_get_contents($dom), [
+                'filename' => $dom,
+                'validate' => file_get_contents(__DIR__ . '/db_struct.xsd'),
+            ]);
         }
-
-        // Validate the XML file against the XSD schema
-        libxml_use_internal_errors(true);
-        $result = $dom->schemaValidateSource(file_get_contents(__DIR__ . '/db_struct.xsd'));
-        if (! $result) {
-            $this->load_errors[$filename] = [];
-
-            $errors = libxml_get_errors();
-            foreach ($errors as $error) {
-                switch ($error->level) {
-                    case LIBXML_ERR_WARNING:
-                        $err = "<b>Warning {$error->code}</b>: ";
-                        break;
-                    case LIBXML_ERR_ERROR:
-                        $err = "<b>Error {$error->code}</b>: ";
-                        break;
-                    case LIBXML_ERR_FATAL:
-                        $err = "<b>Fatal Error {$error->code}</b>: ";
-                        break;
-                }
-                $err .= Enc::html(trim($error->message));
-                $err .= " on line <b>{$error->line}</b>";
-                $this->load_errors[$filename][] = $err;
-            }
-
-            libxml_clear_errors();
-        }
-        libxml_use_internal_errors(false);
 
         // Tables
-        $table_nodes = $dom->getElementsByTagName('table');
+        $table_nodes = XML::xpath($dom, './table', 'list');
+
         foreach ($table_nodes as $table_node) {
-            if ($table_node->parentNode->tagName == 'defaults') continue;
+            /** @var DOMElement $table_node */
 
-            $this->mergeDefaultAttrs($table_node);
-
-            if (! $table_node->hasAttribute('name')) throw new Exception ('A table exists in the xml without a defined name');
             $table_name = $table_node->getAttribute('name');
+            if (!$table_name) throw new Exception('A table exists in the xml without a defined name');
+
+            /** @var PdbTable|null $table */
+            $table = &$this->tables[$table_name] ?? null;
 
             // If the table doesn't exist yet in memory, create it
             // It may already exist if doing a cross-module db structure merge
-            $is_new = false;
-            if (empty($this->tables[$table_name])) {
-                $this->tables[$table_name] = [];
-                $this->tables[$table_name]['columns'] = [];
-                $this->tables[$table_name]['primary_key'] = [];
-                $this->tables[$table_name]['indexes'] = [];
-                $this->tables[$table_name]['foreign_keys'] = [];
-                $this->tables[$table_name]['default_records'] = [];
-                $is_new = true;
+            if (!$table) {
+                $table = new PdbTable([
+                    'name' => $table_name,
+                ]);
             }
 
             // Columns
-            $column_nodes = $table_node->getElementsByTagName('column');
-            if ($column_nodes->length > 0) {
-                foreach ($column_nodes as $node) {
-                    $this->mergeDefaultAttrs($node);
+            $column_nodes = XML::xpath($table_node, './column', 'list');
+            foreach ($column_nodes as $node) {
+                /** @var DOMElement $node */
 
-                    $col_name = $node->getAttribute('name');
-
-                    $type = PdbHelpers::typeToUpper($node->getAttribute('type'));
-                    $this->tables[$table_name]['columns'][$col_name] = [
-                        'name' => $col_name,
-                        'type' => $type,
-                        'allownull' => (int) $node->getAttribute('allownull'),
-                        'autoinc' => (int) $node->getAttribute('autoinc'),
-                        'default' => $node->getAttribute('default'),
-                        'previous-names' => $node->getAttribute('previous-names'),
-                    ];
-                }
+                $table->addColumn(new PdbColumn([
+                    'name' => $node->getAttribute('name'),
+                    'type' => PdbHelpers::typeToUpper($node->getAttribute('type')),
+                    'is_nullable' => (bool) $node->getAttribute('allownull'),
+                    'auto_increment' => (int) $node->getAttribute('autoinc') ?: null,
+                    'default' => $node->getAttribute('default') ?: null,
+                    'previous_names' => explode(',', $node->getAttribute('previous-names')),
+                ]));
             }
 
             // Indexes
-            $index_nodes = $table_node->getElementsByTagName('index');
-            foreach ($index_nodes as $node) {
-                $this->mergeDefaultAttrs($node);
+            $index_nodes = XML::xpath($table_node, './index', 'list');
+            foreach ($index_nodes as $index_node) {
+                /** @var DOMElement $index_node */
 
-                $index = [];
+                $index = new PdbIndex([
+                    'type' => $index_node->getAttribute('type'),
+                ]);
 
-                $col_nodes = $node->getElementsByTagName('col');
-                foreach ($col_nodes as $col) {
-                    $this->mergeDefaultAttrs($col);
-                    $col_name = $col->getAttribute('name');
-                    $index[] = $col_name;
+                // The schema ensures we only have 0 or 1.
+                // In this case, we only need one 'col'.
+                // TODO I guess we should freak if there's more than one.
+                $fk_node = XML::first($index_node, 'foreign-key');
+                if ($fk_node) {
+                    $col_node = XML::expectFirst($index_node, 'col');
+
+                    $col_name = $col_node->getAttribute('name');
+                    $index->columns[$col_name] = $col_name;
+
+                    $table->foreign_keys[] = new PdbForeignKey([
+                        'from_table' => $table_name,
+                        'from_column' => $col_name,
+                        'to_table' => $fk_node->getAttribute('table'),
+                        'to_column' => $fk_node->getAttribute('column'),
+                        'update_rule' => $fk_node->getAttribute('update'),
+                        'delete_rule' => $fk_node->getAttribute('delete'),
+                    ]);
+                }
+                // Non-FK indexes.
+                // TODO Hey, do other DBs require the FK to be an index?
+                else {
+                    $col_nodes = $index_node->getElementsByTagName('col');
+                    foreach ($col_nodes as $node) {
+                        /** @var DOMElement $node */
+
+                        $col_name = $node->getAttribute('name');
+                        $index->columns[$col_name] = $col_name;
+                    }
                 }
 
-                $index['type'] = $node->getAttribute('type');
-
-                $this->tables[$table_name]['indexes'][] = $index;
-
-                $fk_nodes = $node->getElementsByTagName('foreign-key');
-                if ($fk_nodes->length == 1) {
-                    $fk = [];
-                    $fk['from_column'] = $index[0];
-                    $fk['to_table'] = $fk_nodes->item(0)->getAttribute('table');
-                    $fk['to_column'] = $fk_nodes->item(0)->getAttribute('column');
-                    $fk['update'] = $fk_nodes->item(0)->getAttribute('update');
-                    $fk['delete'] = $fk_nodes->item(0)->getAttribute('delete');
-                    $this->tables[$table_name]['foreign_keys'][] = $fk;
-                }
+                $table->indexes[] = $index;
             }
 
+            // Does this table already exist? Stop here.
             // Only columns and indexes can be merged across XML files.
-            if (! $is_new) continue;
+            if (!isset($this->tables[$table_name])) {
+                $this->tables[$table_name] = $table;
+                continue;
+            }
 
             // Attributes (engine, charset, etc)
             foreach ($table_node->attributes as $attr) {
-                $this->tables[$table_name]['attrs'][$attr->name] = $attr->value;
+                /** @var DOMAttr $attr */
+                $table->attributes[$attr->name] = $attr->value;
             }
 
-            // Primary key
-            $primary_nodes = $table_node->getElementsByTagName('primary');
-            if ($primary_nodes->length > 0) {
-                $primary_nodes = $primary_nodes->item(0)->getElementsByTagName('col');
-            }
+            // Primary keys
+            $primary_nodes = XML::xpath($table_node, './primary/col', 'list');
 
-            if ($primary_nodes) {
-                foreach ($primary_nodes as $node) {
-                    $this->mergeDefaultAttrs($node);
+            foreach ($primary_nodes as $node) {
+                /** @var DOMElement $node */
+                $col_name = $node->getAttribute('name');
+                $table->primary_key[] = $col_name;
 
-                    $col_name = $node->getAttribute('name');
-                    $this->tables[$table_name]['primary_key'][] = $col_name;
-                }
+                // Also add in the 'is_primary' flag while we're here.
+                /** @var PdbColumn|null $col */
+                $col = &$table->columns[$col_name] ?? null;
+                if ($col) $col->is_primary = true;
             }
 
             // Default records
-            $default_nodes = $table_node->getElementsByTagName('default_records');
-            foreach ($default_nodes as $node) {
-                $this->mergeDefaultAttrs($node);
+            $default_records = XML::xpath($table_node, './default_records/record', 'list');
 
-                $record_nodes = $node->getElementsByTagName('record');
-                foreach ($record_nodes as $record) {
-                    $record_attrs = [];
-                    foreach ($record->attributes as $attr) {
-                        $record_attrs[$attr->name] = $attr->value;
-                    }
-                    $this->tables[$table_name]['default_records'][] = $record_attrs;
+            foreach ($default_records as $record) {
+                $record_attrs = [];
+
+                foreach ($record->attributes as $attr) {
+                    /** @var DOMAttr $attr */
+                    $record_attrs[$attr->name] = $attr->value;
                 }
+
+                $table->default_records[] = $record_attrs;
             }
+
+            // End of table.
+            $this->tables[$table_name] = $table;
         }
 
         // Views
-        $views_nodes = $dom->getElementsByTagName('view');
+        $views_nodes = XML::xpath($dom, './view', 'list');
         foreach ($views_nodes as $view_node) {
-            if (! $table_node->hasAttribute('name')) throw new Exception ('A view exists in the xml without a defined name');
-            $view_name = $view_node->getAttribute('name');
+            /** @var DOMElement $view_node */
 
+            $view_name = $view_node->getAttribute('name');
+            if (!$view_name) throw new Exception('A view exists in the xml without a defined name');
+
+            // @phpstan-ignore-next-line : I don't know what this achieves.
             $this->views[$view_name] = (string) $view_node->firstChild->data;
         }
     }
@@ -237,22 +212,24 @@ class PdbParser
     **/
     public function sanityCheck()
     {
-        foreach ($this->tables as $table_name => $table_def) {
-            $errs = $this->tableSanityCheck($table_name, $table_def);
-            if (count($errs)) {
-                $this->load_errors['table "' . $table_name . '"'] = $errs;
+        foreach ($this->tables as $table) {
+            // TODO Wouldn't this be nice? Kind of?
+            // $errors = $table->check($this->tables);
+            $errors = $this->tableSanityCheck($table);
+
+            if (!empty($errors)) {
+                $this->errors["table \"{$table->name}\""] = $errors;
             }
         }
-        $this->load_errors = array_filter($this->load_errors);
     }
 
 
     /**
     * Were there any load or sanity check errors?
     **/
-    public function hasLoadErrors()
+    public function hasErrors()
     {
-        return (count($this->load_errors) > 0);
+        return !empty($this->errors);
     }
 
 
@@ -261,15 +238,15 @@ class PdbParser
     *
     * @return string HTML
     **/
-    public function getLoadErrorsHtml()
+    public function getErrorsHtml()
     {
         $out = '';
 
-        foreach ($this->load_errors as $file => $errors) {
+        foreach ($this->errors as $file => $errors) {
             $out .= "<h3>Errors in " . Enc::html($file) . "</h3>";
             $out .= "<ul>";
             foreach ($errors as $error) {
-                $out .= "<li>{$error}</li>";
+                $out .= "<li>" . Enc::html($error) . "</li>";
             }
             $out .= "</ul>";
         }
@@ -278,112 +255,126 @@ class PdbParser
     }
 
 
+    public function getErrors()
+    {
+        return $this->errors;
+    }
+
+
+    /**
+     *
+     * @param string $table_name
+     * @param string $column_name
+     * @return PdbColumn|null
+     */
+    private function getColumn(string $table_name, string $column_name)
+    {
+        /** @var PdbTable|null $table */
+        $table = $this->tables[$table_name] ?? null;
+        if (!$table) return null;
+        return $table->columns[$column_name] ?? null;
+    }
+
 
     /**
     * Do a sanity check on the table definition
     *
-    * @param string $table_name The name of the table to check
-    * @param array $table_def The table definition
-    *
-    * @return array Any errors which were detected
+    * @param PdbTable $table The table definition
+    * @return string[] Any errors which were detected
     **/
-    private function tableSanityCheck($table_name, $table_def)
+    private function tableSanityCheck(PdbTable $table)
     {
         $errors = [];
 
-        if (count($table_def['columns']) == 0) {
+        if (empty($table->columns)) {
             $errors[] = 'No columns defined';
             return $errors;
         }
 
-        // Check the id column is an int
-        if (!empty($table_def['columns']['id'])) {
-            $def = $table_def['columns']['id'];
-            if (!preg_match('!^(BIG)?INT UNSIGNED$!i', $def['type'])) {
-                $errors[] = 'Bad type for "id" column, use INT UNSIGNED or BIGINT UNSIGNED';
-            }
-            if ($def['autoinc'] == 1) {
-                if (count($table_def['primary_key']) != 1 or $table_def['primary_key'][0] != 'id') {
-                    $errors[] = 'Column is autoinc, but isn\'t only column in primary key';
-                }
-            }
+        if (empty($table->primary_key)) {
+            $errors[] = 'No primary key defined';
         }
 
-        // Check primary key exists and has columns
-        if (empty($table_def['primary_key'])) {
-            $errors[] = 'No primary key defined';
-        } else {
-            if (count($table_def['primary_key']) == 0) {
-                $errors[] = 'Primary key doesn\'t have any columns';
+        // If we have an ID column, do some additional checks.
+        if ($id = $table->columns['id'] ?? null) {
+            if (!preg_match('/^(BIG)?INT UNSIGNED$/i', $id->type)) {
+                $errors[] = 'Bad type for "id" column, use INT UNSIGNED or BIGINT UNSIGNED';
+            }
+
+            // If the PK is autoinc, then it can't have one column.
+            // TODO Just because ID is autoinc, we shouldn't also enforce it to
+            // be a PK. Despite it almost always being the case.
+            if ($id->auto_increment) {
+                $primary = $table->primary_key[0] ?? null;
+
+                if (
+                    count($table->primary_key) !== 1 or
+                    $primary !== 'id'
+                ) {
+                    $errors[] = 'Column is autoinc, but isn\'t only column in primary key';
+                }
             }
         }
 
         // Check types match on both sites of the reference
         // Check column is nullable if SET NULL is used
         // Check the TO side of the reference is indexed
-        foreach ($table_def['foreign_keys'] as $fk) {
-            $from_column = @$table_def['columns'][$fk['from_column']];
-            $to_column = @$this->tables[$fk['to_table']]['columns'][$fk['to_column']];
+        foreach ($table->foreign_keys as $fk) {
+
+            $from_column = $this->getColumn($fk->from_table, $fk->from_column);
+            $to_column = $this->getColumn($fk->to_table, $fk->to_column);
 
             if (!$from_column) {
-                $errors[] = "Foreign key \"{$fk['from_column']}\" on unknown column \"{$table_name}.{$fk['from_column']}\"";
+                $errors[] = "Foreign key \"{$fk->from_column}\" on unknown column \"{$fk->from_table}.{$fk->from_column}\"";
                 continue;
             }
 
             if (!$to_column) {
-                $errors[] = "Foreign key \"{$fk['from_column']}\" points to unknown column \"{$fk['to_table']}.{$fk['to_column']}\"";
+                $errors[] = "Foreign key \"{$fk->from_column}\" points to unknown column \"{$fk->to_table}.{$fk->to_column}\"";
                 continue;
             }
 
-            if ($to_column['type'] != $from_column['type']) {
-                $errors[] = 'Foreign key "' . $fk['from_column'] . '" column type mismatch (' . $to_column['type'] . ' vs ' . $from_column['type'] . ')';
+            if ($to_column->type != $from_column->type) {
+                $errors[] = "Foreign key \"{$fk->from_column}\" column type mismatch ({$to_column->type} vs {$from_column->type}))";
             }
 
-            if ($fk['update'] == 'set-null' and $table_def['columns'][$fk['from_column']]['allownull'] == 0) {
-                $errors[] = 'Foreign key "' . $fk['from_column'] . '" update action to SET NULL but column doesn\'t allow nulls';
+            if ($fk->update_rule === 'set-null' and !$from_column->is_nullable) {
+                $errors[] = "Foreign key \"{$fk->from_column}\" update action to SET NULL but column doesn't allow nulls";
             }
 
-            if ($fk['delete'] == 'set-null' and $table_def['columns'][$fk['from_column']]['allownull'] == 0) {
-                $errors[] = 'Foreign key "' . $fk['from_column'] . '" delete action to SET NULL but column doesn\'t allow nulls';
+            if ($fk->delete_rule == 'set-null' and !$from_column->is_nullable) {
+                $errors[] = "Foreign key \"{$fk->from_column}\" delete action to SET NULL but column doesn't allow nulls";
             }
 
+            $to_table = $this->tables[$fk->to_table] ?? null;
             $index_found = false;
-            if (@$this->tables[$fk['to_table']]['primary_key'][0] == $fk['to_column']) {
-                $index_found = true;
-            } else {
-                foreach ($this->tables[$fk['to_table']]['indexes'] as $index) {
-                    if ($index[0] == $fk['to_column']) {
-                        $index_found = true;
-                        break;
+
+            if ($to_table) {
+                // Lucky us, it's a classic FK => PK relation.
+                if ($to_table->primary_key[0] == $fk->to_column) {
+                    $index_found = true;
+                }
+                // Or it points to an index somewhere.
+                else {
+                    foreach ($to_table->indexes as $index) {
+                        // Apparently only the first column on index.
+                        $column = $index->columns[0] ?? null;
+                        if (!$column) continue;
+
+                        // Found it!
+                        if ($column == $fk->to_column) {
+                            $index_found = true;
+                            break;
+                        }
                     }
                 }
             }
-            if (! $index_found) {
-                $errors[] = 'Foreign key "' . $fk['from_column'] . '" referenced column (' . $fk['to_table'] . '.' . $fk['to_column'] . ') is not first column in an index';
+
+            if (!$index_found) {
+                $errors[] = "Foreign key \"{$fk->from_column} referenced column ({$fk->to_table}.{$fk->to_column})) is not first column in an index";
             }
         }
-
 
         return $errors;
     }
-
-
-
-    /**
-    * Adds the default attrs to a node
-    *
-    * @param DOMElement $node The dom node to operate on
-    **/
-    private function mergeDefaultAttrs($node)
-    {
-        $default = $this->default_attrs[$node->tagName] ?? null;
-        if (! is_array($default)) return;
-
-        foreach ($default as $name => $value) {
-            if (! $node->hasAttribute($name)) {
-                $node->setAttribute($name, $value);
-            }
-        }
-    }
-
 }
