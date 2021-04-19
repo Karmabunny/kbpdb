@@ -65,7 +65,7 @@ class PdbConfig extends Collection
             $parts = [];
 
             if ($this->host) {
-                $parts[] = 'hosts=' . $this->host;
+                $parts[] = 'host=' . $this->host;
             }
             if ($this->database) {
                 $parts[] = 'dbname=' . $this->database;
