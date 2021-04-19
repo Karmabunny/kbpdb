@@ -13,7 +13,7 @@ use PDOException;
  * Exception thrown when a database query fails, or gives an empty result set
  * for a query which required a row to be returned
  */
-class QueryException extends Exception
+class QueryException extends PdbException
 {
 
     /** @var string */
@@ -21,17 +21,6 @@ class QueryException extends Exception
 
     /** @var array */
     public $params;
-
-    /**
-     * The SQLSTATE error code associated with the failed query.
-     * See e.g.:
-     * https://en.wikibooks.org/wiki/Structured_Query_Language/SQLSTATE
-     * https://dev.mysql.com/doc/refman/5.7/en/error-messages-server.html
-     * https://msdn.microsoft.com/en-us/library/ms714687.aspx
-     *
-     * @var string
-     */
-    public $state;
 
 
     /**
@@ -43,18 +32,6 @@ class QueryException extends Exception
     {
         $this->query = $query;
         $this->message .= ' query was: ' . $query;
-        return $this;
-    }
-
-
-    /**
-     *
-     * @param string $state
-     * @return $this
-     */
-    public function setState(string $state)
-    {
-        $this->state = $state;
         return $this;
     }
 
@@ -87,7 +64,7 @@ class QueryException extends Exception
     /**
      *
      * @param PDOException $exception
-     * @return string
+     * @return string A subclass of QueryException
      */
     protected static function getSubClass(PDOException $exception)
     {
@@ -102,5 +79,4 @@ class QueryException extends Exception
                 return QueryException::class;
         }
     }
-
 }

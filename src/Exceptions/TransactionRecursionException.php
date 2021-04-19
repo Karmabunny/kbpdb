@@ -6,12 +6,10 @@
 
 namespace karmabunny\pdb\Exceptions;
 
-use Exception;
-
 
 /**
  * Exception thrown when an attempt is made to start a transaction from within an existing transaction
  */
-class TransactionRecursionException extends Exception
+class TransactionRecursionException extends PdbException
 {
 }
