@@ -16,6 +16,7 @@ use karmabunny\pdb\Exceptions\TransactionRecursionException;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbNoDriver;
 use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -145,8 +146,14 @@ abstract class Pdb implements Loggable
             $config = new PdbConfig($config);
         }
 
-        $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        try {
+            $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        }
+        catch (PDOException $exception) {
+            throw ConnectionException::create($exception)
+                ->setDsn($config->getDsn());
+        }
         return $pdo;
     }
 
