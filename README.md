@@ -5,7 +5,7 @@
 ```php
 
 $config = include __DIR__ . '/database.php';
-$pdb = new Pdb($config['default']);
+$pdb = Pdb::create($config['default']);
 
 // Full query
 $res = (new PdbQuery($pdb))
@@ -57,7 +57,7 @@ class ClubModel implements PdbModel
     // Create one here, or cache it wherever you please.
     protected static function getConnection(): Pdb
     {
-        return new Pdb($config['default']);
+        return Pdb::create($config['default']);
     }
 
     // Where this model is stored.
@@ -146,32 +146,33 @@ PdbQuery:
   - from('table', 'as')
   - from(['table' => 'as'])
   - join('inner', ['table' => 'as'], ['id' => 'abc'])
+- I got orderBy() wrong, fix that.
 
 Pdb:
 - create consts for row/arr/row-arr/map-arr/etc
-- move PdbQuery::as() to Pdb::query()
-  - something like:
-    - `\ns\class` -> one
-    - `\ns\class[]` -> all
-    - ?? -> keyed
 
 Fixes:
 - Pdb::find() should respect 'date_deleted'
 
 Kinda related:
-- Rewrite kbphp XML class as DOM
-- use DOMDocument + DOMNode/Element everywhere
-- use DOMXPath
+- Rename kbphp XML class as DOM
 
-Probably not possible, but I want to use UUIDv5 on table records.
 
-The idea being:
-- 'PDB' has a single namespace, probably some UUIDv4 or v1
+UUIDs:
+
+- 'PDB' has a single namespace (uuidv4)
 - each table then hashes that with 'schema.table.id'
 - eg. 'twee.users.123'
 
-Result:
-- UUIDs are now deterministic, hurrah!
-- Although not reversible (ID -> UUID, UUID !-> ID)
-- But requires two writes per new record
+Maybe:
+- Make UUID v4 or v5 toggle-able. Maybe.
+
+Uuid 4:
+ - always unique
+ - not deterministic
+
+Uuid 5:
+ - deterministic, hurrah!
+ - Although not reversible (ID -> UUID, UUID !-> ID)
+ - But requires two writes per new record
 
