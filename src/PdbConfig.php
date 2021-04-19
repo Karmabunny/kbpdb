@@ -15,6 +15,13 @@ use karmabunny\kb\Collection;
 class PdbConfig extends Collection
 {
 
+    const TYPE_MYSQL  = 'mysql';
+    const TYPE_SQLITE = 'sqlite';
+    const TYPE_PGSQL  = 'pgsql';
+    const TYPE_MSSQL  = 'mssql';
+    const TYPE_ORACLE = 'oracle';
+
+
     /** @var string */
     public $type;
 
