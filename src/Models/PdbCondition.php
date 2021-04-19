@@ -176,7 +176,7 @@ class PdbCondition
             throw new InvalidArgumentException('Operator unknown: ' . gettype($this->operator));
         }
 
-        if (!isset(self::OPERATORS[$this->operator])) {
+        if (!in_array($this->operator, self::OPERATORS)) {
             throw new InvalidArgumentException('Operator unknown: ' . $this->operator);
         }
 
