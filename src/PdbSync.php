@@ -82,7 +82,7 @@ class PdbSync
             $this->pdb = $config;
         }
         else {
-            $this->pdb = new Pdb($config);
+            $this->pdb = Pdb::create($config);
         }
 
         $this->database = $this->pdb->config->database;
