@@ -399,6 +399,81 @@ abstract class Pdb implements Loggable
     }
 
 
+    /**
+     * Builds a clause string by combining conditions, e.g. for a WHERE or ON clause.
+     * The resultant clause will contain ? markers for safe use in a prepared SQL statement.
+     * The statement and the generated $values can then be run via {@see Pdb::query}.
+     *
+     * Each condition (see $conditions) is one of:
+     *   - The scalar value 1 or 0 (to match either all or no records)
+     *   - A column => value pair
+     *   - An array with three elements: [column, operator, value(s)].
+     *
+     * Conditions are usually combined using AND, but can also be OR or XOR; see the $combine parameter.
+     *
+     * @param array $conditions
+     * Conditions for the clause. Each condition is either:
+     * - The scalar value 1 (to match ALL records -- BEWARE if using the clause in an UPDATE or DELETE)
+     * - The scalar value 0 (to match no records)
+     * - A column => value pair for an '=' condition.
+     *   For example: 'id' => 3
+     * - An array with three elements: [column, operator, value(s)]
+     *   For example:
+     *       ['id', '=', 3]
+     *       ['date_added', 'BETWEEN', ['2010', '2015']]
+     *       ['status', 'IN', ['ACTIVE', 'APPROVE']]
+     *   Simple operators:
+     *       =  <=  >=  <  >  !=  <>
+     *   Operators for LIKE conditions; escaping of characters like % is handled automatically:
+     *       CONTAINS  string
+     *       BEGINS    string
+     *       ENDS      string
+     *   Other operators:
+     *       IS        string 'NULL' or 'NOT NULL'
+     *       BETWEEN   array of 2 values
+     *       (NOT) IN  array of values
+     *       IN SET    string -- note the order matches other operators; ['column', 'IN SET', 'val1,ca']
+     * @param array $values Array of bind parameters. Additional parameters will be appended to this array
+     * @param string $combine String to be placed between the conditions. Must be one of: 'AND', 'OR', 'XOR'
+     * @return string A clause which is safe to use in a prepared SQL statement
+     * @example
+     * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
+     * $params = [];
+     * $where = $pdb->buildClause($conditions, $params);
+     * //
+     * // Variable contents:
+     * // $where == "active = ? AND date_added BETWEEN ? AND ?"
+     * // $params == [1, '2015-01-01', '2016-01-01'];
+     * //
+     * $q = "SELECT * FROM ~my_table WHERE {$where}";
+     * $res = Pdb::query($q, $params, 'pdo');
+     * foreach ($res as $row) {
+     *     // Record processing here
+     * }
+     * $res->closeCursor();
+     */
+    public function buildClause(array $conditions, array &$values, $combine = 'AND')
+    {
+        if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
+            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
+        }
+
+        $conditions = PdbCondition::fromArray($conditions);
+        $combine = " {$combine} ";
+        $where = '';
+
+        foreach ($conditions as $condition) {
+            $clause = $condition->build($this, $values);
+            if (!$clause) continue;
+
+            if ($where) $where .= $combine;
+            $where .= $clause;
+        }
+
+        return $where;
+    }
+
+
     // ===========================================================
     //     Core queries
     // ===========================================================
@@ -866,178 +941,6 @@ abstract class Pdb implements Loggable
     }
 
 
-
-    /**
-     * Builds a clause string by combining conditions, e.g. for a WHERE or ON clause.
-     * The resultant clause will contain ? markers for safe use in a prepared SQL statement.
-     * The statement and the generated $values can then be run via {@see Pdb::query}.
-     *
-     * Each condition (see $conditions) is one of:
-     *   - The scalar value 1 or 0 (to match either all or no records)
-     *   - A column => value pair
-     *   - An array with three elements: [column, operator, value(s)].
-     *
-     * Conditions are usually combined using AND, but can also be OR or XOR; see the $combine parameter.
-     *
-     * @param array $conditions
-     * Conditions for the clause. Each condition is either:
-     * - The scalar value 1 (to match ALL records -- BEWARE if using the clause in an UPDATE or DELETE)
-     * - The scalar value 0 (to match no records)
-     * - A column => value pair for an '=' condition.
-     *   For example: 'id' => 3
-     * - An array with three elements: [column, operator, value(s)]
-     *   For example:
-     *       ['id', '=', 3]
-     *       ['date_added', 'BETWEEN', ['2010', '2015']]
-     *       ['status', 'IN', ['ACTIVE', 'APPROVE']]
-     *   Simple operators:
-     *       =  <=  >=  <  >  !=  <>
-     *   Operators for LIKE conditions; escaping of characters like % is handled automatically:
-     *       CONTAINS  string
-     *       BEGINS    string
-     *       ENDS      string
-     *   Other operators:
-     *       IS        string 'NULL' or 'NOT NULL'
-     *       BETWEEN   array of 2 values
-     *       (NOT) IN  array of values
-     *       IN SET    string -- note the order matches other operators; ['column', 'IN SET', 'val1,ca']
-     * @param array $values Array of bind parameters. Additional parameters will be appended to this array
-     * @param string $combine String to be placed between the conditions. Must be one of: 'AND', 'OR', 'XOR'
-     * @return string A clause which is safe to use in a prepared SQL statement
-     * @example
-     * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
-     * $params = [];
-     * $where = $pdb->buildClause($conditions, $params);
-     * //
-     * // Variable contents:
-     * // $where == "active = ? AND date_added BETWEEN ? AND ?"
-     * // $params == [1, '2015-01-01', '2016-01-01'];
-     * //
-     * $q = "SELECT * FROM ~my_table WHERE {$where}";
-     * $res = Pdb::query($q, $params, 'pdo');
-     * foreach ($res as $row) {
-     *     // Record processing here
-     * }
-     * $res->closeCursor();
-     */
-    public function buildClause(array $conditions, array &$values, $combine = 'AND')
-    {
-        if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
-            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
-        }
-
-        $conditions = PdbCondition::fromArray($conditions);
-        $combine = " {$combine} ";
-        $where = '';
-
-        foreach ($conditions as $condition) {
-            $clause = $condition->build($this, $values);
-            if (!$clause) continue;
-
-            if ($where) $where .= $combine;
-            $where .= $clause;
-        }
-
-        return $where;
-    }
-
-
-    /**
-     * Converts a PDO result set to a common data format:
-     *
-     * arr      An array of rows, where each row is an associative array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * arr-num  An array of rows, where each row is a numeric array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * row      A single row, as an associative array
-     *
-     * row-num  A single row, as a numeric array
-     *
-     * map      An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value is the second
-     *
-     * map-arr  An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value an associative array of name => value pairs
-     *          (if there are multiple subsequent columns)
-     *
-     * val      A single value (i.e. the value of the first column of the
-     *          first row)
-     *
-     * col      All values from the first column, as a numeric array.
-     *          DO NOT USE with boolean columns; see note at
-     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
-     *
-     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
-     * @return array For most types
-     * @return string|int|null|array For 'val'
-     * @throws RowMissingException If the result set didn't contain the required row
-     */
-    protected static function formatRs(PDOStatement $rs, string $type)
-    {
-        switch ($type) {
-        case 'null':
-            return null;
-
-        case 'count':
-            return $rs->rowCount();
-
-        case 'arr':
-            return $rs->fetchAll(PDO::FETCH_ASSOC);
-
-        case 'arr-num':
-            return $rs->fetchAll(PDO::FETCH_NUM);
-
-        case 'row':
-            $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-
-        case 'row-num':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-
-        case 'map':
-            if ($rs->columnCount() < 2) {
-                throw new InvalidArgumentException('Two columns required');
-            }
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
-                $map[$row[0]] = $row[1];
-            }
-            return $map;
-
-        case 'map-arr':
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = reset($row);
-                $map[$id] = $row;
-            }
-            return $map;
-
-        case 'val':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row[0];
-
-        case 'col':
-            $arr = [];
-            while (($col = $rs->fetchColumn(0)) !== false) {
-                $arr[] = $col;
-            }
-            return $arr;
-
-        default:
-            $err = "Unknown return type: {$type}";
-            throw new InvalidArgumentException($err);
-        }
-    }
-
-
     // ===========================================================
     //     Internal helpers
     // ===========================================================
@@ -1167,6 +1070,102 @@ abstract class Pdb implements Loggable
             } else {
                 $st->bindValue($key, $val, PDO::PARAM_STR);
             }
+        }
+    }
+
+
+    /**
+     * Converts a PDO result set to a common data format:
+     *
+     * arr      An array of rows, where each row is an associative array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * arr-num  An array of rows, where each row is a numeric array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * row      A single row, as an associative array
+     *
+     * row-num  A single row, as a numeric array
+     *
+     * map      An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value is the second
+     *
+     * map-arr  An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value an associative array of name => value pairs
+     *          (if there are multiple subsequent columns)
+     *
+     * val      A single value (i.e. the value of the first column of the
+     *          first row)
+     *
+     * col      All values from the first column, as a numeric array.
+     *          DO NOT USE with boolean columns; see note at
+     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
+     *
+     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @return array For most types
+     * @return string|int|null|array For 'val'
+     * @throws RowMissingException If the result set didn't contain the required row
+     */
+    protected static function formatRs(PDOStatement $rs, string $type)
+    {
+        switch ($type) {
+        case 'null':
+            return null;
+
+        case 'count':
+            return $rs->rowCount();
+
+        case 'arr':
+            return $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        case 'arr-num':
+            return $rs->fetchAll(PDO::FETCH_NUM);
+
+        case 'row':
+            $row = $rs->fetch(PDO::FETCH_ASSOC);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row;
+
+        case 'row-num':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row;
+
+        case 'map':
+            if ($rs->columnCount() < 2) {
+                throw new InvalidArgumentException('Two columns required');
+            }
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
+                $map[$row[0]] = $row[1];
+            }
+            return $map;
+
+        case 'map-arr':
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                $id = reset($row);
+                $map[$id] = $row;
+            }
+            return $map;
+
+        case 'val':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row) throw new RowMissingException('Expected a row');
+            return $row[0];
+
+        case 'col':
+            $arr = [];
+            while (($col = $rs->fetchColumn(0)) !== false) {
+                $arr[] = $col;
+            }
+            return $arr;
+
+        default:
+            $err = "Unknown return type: {$type}";
+            throw new InvalidArgumentException($err);
         }
     }
 
