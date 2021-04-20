@@ -681,7 +681,8 @@ class PdbSync
                 AND K.REFERENCED_TABLE_NAME != ''
                 AND K.REFERENCED_COLUMN_NAME != ''
             ORDER BY K.CONSTRAINT_NAME";
-        $res = $this->pdb->query($q, [$table], 'pdo');
+
+        $res = $this->pdb->query($q, [$this->database], 'pdo');
         foreach ($res as $row) {
             $known[$row['TABLE_NAME']][] = $row;
         }
@@ -1021,7 +1022,7 @@ class PdbSync
         $update = self::$foreign_key_actions[$foreign_key['update']];
 
         $pf = $this->prefix;
-        $current_fks = $this->foreignKeyList($this->database, $table_name);
+        $current_fks = $this->foreignKeyList($table_name);
         foreach ($current_fks as $id => $fk) {
             $ignore = false;
             if ($foreign_key['from_column'] != $fk['COLUMN_NAME']) $ignore = true;
