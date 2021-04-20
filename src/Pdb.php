@@ -1086,17 +1086,18 @@ abstract class Pdb implements Loggable
     protected function getFieldQuotes(PDO $pdo)
     {
         switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-            case 'mysql':
+            case PdbConfig::TYPE_MYSQL:
                 $lquote = $rquote = '`';
                 break;
 
-            case 'mssql':
+            case PdbConfig::TYPE_MSSQL:
                 $lquote = '[';
                 $rquote = ']';
                 break;
 
-            case 'sqlite':
-            case 'pgsql':
+            case PdbConfig::TYPE_SQLITE:
+            case PdbConfig::TYPE_PGSQL:
+            case PdbConfig::TYPE_ORACLE:
             default:
                 $lquote = $rquote = '"';
         }
