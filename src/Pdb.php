@@ -1185,7 +1185,10 @@ abstract class Pdb implements Loggable
         // (that use pdb to create logs) can make queries without
         // logging themselves.
 
-        $query .= ' with ' . json_encode($params);
+        if (!empty($params)) {
+            $query .= ' with ' . json_encode($params);
+        }
+
         $this->log($query, Log::LEVEL_DEBUG);
 
         if ($result instanceof QueryException) {
