@@ -1192,23 +1192,4 @@ abstract class Pdb implements Loggable
             $this->log($result, Log::LEVEL_ERROR);
         }
     }
-    /**
-     * Generates a backtrace, and searches it to find the point at which a query was called
-     * @return array The trace entry in which the query was called
-     * @return mixed false If a query call couldn't be found in the trace
-     */
-    private static function backtraceQuery() {
-        $trace = debug_backtrace();
-        $caller = null;
-        while ($step = array_pop($trace)) {
-            if (@$step['class'] == static::class) {
-                // Provide calling step, as it's useful if the current step
-                // doesn't provide file and line num.
-                $step['caller'] = $caller;
-                return $step;
-            }
-            $caller = $step;
-        }
-        return false;
-    }
 }
