@@ -64,6 +64,18 @@ abstract class Pdb implements Loggable
 
     const RETURN_COL = 'col';
 
+    const RETURN_TRY_VAL = 'val?';
+
+    const RETURN_TRY_ROW = 'row?';
+
+    const RETURN_TRY_ROW_NUM = 'row-num?';
+
+    const RETURN_NULLABLE = [
+        self::RETURN_TRY_VAL,
+        self::RETURN_TRY_ROW,
+        self::RETURN_TRY_ROW_NUM,
+    ];
+
     const RETURN_TYPES = [
         self::RETURN_PDO,
         self::RETURN_NULL,
@@ -1124,13 +1136,17 @@ abstract class Pdb implements Loggable
             return $rs->fetchAll(PDO::FETCH_NUM);
 
         case 'row':
+        case 'row?':
+            $nullable = $type === 'row?';
             $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new RowMissingException('Expected a row');
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row;
 
         case 'row-num':
+        case 'row-num?':
+            $nullable = $type === 'row-num?';
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row;
 
         case 'map':
@@ -1152,8 +1168,10 @@ abstract class Pdb implements Loggable
             return $map;
 
         case 'val':
+        case 'val?':
+            $nullable = $type === 'val?';
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row[0];
 
         case 'col':
