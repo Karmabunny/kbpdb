@@ -270,6 +270,17 @@ class PdbSync
                     $col_name = $node->getAttribute('name');
 
                     $type = $this->typeToUpper($node->getAttribute('type'));
+
+                    // Build ENUM/SET values from children <val> elements
+                    if ($type === 'ENUM(xml)' or $type === 'SET(xml)') {
+                        $enum_vals = [];
+                        $val_nodes = $node->getElementsByTagName('val');
+                        foreach ($val_nodes as $val) {
+                            $enum_vals[] = "'" . trim($val->nodeValue) . "'";
+                        }
+                        $type = str_replace('xml', implode(',', $enum_vals), $type);
+                    }
+
                     $this->tables[$table_name]['columns'][$col_name] = [
                         'name' => $col_name,
                         'type' => $type,
