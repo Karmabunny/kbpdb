@@ -12,6 +12,7 @@
         "karmabunny/kb": "^2|dev-master"
     },
     "require-dev": {
+        "phpcompatibility/php-compatibility": "^9.3",
         "phpstan/phpstan": "^0.12.83",
         "phpunit/phpunit": "^9.5"
     },
@@ -31,10 +32,14 @@
         "preferred-install": { "karmabunny/*": "dist" }
     },
     "scripts": {
+        "register-phpcs": "phpcs --config-set installed_paths vendor/phpcompatibility/php-compatibility",
+        "post-install-cmd": "@register-phpcs",
+        "post-update-cmd": "@register-phpcs",
         "tests": "phpunit --testdox tests",
         "create-db": "bash scripts/create_db.sh",
         "publish": "bash scripts/publish.sh",
-        "analyse": "phpstan analyse --level 5 src"
+        "analyse": "phpstan analyse --level 5 src",
+        "compat": "phpcs -p --standard=PHPCompatibility --colors --extensions=php --runtime-set testVersion 7.1 src"
     },
     "repositories": [
         {
