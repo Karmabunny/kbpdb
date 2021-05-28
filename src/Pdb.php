@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
+use karmabunny\kb\Uuid;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -884,6 +885,29 @@ abstract class Pdb implements Loggable
         return $pdo->quote($field, PDO::PARAM_STR);
     }
 
+
+    /**
+     * Create a UUIDv5 for this table + id.
+     *
+     * These are 'namespaced' UUIDs. Within this namespace we have a 'scheme'
+     * that is built from the `database + table + id`. This means UUIDs are
+     * unique _and_ reproducible.
+     *
+     * If the id is zero the UUID will be a nil.
+     *
+     * @param string $table
+     * @param int $id
+     * @return string
+     */
+    public function generateUid(string $table, int $id)
+    {
+        if ($id == 0) return Uuid::nil();
+
+        $scheme = $this->config->database . '.';
+        $scheme .= $this->config->prefix . $table . '.';
+        $scheme .= $this->id;
+        return Uuid::uuid5(self::UUID_NAMESPACE, $scheme);
+    }
 
 
     /**
