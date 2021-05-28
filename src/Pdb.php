@@ -325,7 +325,7 @@ abstract class Pdb implements Loggable
      */
     public function prepare(string $query) {
         $pdo = $this->getConnection();
-        $query = $this->insertPrefixes($pdo, $query);
+        $query = $this->insertPrefixes($query);
 
         try {
             return $pdo->prepare($query);
@@ -870,7 +870,7 @@ abstract class Pdb implements Loggable
 
         // Escape fields.
         if ($type === self::QUOTE_FIELD) {
-            [$left, $right] = $this->getFieldQuotes($pdo);
+            [$left, $right] = $this->getFieldQuotes();
             $field = trim($field, $left . $right);
 
             $parts = explode('.', $field, 2);
@@ -1019,11 +1019,12 @@ abstract class Pdb implements Loggable
      *
      * For things like fields, tables, etc.
      *
-     * @param PDO $pdo
      * @return string[] [left, right]
      */
-    protected function getFieldQuotes(PDO $pdo)
+    protected function getFieldQuotes()
     {
+        $pdo = $this->getConnection();
+
         switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
             case PdbConfig::TYPE_MYSQL:
                 $lquote = $rquote = '`';
@@ -1048,13 +1049,12 @@ abstract class Pdb implements Loggable
     /**
      * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
      *
-     * @param PDO $pdo The database connection, for determining table quoting rules
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
      */
-    protected function insertPrefixes(PDO $pdo, string $query)
+    public function insertPrefixes(string $query)
     {
-        [$lquote, $rquote] = $this->getFieldQuotes($pdo);
+        [$lquote, $rquote] = $this->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
             $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
