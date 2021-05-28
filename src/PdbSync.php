@@ -90,7 +90,7 @@ class PdbSync
         $this->act = $act;
 
         $this->default_attrs = [
-            'table' => ['engine' => 'InnoDB', 'charset' => 'utf8', 'collate' => 'utf8_unicode_ci'],
+            'table' => ['engine' => 'InnoDB', 'charset' => 'utf8mb4', 'collate' => 'utf8mb4_unicode_ci'],
             'column' => ['allownull' => 1],
             'index' => ['type' => 'index']
         ];
