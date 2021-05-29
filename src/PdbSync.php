@@ -786,26 +786,28 @@ class PdbSync
     {
         Pdb::validateIdentifier($table_name);
 
-        $q = "CREATE TABLE ~{$table_name} (\n";
+        $defs = [];
 
         foreach ($table_def['columns'] as $column_name => $def) {
             $spec = $this->createSqlColumnSpec($def);
-            $q .= "  `{$column_name}` {$spec},\n";
+            $defs[] = $this->pdb->quote($column_name, Pdb::QUOTE_FIELD) . ' ' . $spec;
         }
 
         if (@count($table_def['primary_key'])) {
-            $q .= "  PRIMARY KEY (`" . implode('`,`', $table_def['primary_key']) . "`),\n";
+            $primary_key = implode(', ', $this->pdb->quote($table_def['primary_key'], Pdb::QUOTE_FIELD));
+            $defs[] = "PRIMARY KEY ({$primary_key})";
         }
 
         foreach ($table_def['indexes'] as $index) {
             $type = strtoupper($index['type']);
             unset ($index['type']);
 
-            $q .= "  {$type} (`" . implode('`,`', $index) . "`),\n";
+            $index = implode(', ', $this->pdb->quote($index, Pdb::QUOTE_FIELD));
+            $defs[] = "{$type} ({$index})";
         }
 
-        $q = preg_replace("/,\n$/", "\n)", $q);
-
+        $q = "CREATE TABLE ~{$table_name} (\n";
+        $q .= '  ' . implode(",\n  ", $defs) . "\n";
         $q .= " ENGINE = {$table_def['attrs']['engine']},";
         $q .= " CHARACTER SET = '{$table_def['attrs']['charset']}',";
         $q .= " COLLATE = '{$table_def['attrs']['collate']}'";
@@ -815,21 +817,20 @@ class PdbSync
 
 
         // Default records
-        $pdo = $this->pdb->getConnection();
         foreach ($table_def['default_records'] as $record) {
-            $q = "INSERT INTO ~{$table_name} (";
 
-            $vals = '';
+            $cols = [];
+            $vals = [];
+
             foreach ($record as $col => $val) {
-                if ($vals != '') {
-                    $q .= ', ';
-                    $vals .= ', ';
-                }
-                $q .= "`{$col}`";
-                $vals .= $pdo->quote($val);
+                $cols[] = $col;
+                $vals[] = $val;
             }
-            $q .= ") VALUES ({$vals})";
 
+            $cols = implode(', ', $this->pdb->quoteAll($cols, Pdb::QUOTE_FIELD));
+            $vals = implode(', ', $this->pdb->quoteAll($vals, Pdb::QUOTE_VALUE));
+
+            $q = "INSERT INTO ~{$table_name} ({$cols}) VALUES ({$vals})";
             $this->storeQuery('insert_record', $q);
         }
         return true;
@@ -870,10 +871,10 @@ class PdbSync
     **/
     private function changePrimary($table_name, $primary)
     {
-        $table_name = $this->prefix . $table_name;
-        $columns = implode (', ', $primary);
+        $primary = $this->pdb->quoteAll($primary, Pdb::QUOTE_FIELD);
+        $columns = implode(', ', $primary);
 
-        $q = "ALTER TABLE {$table_name} DROP PRIMARY KEY, ADD PRIMARY KEY ({$columns})";
+        $q = "ALTER TABLE ~{$table_name} DROP PRIMARY KEY, ADD PRIMARY KEY ({$columns})";
         $this->storeQuery('alter_pk', $q);
 
         return true;
@@ -908,10 +909,14 @@ class PdbSync
                 $names = explode(',', $column['previous-names']);
 
                 // Search previous names for a match; if found the table is renamed
-                foreach ($names as $n) {
-                    if (isset($current_columns[$n])) {
-                        $this->heading = "<p class=\"heading\"><b>RENAME</b> Column '{$n}' to '{$column['name']}'</p>\n";
-                        $q = "ALTER TABLE ~{$table_name} CHANGE COLUMN {$n} {$column['name']} {$spec}";
+                foreach ($names as $old_name) {
+                    if (isset($current_columns[$old_name])) {
+                        $this->heading = "<p class=\"heading\"><b>RENAME</b> Column '{$old_name}' to '{$column['name']}'</p>\n";
+
+                        $old_name = $this->pdb->quote($old_name, Pdb::QUOTE_FIELD);
+                        $new_name = $this->pdb->quote($column['name'], Pdb::QUOTE_FIELD);
+
+                        $q = "ALTER TABLE ~{$table_name} CHANGE COLUMN {$old_name} {$new_name} {$spec}";
                         $this->storeQuery('rename_col', $q);
                         return true;
                     }
@@ -919,7 +924,9 @@ class PdbSync
             }
 
             $this->heading = "<p class=\"heading\"><b>MISSING</b> Table '{$table_name}', Column '{$column['name']}'</p>\n";
-            $q = "ALTER TABLE ~{$table_name} ADD COLUMN {$column['name']} {$spec}";
+
+            $name = $this->pdb->quote($column['name'], Pdb::QUOTE_FIELD);
+            $q = "ALTER TABLE ~{$table_name} ADD COLUMN {$name} {$spec}";
 
             // Use the MySQL-only AFTER syntax where possible
             if ($prev_column) {
@@ -957,8 +964,9 @@ class PdbSync
             $reason = substr($reason, 0, -2);
             $this->heading = "<p class=\"heading\"><b>COLUMN</b> Table '{$table_name}', Column '{$column['name']}' - {$reason}</p>\n";
 
+            $name = $this->pdb->quote($column['name'], Pdb::QUOTE_FIELD);
             $spec = $this->createSqlColumnSpec($column);
-            $q = "ALTER TABLE ~{$table_name} MODIFY COLUMN {$column['name']} {$spec}";
+            $q = "ALTER TABLE ~{$table_name} MODIFY COLUMN {$name} {$spec}";
             $this->storeQuery('alter_column', $q);
 
             return true;
@@ -979,38 +987,41 @@ class PdbSync
     private function checkIndexMatches($table_name, $index)
     {
         $indexes = $this->indexList($table_name);
-        $table_name = $this->prefix . $table_name;
 
         $type = strtoupper($index['type']);
         unset ($index['type']);
-        $cols = implode(', ', $index);
 
         $action = 'create';
         foreach ($indexes as $name => $info) {
-            if ($info['Columns'] == $index and $info['Type'] == $type) {
-                $action = null;
-                break;
+            if ($info['Columns'] != $index) continue;
 
-            } else if ($info['Columns'] == $index) {
+            if ($info['Type'] == $type) {
+                $action = null;
+            } {
                 $action = 'changetype';
-                break;
             }
+
+            break;
         }
 
         if (! $action) {
             return true;
         }
 
+        $cols = implode(', ', $index);
         $this->heading = "<p class=\"heading\"><b>INDEX</b> Table '{$table_name}', Index ({$cols}) - {$action}</p>\n";
 
         if ($action != 'create') {
-            $q = "ALTER TABLE {$table_name} DROP INDEX {$name}";
+            $q = "ALTER TABLE ~{$table_name} DROP INDEX {$name}";
             $this->storeQuery('drop_index', $q);
         }
 
         if ($type != 'INDEX') $type .= ' INDEX';
 
-        $q = "ALTER TABLE {$table_name} ADD {$type} ({$cols})";
+        $index = $this->pdb->quoteAll($index, Pdb::QUOTE_FIELD);
+        $cols = implode(', ', $index);
+
+        $q = "ALTER TABLE ~{$table_name} ADD {$type} ({$cols})";
         $this->storeQuery('add_index', $q);
 
 
@@ -1057,26 +1068,32 @@ class PdbSync
 
         $this->heading = "<p class=\"heading\"><b>FRN KEY</b> Table '{$table_name}', Foreign key {$foreign_key['from_column']} -> {$foreign_key['to_table']}.{$foreign_key['to_column']}</p>\n";
 
+        $from_column = $this->pdb->quote($foreign_key['from_column'], Pdb::QUOTE_FIELD);
+        $to_column = $this->pdb->quote($foreign_key['to_column'], Pdb::QUOTE_FIELD);
+
         // Look for records which fail to join to the foreign table
         $message = '';
         try {
             $q = "SELECT COUNT(*)
                 FROM ~{$table_name} AS main
-                LEFT JOIN ~{$foreign_key['to_table']} AS extant ON main.{$foreign_key['from_column']} = extant.{$foreign_key['to_column']}
-                WHERE extant.id IS NULL;";
+                LEFT JOIN ~{$foreign_key['to_table']} AS extant
+                    ON main.{$from_column} = extant.{$to_column}
+                WHERE extant.id IS NULL
+            ";
             $num_invalid_records = $this->pdb->query($q, [], 'val');
+
             if ($num_invalid_records > 0) {
                 echo "<p>Warning - {$num_invalid_records} invalid records found ";
                 echo "in <i>{$table_name}</i> table (foreign key on <i>{$foreign_key['from_column']}</i> column)";
 
-                $find_q = str_replace('COUNT(*)', "main.id, main.{$foreign_key['from_column']}", $q);
+                $find_q = str_replace('COUNT(*)', "main.id, main.{$from_column}", $q);
 
                 $delete_q = "DELETE FROM ~{$table_name}
-                    WHERE {$foreign_key['from_column']} NOT IN (SELECT id FROM ~{$foreign_key['to_table']});";
+                    WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key['to_table']});";
 
                 $null_q = "UPDATE ~{$table_name}
-                    SET {$foreign_key['from_column']} = NULL
-                    WHERE {$foreign_key['from_column']} NOT IN (SELECT id FROM ~{$foreign_key['to_table']});";
+                    SET {$from_column} = NULL
+                    WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key['to_table']});";
 
                 echo '<div class="columns">';
 
@@ -1108,8 +1125,8 @@ class PdbSync
             $message = "<p>Warning - query error looking for invalid records; does the table '{$foreign_key['to_table']}' exist?</p>\n";
         }
 
-        $q = "ALTER TABLE ~{$table_name} ADD FOREIGN KEY ({$foreign_key['from_column']})
-            REFERENCES ~{$foreign_key['to_table']} ({$foreign_key['to_column']})
+        $q = "ALTER TABLE ~{$table_name} ADD FOREIGN KEY ({$from_column})
+            REFERENCES ~{$foreign_key['to_table']} ({$to_column})
             ON DELETE {$delete}
             ON UPDATE {$update}";
         $this->storeQuery('add_fk', $q, $message);
@@ -1124,7 +1141,6 @@ class PdbSync
     private function checkRemovedColumns($table_name, $defined_columns)
     {
         $columns = $this->fieldList($table_name);
-        $table_name = $this->prefix . $table_name;
 
         foreach ($columns as $col) {
             $found = false;
@@ -1150,7 +1166,9 @@ class PdbSync
 
                 $this->heading = "<p class=\"heading\"><b>REMOVED</b> Table '{$table_name}', Column '{$col['Field']}'</p>\n";
 
-                $q = "ALTER TABLE {$table_name} DROP COLUMN {$col['Field']}";
+
+                $q = "ALTER TABLE ~{$table_name} DROP COLUMN ";
+                $q .= $this->pdb->quote($col['Field'], Pdb::QUOTE_FIELD);
                 $this->storeQuery('drop_column', $q);
             }
         }
@@ -1163,7 +1181,6 @@ class PdbSync
     private function checkRemovedIndexes($table_name, $defined_indexes)
     {
         $db_indexes = $this->indexList($table_name);
-        $table_name = $this->prefix . $table_name;
 
         foreach ($db_indexes as $db_ind) {
             if ($db_ind['Name'] == 'PRIMARY') continue;
@@ -1183,7 +1200,7 @@ class PdbSync
             if (! $found) {
                 $this->heading = "<p class=\"heading\"><b>REMOVED</b> Table '{$table_name}', Index '{$db_ind['Name']}'</p>\n";
 
-                $q = "ALTER TABLE {$table_name} DROP INDEX {$db_ind['Name']}";
+                $q = "ALTER TABLE ~{$table_name} DROP INDEX {$db_ind['Name']}";
                 $this->storeQuery('drop_index', $q);
             }
         }
@@ -1201,7 +1218,6 @@ class PdbSync
         $current_fks = $this->foreignKeyList($table_name);
 
         $pf = $this->prefix;
-        $table_name = $pf . $table_name;
 
         foreach ($current_fks as $fk) {
             $found = false;
@@ -1227,7 +1243,7 @@ class PdbSync
             if (! $found) {
                 $this->heading = "<p class=\"heading\"><b>REMOVED</b> Table '{$table_name}', Foreign key '{$fk['CONSTRAINT_NAME']}'</p>\n";
 
-                $q = "ALTER TABLE {$table_name} DROP FOREIGN KEY {$fk['CONSTRAINT_NAME']}";
+                $q = "ALTER TABLE ~{$table_name} DROP FOREIGN KEY {$fk['CONSTRAINT_NAME']}";
                 $this->storeQuery('drop_fk', $q);
             }
         }
