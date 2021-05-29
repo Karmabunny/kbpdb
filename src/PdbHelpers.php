@@ -142,6 +142,18 @@ class PdbHelpers
 
 
     /**
+     * Create a bunch of placeholder bind thingos.
+     *
+     * @param int $count
+     * @return string
+     */
+    public static function bindPlaceholders(int $count): string
+    {
+        return implode(', ', array_fill(0, $count, '?'));
+    }
+
+
+    /**
      * Gets the subset of bind params which are associated with a particular query from a generic list of bind params.
      * This is used to support the SQL DB tool.
      * N.B. This probably won't work if you mix named and numbered params in the same query.

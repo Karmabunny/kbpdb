@@ -528,22 +528,20 @@ abstract class Pdb implements Loggable
             throw new InvalidArgumentException($err);
         }
 
-        $q = "INSERT INTO ~{$table}";
+        $columns = [];
+        $values = [];
 
-        $cols = '';
-        $values = '';
-        $insert = [];
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            if ($cols) $cols .= ', ';
-            $cols .= $this->quote($col, self::QUOTE_FIELD);
-            if ($values) $values .= ', ';
-            $values .= ":{$col}";
-            $insert[":{$col}"] = $val;
+            $cols[] = $col;
+            $values[] = $val;
         }
-        $q .= " ({$cols}) VALUES ({$values})";
 
-        $this->query($q, $insert, 'count');
+        $columns = implode(', ', $this->quoteAll($columns));
+        $binds = PdbHelpers::bindPlaceholders(count($values));
+        $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
+
+        $this->query($q, $values, 'count');
         return $this->last_insert_id;
     }
 
@@ -569,20 +567,25 @@ abstract class Pdb implements Loggable
             throw new InvalidArgumentException($err);
         }
 
-        $q = "UPDATE ~{$table} SET ";
-
-        $cols = '';
+        $cols = [];
         $values = [];
+
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            if ($cols) $cols .= ', ';
-            $cols .= "{$col} = ?";
+            $cols[] = $col;
             $values[] = $val;
         }
-        $q .= $cols;
 
-        $q .= " WHERE " . $this->buildClause($conditions, $values);
+        $cols = $this->quoteAll($cols);
+        foreach ($cols as &$col) {
+            $col .= ' = ?';
+        }
+        unset($col);
 
+        $cols = implode(', ', $cols);
+
+        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
+        $q .= $this->buildClause($conditions, $values);
         return $this->query($q, $values, 'count');
     }
 
@@ -861,28 +864,43 @@ abstract class Pdb implements Loggable
      */
     public function quote(string $field, string $type = self::QUOTE_VALUE): string
     {
+        return $this->quoteAll([$field], $type)[0];
+    }
+
+
+    /**
+     * @param string[] $fields
+     * @param string $type
+     * @return string[]
+     */
+    public function quoteAll(array $fields, string $type = self::QUOTE_VALUE): array
+    {
         $pdo = $this->getConnection();
+        [$left, $right] = $this->getFieldQuotes();
 
-        // Integers are valid column names, so we escape them all the same.
-        if (is_numeric($field)) {
-            return $pdo->quote($field, PDO::PARAM_INT);
-        }
-
-        // Escape fields.
-        if ($type === self::QUOTE_FIELD) {
-            [$left, $right] = $this->getFieldQuotes();
-            $field = trim($field, $left . $right);
-
-            $parts = explode('.', $field, 2);
-            foreach ($parts as &$part) {
-                $part = "{$left}{$part}{$right}";
+        foreach ($fields as &$field) {
+            // Integers are valid column names, so we escape them all the same.
+            if (is_numeric($field)) {
+                $field = $pdo->quote($field, PDO::PARAM_INT);
+                continue;
             }
-            unset($part);
-            return implode('.', $parts);
-        }
 
-        // Catch all.
-        return $pdo->quote($field, PDO::PARAM_STR);
+            // Escape fields.
+            if ($type === self::QUOTE_FIELD) {
+                $parts = explode('.', $field, 2);
+                foreach ($parts as &$part) {
+                    $part = $left . trim($part, '\'"[]`') . $right;
+                }
+                unset($part);
+
+                $field = implode('.', $parts);
+                continue;
+            }
+
+            $field = $pdo->quote($field, PDO::PARAM_STR);
+        }
+        unset($field);
+        return $fields;
     }
 
 
