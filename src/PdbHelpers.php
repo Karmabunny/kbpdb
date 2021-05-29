@@ -15,6 +15,38 @@ use InvalidArgumentException;
 class PdbHelpers
 {
 
+    const TYPE_SELECT = 'SELECT';
+    const TYPE_INSERT = 'INSERT';
+    const TYPE_UPDATE = 'UPDATE';
+    const TYPE_CREATE = 'CREATE';
+    const TYPE_ALTER  = 'ALTER';
+
+
+    /**
+     * Determine the query type.
+     *
+     * @param string $query
+     * @return string|null null if invalid.
+     */
+    public static function getQueryType(string $query)
+    {
+        $matches = [];
+        preg_match('/^\s*(\w+)[^\w]/', $query, $matches);
+        $type = strtoupper($matches[1] ?? '');
+
+        switch ($type) {
+            case self::TYPE_SELECT:
+            case self::TYPE_INSERT:
+            case self::TYPE_UPDATE:
+            case self::TYPE_CREATE:
+            case self::TYPE_ALTER:
+                return $type;
+        }
+
+        return null;
+    }
+
+
     /**
      * Split an aliased field into a string pair.
      *
@@ -258,5 +290,29 @@ class PdbHelpers
             $line = preg_replace($pattern, '', $line);
         }
         return implode("\n", $lines);
+    }
+
+
+    /**
+     * Return a query with the values substituted into their respective
+     * binding positions.
+     *
+     * __DO NOT EXECUTE THIS STRING.__
+     *
+     * These values are _not_ properly escaped.
+     * This is purefuly for logging.
+     *
+     * Note, only works for ? bindings, not :name types.
+     *
+     * @param string $query
+     * @param array $values
+     * @return string
+     */
+    public static function prettyQuery(string $query, array $values)
+    {
+        $i = 0;
+        return preg_replace_callback('/\?/', function() use ($values, &$i) {
+            return preg_replace('/\'/', '\\\'', $values[$i++]);
+        }, $query);
     }
 }
