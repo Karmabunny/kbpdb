@@ -9,6 +9,7 @@ namespace karmabunny\pdb;
 use DOMDocument;
 use Exception;
 use karmabunny\kb\Enc;
+use karmabunny\kb\Uuid;
 use karmabunny\pdb\Exceptions\QueryException;
 
 
@@ -824,7 +825,20 @@ class PdbSync
 
             foreach ($record as $col => $val) {
                 $cols[] = $col;
-                $vals[] = $val;
+
+                switch (strtolower($val)) {
+                    case 'now()':
+                        $vals[] = Pdb::now();
+                        break;
+
+                    case 'uuid()':
+                        $vals[] = Uuid::uuid4();
+                        break;
+
+                    default:
+                        $vals[] = $val;
+                        break;
+                }
             }
 
             $cols = implode(', ', $this->pdb->quoteAll($cols, Pdb::QUOTE_FIELD));
