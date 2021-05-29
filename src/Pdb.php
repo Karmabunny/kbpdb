@@ -10,6 +10,7 @@ use InvalidArgumentException;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
+use karmabunny\kb\Uuid;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -63,6 +64,18 @@ abstract class Pdb implements Loggable
     const RETURN_VAL = 'val';
 
     const RETURN_COL = 'col';
+
+    const RETURN_TRY_VAL = 'val?';
+
+    const RETURN_TRY_ROW = 'row?';
+
+    const RETURN_TRY_ROW_NUM = 'row-num?';
+
+    const RETURN_NULLABLE = [
+        self::RETURN_TRY_VAL,
+        self::RETURN_TRY_ROW,
+        self::RETURN_TRY_ROW_NUM,
+    ];
 
     const RETURN_TYPES = [
         self::RETURN_PDO,
@@ -312,7 +325,7 @@ abstract class Pdb implements Loggable
      */
     public function prepare(string $query) {
         $pdo = $this->getConnection();
-        $query = $this->insertPrefixes($pdo, $query);
+        $query = $this->insertPrefixes($query);
 
         try {
             return $pdo->prepare($query);
@@ -399,6 +412,81 @@ abstract class Pdb implements Loggable
     }
 
 
+    /**
+     * Builds a clause string by combining conditions, e.g. for a WHERE or ON clause.
+     * The resultant clause will contain ? markers for safe use in a prepared SQL statement.
+     * The statement and the generated $values can then be run via {@see Pdb::query}.
+     *
+     * Each condition (see $conditions) is one of:
+     *   - The scalar value 1 or 0 (to match either all or no records)
+     *   - A column => value pair
+     *   - An array with three elements: [column, operator, value(s)].
+     *
+     * Conditions are usually combined using AND, but can also be OR or XOR; see the $combine parameter.
+     *
+     * @param array $conditions
+     * Conditions for the clause. Each condition is either:
+     * - The scalar value 1 (to match ALL records -- BEWARE if using the clause in an UPDATE or DELETE)
+     * - The scalar value 0 (to match no records)
+     * - A column => value pair for an '=' condition.
+     *   For example: 'id' => 3
+     * - An array with three elements: [column, operator, value(s)]
+     *   For example:
+     *       ['id', '=', 3]
+     *       ['date_added', 'BETWEEN', ['2010', '2015']]
+     *       ['status', 'IN', ['ACTIVE', 'APPROVE']]
+     *   Simple operators:
+     *       =  <=  >=  <  >  !=  <>
+     *   Operators for LIKE conditions; escaping of characters like % is handled automatically:
+     *       CONTAINS  string
+     *       BEGINS    string
+     *       ENDS      string
+     *   Other operators:
+     *       IS        string 'NULL' or 'NOT NULL'
+     *       BETWEEN   array of 2 values
+     *       (NOT) IN  array of values
+     *       IN SET    string -- note the order matches other operators; ['column', 'IN SET', 'val1,ca']
+     * @param array $values Array of bind parameters. Additional parameters will be appended to this array
+     * @param string $combine String to be placed between the conditions. Must be one of: 'AND', 'OR', 'XOR'
+     * @return string A clause which is safe to use in a prepared SQL statement
+     * @example
+     * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
+     * $params = [];
+     * $where = $pdb->buildClause($conditions, $params);
+     * //
+     * // Variable contents:
+     * // $where == "active = ? AND date_added BETWEEN ? AND ?"
+     * // $params == [1, '2015-01-01', '2016-01-01'];
+     * //
+     * $q = "SELECT * FROM ~my_table WHERE {$where}";
+     * $res = Pdb::query($q, $params, 'pdo');
+     * foreach ($res as $row) {
+     *     // Record processing here
+     * }
+     * $res->closeCursor();
+     */
+    public function buildClause(array $conditions, array &$values, $combine = 'AND')
+    {
+        if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
+            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
+        }
+
+        $conditions = PdbCondition::fromArray($conditions);
+        $combine = " {$combine} ";
+        $where = '';
+
+        foreach ($conditions as $condition) {
+            $clause = $condition->build($this, $values);
+            if (!$clause) continue;
+
+            if ($where) $where .= $combine;
+            $where .= $clause;
+        }
+
+        return $where;
+    }
+
+
     // ===========================================================
     //     Core queries
     // ===========================================================
@@ -440,22 +528,20 @@ abstract class Pdb implements Loggable
             throw new InvalidArgumentException($err);
         }
 
-        $q = "INSERT INTO ~{$table}";
+        $columns = [];
+        $values = [];
 
-        $cols = '';
-        $values = '';
-        $insert = [];
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            if ($cols) $cols .= ', ';
-            $cols .= $this->quote($col, self::QUOTE_FIELD);
-            if ($values) $values .= ', ';
-            $values .= ":{$col}";
-            $insert[":{$col}"] = $val;
+            $cols[] = $col;
+            $values[] = $val;
         }
-        $q .= " ({$cols}) VALUES ({$values})";
 
-        $this->query($q, $insert, 'count');
+        $columns = implode(', ', $this->quoteAll($columns));
+        $binds = PdbHelpers::bindPlaceholders(count($values));
+        $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
+
+        $this->query($q, $values, 'count');
         return $this->last_insert_id;
     }
 
@@ -481,20 +567,25 @@ abstract class Pdb implements Loggable
             throw new InvalidArgumentException($err);
         }
 
-        $q = "UPDATE ~{$table} SET ";
-
-        $cols = '';
+        $cols = [];
         $values = [];
+
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            if ($cols) $cols .= ', ';
-            $cols .= "{$col} = ?";
+            $cols[] = $col;
             $values[] = $val;
         }
-        $q .= $cols;
 
-        $q .= " WHERE " . $this->buildClause($conditions, $values);
+        $cols = $this->quoteAll($cols);
+        foreach ($cols as &$col) {
+            $col .= ' = ?';
+        }
+        unset($col);
 
+        $cols = implode(', ', $cols);
+
+        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
+        $q .= $this->buildClause($conditions, $values);
         return $this->query($q, $values, 'count');
     }
 
@@ -773,30 +864,68 @@ abstract class Pdb implements Loggable
      */
     public function quote(string $field, string $type = self::QUOTE_VALUE): string
     {
-        $pdo = $this->getConnection();
-
-        // Integers are valid column names, so we escape them all the same.
-        if (is_numeric($field)) {
-            return $pdo->quote($field, PDO::PARAM_INT);
-        }
-
-        // Escape fields.
-        if ($type === self::QUOTE_FIELD) {
-            [$left, $right] = $this->getFieldQuotes($pdo);
-            $field = trim($field, $left . $right);
-
-            $parts = explode('.', $field, 2);
-            foreach ($parts as &$part) {
-                $part = "{$left}{$part}{$right}";
-            }
-            unset($part);
-            return implode('.', $parts);
-        }
-
-        // Catch all.
-        return $pdo->quote($field, PDO::PARAM_STR);
+        return $this->quoteAll([$field], $type)[0];
     }
 
+
+    /**
+     * @param string[] $fields
+     * @param string $type
+     * @return string[]
+     */
+    public function quoteAll(array $fields, string $type = self::QUOTE_VALUE): array
+    {
+        $pdo = $this->getConnection();
+        [$left, $right] = $this->getFieldQuotes();
+
+        foreach ($fields as &$field) {
+            // Integers are valid column names, so we escape them all the same.
+            if (is_numeric($field)) {
+                $field = $pdo->quote($field, PDO::PARAM_INT);
+                continue;
+            }
+
+            // Escape fields.
+            if ($type === self::QUOTE_FIELD) {
+                $parts = explode('.', $field, 2);
+                foreach ($parts as &$part) {
+                    $part = $left . trim($part, '\'"[]`') . $right;
+                }
+                unset($part);
+
+                $field = implode('.', $parts);
+                continue;
+            }
+
+            $field = $pdo->quote($field, PDO::PARAM_STR);
+        }
+        unset($field);
+        return $fields;
+    }
+
+
+    /**
+     * Create a UUIDv5 for this table + id.
+     *
+     * These are 'namespaced' UUIDs. Within this namespace we have a 'scheme'
+     * that is built from the `database + table + id`. This means UUIDs are
+     * unique _and_ reproducible.
+     *
+     * If the id is zero the UUID will be a nil.
+     *
+     * @param string $table
+     * @param int $id
+     * @return string
+     */
+    public function generateUid(string $table, int $id)
+    {
+        if ($id == 0) return Uuid::nil();
+
+        $scheme = $this->config->database . '.';
+        $scheme .= $this->config->prefix . $table . '.';
+        $scheme .= $this->id;
+        return Uuid::uuid5(self::UUID_NAMESPACE, $scheme);
+    }
 
 
     /**
@@ -866,178 +995,6 @@ abstract class Pdb implements Loggable
     }
 
 
-
-    /**
-     * Builds a clause string by combining conditions, e.g. for a WHERE or ON clause.
-     * The resultant clause will contain ? markers for safe use in a prepared SQL statement.
-     * The statement and the generated $values can then be run via {@see Pdb::query}.
-     *
-     * Each condition (see $conditions) is one of:
-     *   - The scalar value 1 or 0 (to match either all or no records)
-     *   - A column => value pair
-     *   - An array with three elements: [column, operator, value(s)].
-     *
-     * Conditions are usually combined using AND, but can also be OR or XOR; see the $combine parameter.
-     *
-     * @param array $conditions
-     * Conditions for the clause. Each condition is either:
-     * - The scalar value 1 (to match ALL records -- BEWARE if using the clause in an UPDATE or DELETE)
-     * - The scalar value 0 (to match no records)
-     * - A column => value pair for an '=' condition.
-     *   For example: 'id' => 3
-     * - An array with three elements: [column, operator, value(s)]
-     *   For example:
-     *       ['id', '=', 3]
-     *       ['date_added', 'BETWEEN', ['2010', '2015']]
-     *       ['status', 'IN', ['ACTIVE', 'APPROVE']]
-     *   Simple operators:
-     *       =  <=  >=  <  >  !=  <>
-     *   Operators for LIKE conditions; escaping of characters like % is handled automatically:
-     *       CONTAINS  string
-     *       BEGINS    string
-     *       ENDS      string
-     *   Other operators:
-     *       IS        string 'NULL' or 'NOT NULL'
-     *       BETWEEN   array of 2 values
-     *       (NOT) IN  array of values
-     *       IN SET    string -- note the order matches other operators; ['column', 'IN SET', 'val1,ca']
-     * @param array $values Array of bind parameters. Additional parameters will be appended to this array
-     * @param string $combine String to be placed between the conditions. Must be one of: 'AND', 'OR', 'XOR'
-     * @return string A clause which is safe to use in a prepared SQL statement
-     * @example
-     * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
-     * $params = [];
-     * $where = $pdb->buildClause($conditions, $params);
-     * //
-     * // Variable contents:
-     * // $where == "active = ? AND date_added BETWEEN ? AND ?"
-     * // $params == [1, '2015-01-01', '2016-01-01'];
-     * //
-     * $q = "SELECT * FROM ~my_table WHERE {$where}";
-     * $res = Pdb::query($q, $params, 'pdo');
-     * foreach ($res as $row) {
-     *     // Record processing here
-     * }
-     * $res->closeCursor();
-     */
-    public function buildClause(array $conditions, array &$values, $combine = 'AND')
-    {
-        if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
-            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
-        }
-
-        $conditions = PdbCondition::fromArray($conditions);
-        $combine = " {$combine} ";
-        $where = '';
-
-        foreach ($conditions as $condition) {
-            $clause = $condition->build($this, $values);
-            if (!$clause) continue;
-
-            if ($where) $where .= $combine;
-            $where .= $clause;
-        }
-
-        return $where;
-    }
-
-
-    /**
-     * Converts a PDO result set to a common data format:
-     *
-     * arr      An array of rows, where each row is an associative array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * arr-num  An array of rows, where each row is a numeric array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
-     *
-     * row      A single row, as an associative array
-     *
-     * row-num  A single row, as a numeric array
-     *
-     * map      An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value is the second
-     *
-     * map-arr  An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value an associative array of name => value pairs
-     *          (if there are multiple subsequent columns)
-     *
-     * val      A single value (i.e. the value of the first column of the
-     *          first row)
-     *
-     * col      All values from the first column, as a numeric array.
-     *          DO NOT USE with boolean columns; see note at
-     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
-     *
-     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
-     * @return array For most types
-     * @return string|int|null|array For 'val'
-     * @throws RowMissingException If the result set didn't contain the required row
-     */
-    protected static function formatRs(PDOStatement $rs, string $type)
-    {
-        switch ($type) {
-        case 'null':
-            return null;
-
-        case 'count':
-            return $rs->rowCount();
-
-        case 'arr':
-            return $rs->fetchAll(PDO::FETCH_ASSOC);
-
-        case 'arr-num':
-            return $rs->fetchAll(PDO::FETCH_NUM);
-
-        case 'row':
-            $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-
-        case 'row-num':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row;
-
-        case 'map':
-            if ($rs->columnCount() < 2) {
-                throw new InvalidArgumentException('Two columns required');
-            }
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
-                $map[$row[0]] = $row[1];
-            }
-            return $map;
-
-        case 'map-arr':
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = reset($row);
-                $map[$id] = $row;
-            }
-            return $map;
-
-        case 'val':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row) throw new RowMissingException('Expected a row');
-            return $row[0];
-
-        case 'col':
-            $arr = [];
-            while (($col = $rs->fetchColumn(0)) !== false) {
-                $arr[] = $col;
-            }
-            return $arr;
-
-        default:
-            $err = "Unknown return type: {$type}";
-            throw new InvalidArgumentException($err);
-        }
-    }
-
-
     // ===========================================================
     //     Internal helpers
     // ===========================================================
@@ -1080,23 +1037,25 @@ abstract class Pdb implements Loggable
      *
      * For things like fields, tables, etc.
      *
-     * @param PDO $pdo
      * @return string[] [left, right]
      */
-    protected function getFieldQuotes(PDO $pdo)
+    protected function getFieldQuotes()
     {
+        $pdo = $this->getConnection();
+
         switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-            case 'mysql':
+            case PdbConfig::TYPE_MYSQL:
                 $lquote = $rquote = '`';
                 break;
 
-            case 'mssql':
+            case PdbConfig::TYPE_MSSQL:
                 $lquote = '[';
                 $rquote = ']';
                 break;
 
-            case 'sqlite':
-            case 'pgsql':
+            case PdbConfig::TYPE_SQLITE:
+            case PdbConfig::TYPE_PGSQL:
+            case PdbConfig::TYPE_ORACLE:
             default:
                 $lquote = $rquote = '"';
         }
@@ -1108,13 +1067,12 @@ abstract class Pdb implements Loggable
     /**
      * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
      *
-     * @param PDO $pdo The database connection, for determining table quoting rules
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
      */
-    protected function insertPrefixes(PDO $pdo, string $query)
+    public function insertPrefixes(string $query)
     {
-        [$lquote, $rquote] = $this->getFieldQuotes($pdo);
+        [$lquote, $rquote] = $this->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
             $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
@@ -1171,6 +1129,108 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Converts a PDO result set to a common data format:
+     *
+     * arr      An array of rows, where each row is an associative array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * arr-num  An array of rows, where each row is a numeric array.
+     *          Use only for very small result sets, e.g. <= 20 rows.
+     *
+     * row      A single row, as an associative array
+     *
+     * row-num  A single row, as a numeric array
+     *
+     * map      An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value is the second
+     *
+     * map-arr  An array of identifier => value pairs, where the
+     *          identifier is the first column in the result set, and the
+     *          value an associative array of name => value pairs
+     *          (if there are multiple subsequent columns)
+     *
+     * val      A single value (i.e. the value of the first column of the
+     *          first row)
+     *
+     * col      All values from the first column, as a numeric array.
+     *          DO NOT USE with boolean columns; see note at
+     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
+     *
+     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @return array For most types
+     * @return string|int|null|array For 'val'
+     * @throws RowMissingException If the result set didn't contain the required row
+     */
+    protected static function formatRs(PDOStatement $rs, string $type)
+    {
+        switch ($type) {
+        case 'null':
+            return null;
+
+        case 'count':
+            return $rs->rowCount();
+
+        case 'arr':
+            return $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        case 'arr-num':
+            return $rs->fetchAll(PDO::FETCH_NUM);
+
+        case 'row':
+        case 'row?':
+            $nullable = $type === 'row?';
+            $row = $rs->fetch(PDO::FETCH_ASSOC);
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
+            return $row;
+
+        case 'row-num':
+        case 'row-num?':
+            $nullable = $type === 'row-num?';
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
+            return $row;
+
+        case 'map':
+            if ($rs->columnCount() < 2) {
+                throw new InvalidArgumentException('Two columns required');
+            }
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
+                $map[$row[0]] = $row[1];
+            }
+            return $map;
+
+        case 'map-arr':
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                $id = reset($row);
+                $map[$id] = $row;
+            }
+            return $map;
+
+        case 'val':
+        case 'val?':
+            $nullable = $type === 'val?';
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
+            return $row[0];
+
+        case 'col':
+            $arr = [];
+            while (($col = $rs->fetchColumn(0)) !== false) {
+                $arr[] = $col;
+            }
+            return $arr;
+
+        default:
+            $err = "Unknown return type: {$type}";
+            throw new InvalidArgumentException($err);
+        }
+    }
+
+
+    /**
      * Log something.
      *
      * @param string $query
@@ -1185,100 +1245,14 @@ abstract class Pdb implements Loggable
         // (that use pdb to create logs) can make queries without
         // logging themselves.
 
-        $query .= ' with ' . json_encode($params);
+        if (!empty($params)) {
+            $query .= ' with ' . json_encode($params);
+        }
+
         $this->log($query, Log::LEVEL_DEBUG);
 
         if ($result instanceof QueryException) {
             $this->log($result, Log::LEVEL_ERROR);
         }
-    }
-
-
-    /**
-     * Gets the subset of bind params which are associated with a particular query from a generic list of bind params.
-     * This is used to support the SQL DB tool.
-     * N.B. This probably won't work if you mix named and numbered params in the same query.
-     *
-     * @param string $q
-     * @param array $binds generic list of binds
-     * @return array
-     */
-    public static function getBindSubset(string $q, array $binds)
-    {
-        $q = PdbHelpers::stripStrings($q);
-
-        // Strip named params which aren't required
-        // N.B. identifier format matches self::validateIdentifier
-        $params = [];
-        preg_match_all('/:[a-z_][a-z_0-9]*/i', $q, $params);
-        $params = $params[0];
-        foreach ($binds as $key => $val) {
-            if (is_int($key)) continue;
-
-            if (count($params) == 0) {
-                unset($binds[$key]);
-                continue;
-            }
-
-            $required = false;
-            foreach ($params as $param) {
-                if ($key[0] == ':') {
-                    if ($param[0] != ':') {
-                        $param = ':' . $param;
-                    }
-                } else {
-                    $param = ltrim($param, ':');
-                }
-                if ($key == $param) {
-                    $required = true;
-                }
-            }
-            if (!$required) {
-                unset($binds[$key]);
-            }
-        }
-
-        // Strip numbered params which aren't required
-        $params = [];
-        preg_match_all('/\?/', $q, $params);
-        $params = $params[0];
-        if (count($params) == 0) {
-            foreach ($binds as $key => $bind) {
-                if (is_int($key)) {
-                    unset($binds[$key]);
-                }
-            }
-            return $binds;
-        }
-
-        foreach ($binds as $key => $val) {
-            if (!is_int($key)) unset($binds[$key]);
-        }
-        while (count($params) < count($binds)) {
-            array_pop($binds);
-        }
-
-        return $binds;
-    }
-
-
-    /**
-     * Generates a backtrace, and searches it to find the point at which a query was called
-     * @return array The trace entry in which the query was called
-     * @return mixed false If a query call couldn't be found in the trace
-     */
-    private static function backtraceQuery() {
-        $trace = debug_backtrace();
-        $caller = null;
-        while ($step = array_pop($trace)) {
-            if (@$step['class'] == static::class) {
-                // Provide calling step, as it's useful if the current step
-                // doesn't provide file and line num.
-                $step['caller'] = $caller;
-                return $step;
-            }
-            $caller = $step;
-        }
-        return false;
     }
 }

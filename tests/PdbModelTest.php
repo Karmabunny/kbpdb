@@ -1,7 +1,8 @@
 <?php
 
-use karmabunny\pdb\DatabaseSync;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbSync;
+use kbtests\Database;
 use PHPUnit\Framework\TestCase;
 use kbtests\Models\Club;
 
@@ -11,11 +12,10 @@ class PdbModelTest extends TestCase
 
     public function setUp(): void
     {
-        $this->config = require __DIR__ . '/config.php';
-        $pdb = new Pdb($this->config);
+        $pdb = Database::getConnection();
         $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
 
-        $sync = new DatabaseSync($pdb, true);
+        $sync = new PdbSync($pdb, true);
         $sync->loadXml(__DIR__ . '/db_struct.xml');
         $sync->sanityCheck();
         $sync->updateDatabase();
@@ -55,7 +55,7 @@ class PdbModelTest extends TestCase
         $this->assertEquals($uid, $model->uid);
 
         // Fetch a fresh one.
-        $model = Club::find(['id' => $id]);
+        $model = Club::findOne(['id' => $id]);
 
         // Test it all again.
         $this->assertNotEquals($modified, $model->date_modified);
@@ -74,7 +74,7 @@ class PdbModelTest extends TestCase
         $this->assertNotEquals($modified, $model->date_modified);
 
         // Still exists.
-        $pdb = new Pdb($this->config);
+        $pdb = Database::getConnection();
         $exists = $pdb->recordExists($model->getTableName(), ['id' => $model->id]);
         $this->assertTrue($exists);
 

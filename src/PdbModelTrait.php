@@ -6,43 +6,25 @@
 
 namespace karmabunny\pdb;
 
-use DateTimeImmutable;
-use karmabunny\kb\Uuid;
 
 /**
+ * This implements basic querying interfaces for a model.
  *
  * @package karmabunny\pdb
  */
 trait PdbModelTrait
 {
 
-    /** @var int */
-    public $id = 0;
-
-    /** @var string */
-    public $uid;
-
-    /** @var bool */
-    public $active = true;
-
-    /** @var string */
-    public $date_added;
-
-    /** @var string */
-    public $date_modified;
-
-    /** @var string|null */
-    public $date_deleted;
-
-
     /**
+     * The connection used queries in this model.
      *
      * @return Pdb
      */
-    protected abstract static function getConnection(): Pdb;
+    public abstract static function getConnection(): Pdb;
 
 
     /**
+     * The table name for this model, non-prefixed.
      *
      * @return string
      */
@@ -50,149 +32,7 @@ trait PdbModelTrait
 
 
     /**
-     *
-     * @return DateTimeInterface|null
-     */
-    public function getDateAdded()
-    {
-        if ($this->date_added) {
-            return new DateTimeImmutable($this->date_added);
-        }
-        return null;
-    }
-
-
-    /**
-     *
-     * @return DateTimeInterface|null
-     */
-    public function getDateUpdated()
-    {
-        if ($this->date_updated) {
-            return new DateTimeImmutable($this->date_updated);
-        }
-        return null;
-    }
-
-
-    /**
-     *
-     * @return DateTimeInterface|null
-     */
-    public function getDateDeleted()
-    {
-        if ($this->date_deleted) {
-            return new DateTimeImmutable($this->date_deleted);
-        }
-        return null;
-    }
-
-
-    /**
-     *
-     * @param int $id
-     * @return string
-     */
-    public static function generateUid(int $id)
-    {
-        if ($id == 0) return Uuid::nil();
-
-        $pdb = static::getConnection();
-        $scheme = $pdb->config->database . '.';
-        $scheme .= $pdb->config->prefix . static::getTableName() . '.';
-        $scheme .= $id;
-        return Uuid::uuid5(Pdb::UUID_NAMESPACE, $scheme);
-    }
-
-
-    /**
-     *
-     * @return bool
-     */
-    public function save(): bool
-    {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
-
-        $now = Pdb::now();
-        $data = iterator_to_array($this);
-        $conditions = [ 'id' => $this->id ];
-
-
-        if ($this->id > 0) {
-            $data['date_modified'] = $now;
-            $pdb->update($table, $data, $conditions);
-        }
-        else {
-            $data['date_added'] = $now;
-            $data['date_modified'] = $now;
-            $data['uid'] = Uuid::uuid4();
-
-            if (!isset($data['active'])) {
-                $data['active'] = true;
-            }
-
-            // TODO Add nested transaction support with IDs.
-            $ts_id = 0;
-            if ($pdb->inTransaction()) {
-                $ts_id = 1;
-                $pdb->transact();
-            }
-
-            $this->id = $pdb->insert($table, $data);
-
-            // Replace it with a UUID5.
-            $this->uid = self::generateUid($this->id);
-
-            $pdb->update(
-                $table,
-                ['uid' => $this->uid],
-                ['id' => $this->id]
-            );
-
-            if ($ts_id === 1) {
-                $pdb->commit();
-            }
-        }
-
-        $this->date_added = $data['date_added'];
-        $this->date_modified = $data['date_modified'];
-
-        return $this->id;
-    }
-
-
-    /**
-     *
-     * @return bool
-     */
-    public function delete($soft = true): bool
-    {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
-
-        $conditions = [ 'id' => $this->id ];
-
-        if ($soft) {
-            // Bump the modified field, right?
-            $now = Pdb::now();
-
-            $this->date_deleted = $now;
-            $this->date_modified = $now;
-
-            $data = [
-                'date_modified' => $now,
-                'date_deleted' => $now,
-            ];
-            return (bool) $pdb->update($table, $data, $conditions);
-        }
-        else {
-            return (bool) $pdb->delete($table, $conditions);
-        }
-    }
-
-
-    /**
+     * Create a query for this model.
      *
      * @param array $conditions
      * @return PdbQuery
@@ -207,10 +47,12 @@ trait PdbModelTrait
 
 
     /**
+     * Find one model.
      *
+     * @param array $conditions
      * @return static
      */
-    public static function findOne(array $conditions = [])
+    public static function findOne(array $conditions)
     {
         return self::find($conditions)
             ->as(static::class)
@@ -219,7 +61,9 @@ trait PdbModelTrait
 
 
     /**
+     * Find a list of models.
      *
+     * @param array $conditions
      * @return static[]
      */
     public static function findAll(array $conditions = [])
