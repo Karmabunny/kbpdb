@@ -610,6 +610,13 @@ class PdbSync
 
                 $q = "ALTER TABLE ~{$table_name} CHANGE COLUMN {$old_name} {$new_name} {$spec}";
 
+                if ($this->pdb instanceof PdbMysql) {
+                    // Use the MySQL-only AFTER syntax where possible
+                    if ($prev_column) {
+                        $q .= ' AFTER ' . $this->pdb->quote($prev_column, Pdb::QUOTE_FIELD);
+                    }
+                }
+
                 $this->heading = "RENAME - Column '{$old_name}' to '{$column->name}'";
                 $this->storeQuery('rename_col', $q);
                 return true;
@@ -623,7 +630,7 @@ class PdbSync
             if ($this->pdb instanceof PdbMysql) {
                 // Use the MySQL-only AFTER syntax where possible
                 if ($prev_column) {
-                    $q .= " AFTER {$prev_column}";
+                    $q .= ' AFTER ' . $this->pdb->quote($prev_column, Pdb::QUOTE_FIELD);
                 }
             }
 
