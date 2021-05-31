@@ -81,7 +81,7 @@ class PdbSqlite extends Pdb
                 'type' => $row[1],
                 'is_nullable' => ! (bool) $row[2],
                 'is_primary' => (bool) $row[3],
-                'column_default' => $row[4],
+                'default' => $row[4],
                 // I guess??
                 'auto_increment' => (bool) $row[3],
                 'extra' => '',

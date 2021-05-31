@@ -110,7 +110,7 @@ class PdbMysql extends Pdb
                 'type' => $row[1],
                 'is_nullable' => $row[2] == 'YES',
                 'is_primary' => $row[3] == 'PRI',
-                'column_default' => $row[4],
+                'default' => $row[4],
                 'auto_increment' => $autoinc,
                 'extra' => $row[5],
             ]);
