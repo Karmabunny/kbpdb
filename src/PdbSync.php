@@ -669,25 +669,29 @@ class PdbSync
     {
         $indexes = $this->pdb->indexList($table_name);
 
+        $existing = null;
+        $action = 'create';
+
         // Find the matching index by the 'columns' - same order, etc.
         foreach ($indexes as $existing) {
-            if ($existing->columns == $index->columns) break;
-            $existing = null;
-        }
-        /** @var PdbIndex|null $existing */
+            if ($existing->columns != $index->columns) {
+                continue;
+            }
 
-        // If it exists and matches - there's nothing to do.
-        if ($existing and $index->columns == $existing->columns) {
-            return true;
+            // If it exists and matches - there's nothing to do.
+            if ($index->type == $existing->type) {
+                return true;
+            }
+
+            $action = 'changetype';
+            break;
         }
 
-        // Uh, a heading.
         $columns = implode(', ', $index->columns);
-        $this->heading = "INDEX - Table '{$table_name}', Index ({$columns}) - ";
-        $this->heading .= $existing ? 'create' : 'changetype';
+        $this->heading = "INDEX - Table '{$table_name}', Index ({$columns}) - " . $action;
 
         // Drop the old index before adding a new one.
-        if (isset($existing)) {
+        if ($existing and $action != 'create') {
             $q = "ALTER TABLE ~{$table_name} DROP INDEX {$existing->name}";
             $this->storeQuery('drop_index', $q);
         }
@@ -706,8 +710,9 @@ class PdbSync
 
     /**
     * Checks that the specified foreign key exists in the table
-    * If the foreign key is incorrect, it will be altered
-    * If the foreign key does not exist, it will be created
+
+    * - If the foreign key is incorrect, it will be altered
+    * - If the foreign key does not exist, it will be created
     *
     * @param string $table_name The name of the table to check
     * @param PdbForeignKey $foreign_key The foreign key definition to check
@@ -872,9 +877,10 @@ class PdbSync
                 ) continue 2;
             }
 
-            $q = "ALTER TABLE ~{$table_name} DROP INDEX {$index->type}";
+            $q = "ALTER TABLE ~{$table_name} DROP INDEX ";
+            $q .= $this->pdb->quote($index->name, Pdb::QUOTE_FIELD);
 
-            $this->heading = "REMOVED - Table '{$table_name}', Index '{$index['Name']}'";
+            $this->heading = "REMOVED - Table '{$table_name}', Index '{$index->name}'";
             $this->storeQuery('drop_index', $q);
         }
     }
