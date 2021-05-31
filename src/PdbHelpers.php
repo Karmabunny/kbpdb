@@ -109,21 +109,54 @@ class PdbHelpers
      */
     public static function normalizeType(string $type): string
     {
+        $type = trim($type);
         $matches = [];
 
-        // - Ensure enum/set is uppercase, leaving value casing alone.
-        // - Values should have no spaces between items.
-        if (preg_match('/^(enum|set)\s*\(([^)]+)\)/i', $type, $matches)) {
-            $type = strtoupper($matches[1]);
-            $values = preg_replace("/'\s*,\s*'/", $matches[2], "','");
-            return "{$type}({$values})";
+        // Match: "name (format/values)"
+        if (preg_match('/([a-z ]+)\s*(\([^)]+\))?/i', $type, $matches)) {
+            $name = trim(strtoupper($matches[1]));
+            $values = trim($matches[2] ?? '', ' ()');
+
+            // Any mention of INT, strip the format.
+            if (strpos($name, 'INT') !== false) {
+                return strtoupper(preg_replace('/\([^)]+\)/', '', $type));
+            }
+
+            switch ($name) {
+                // Tidy up values without changing their casing.
+                case 'SET':
+                case 'ENUM':
+                    $values = preg_replace("/'\s*,\s*'/", "','", $values);
+                    return "{$name}({$values})";
+
+                // No.
+                case 'DOUBLE PRECISION':
+                case 'REAL':
+                    return 'DOUBLE';
+
+                // Drop the precision. A float is a float. Do your number
+                // formatting elsewhere.
+                // This also simplifies errors from the automatic conversion
+                // to doubles for sufficiently large precision (24+).
+                case 'FLOAT':
+                    return 'FLOAT';
+
+                // Always include the digit + decimals.
+                // Defaults are 10 and 0, respectively.
+                case 'DECIMAL':
+                case 'DEC':
+                case 'FIXED':
+                case 'NUMERIC':
+                    $parts = explode(',', $values, 2);
+                    $digit = (int) ($parts[0] ?? 10);
+                    $decimal = (int) ($parts[1] ?? 0);
+
+                    return "{$name}({$digit},{$decimal})";
+            }
         }
-        // - Strip integer display sizes while we're here.
-        // - Always uppercase.
-        else {
-            $type = preg_replace('/int\([0-9]+\)/i', 'INT', $type);
-            return strtoupper($type);
-        }
+
+        // Otherwise just uppercase the whole lot.
+        return strtoupper($type);
     }
 
 

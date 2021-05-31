@@ -357,7 +357,10 @@ class PdbParser
     /**
      * Parse the column type definition.
      *
-     * In particular this supports normalising/parsing of ENUM/SET types.
+     * In particular this will parse XML-style enum/set types.
+     *
+     * Note: This _does not_ normalise the types. You must use the
+     * {@see PdbHelper::normalizeType()} method before comparing types.
      *
      * @param DOMElement $node
      * @return string
@@ -374,7 +377,7 @@ class PdbParser
                 return str_replace('XML', implode(',', $values), $type);
 
             default:
-                return PdbHelpers::normalizeType($type);
+                return $type;
         }
     }
 
