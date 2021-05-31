@@ -151,7 +151,7 @@ class PdbParser
             /** @var DOMElement $index_node */
 
             $index = new PdbIndex([
-                'type' => strtolower($index_node->getAttribute('type')),
+                'type' => strtolower($index_node->getAttribute('type')) ?: 'index',
             ]);
 
             // The schema ensures we only have 0 or 1.
@@ -243,8 +243,7 @@ class PdbParser
      */
     private function parseView(DOMElement $view_node)
     {
-        // @phpstan-ignore-next-line : I don't know what this achieves.
-        return (string) $view_node->firstChild->data;
+        return XML::text($view_node);
     }
 
 
