@@ -1058,7 +1058,7 @@ class PdbSync
         }
 
         if ($column->default !== null) {
-            $spec .= ' DEFAULT ' . $this->pdb->quote($column->default);
+            $spec .= ' DEFAULT ' . $this->pdb->quote($column->default, Pdb::QUOTE_VALUE);
         }
 
         return $spec;

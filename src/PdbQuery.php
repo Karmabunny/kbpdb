@@ -361,11 +361,7 @@ class PdbQuery
         // Build 'select'.
         if ($this->_select) {
             $fields = PdbHelpers::normalizeAliases($this->_select);
-
-            foreach ($fields as &$field) {
-                $this->pdb->quote($field, Pdb::QUOTE_FIELD);
-            }
-            unset($field);
+            $fields = $this->pdb->quoteAll($fields, Pdb::QUOTE_FIELD);
 
             $fields = implode(',', $fields);
             $sql .= 'SELECT ' . $fields;

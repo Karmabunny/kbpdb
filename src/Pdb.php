@@ -557,7 +557,7 @@ abstract class Pdb implements Loggable
             $values[] = $val;
         }
 
-        $columns = implode(', ', $this->quoteAll($columns));
+        $columns = implode(', ', $this->quoteAll($columns, Pdb::QUOTE_FIELD));
         $binds = PdbHelpers::bindPlaceholders(count($values));
         $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
 
@@ -597,7 +597,7 @@ abstract class Pdb implements Loggable
             $values[] = $val;
         }
 
-        $cols = $this->quoteAll($cols);
+        $cols = $this->quoteAll($cols, Pdb::QUOTE_FIELD);
         foreach ($cols as &$col) {
             $col .= ' = ?';
         }
@@ -906,7 +906,7 @@ abstract class Pdb implements Loggable
      * @return string
      * @throws ConnectionException
      */
-    public function quote(string $field, string $type = self::QUOTE_VALUE): string
+    public function quote(string $field, string $type): string
     {
         return $this->quoteAll([$field], $type)[0];
     }
@@ -918,7 +918,7 @@ abstract class Pdb implements Loggable
      * @return string[]
      * @throws ConnectionException
      */
-    public function quoteAll(array $fields, string $type = self::QUOTE_VALUE): array
+    public function quoteAll(array $fields, string $type): array
     {
         $pdo = $this->getConnection();
         [$left, $right] = $this->getFieldQuotes();
