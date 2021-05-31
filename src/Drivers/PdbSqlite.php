@@ -77,11 +77,13 @@ class PdbSqlite extends Pdb
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $key = $row[0];
             $rows[$key] = new PdbColumn([
-                'column_name' => $row[0],
-                'column_type' => $row[1],
+                'name' => $row[0],
+                'type' => $row[1],
                 'is_nullable' => ! (bool) $row[2],
                 'is_primary' => (bool) $row[3],
                 'column_default' => $row[4],
+                // I guess??
+                'auto_increment' => (bool) $row[3],
                 'extra' => '',
             ]);
         }
@@ -135,6 +137,7 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     public function getTableAttributes(string $table)
     {
+        // for autoinc - https://stackoverflow.com/a/33285873/7694753
         return [];
     }
 

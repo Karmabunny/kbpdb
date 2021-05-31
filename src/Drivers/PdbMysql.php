@@ -103,12 +103,15 @@ class PdbMysql extends Pdb
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $key = $row[0];
+            $autoinc = stripos($row[5], 'auto_increment') !== false;
+
             $rows[$key] = new PdbColumn([
-                'column_name' => $row[0],
-                'column_type' => $row[1],
-                'is_nullable' => (bool) $row[2],
+                'name' => $row[0],
+                'type' => $row[1],
+                'is_nullable' => $row[2] == 'YES',
                 'is_primary' => $row[3] == 'PRI',
                 'column_default' => $row[4],
+                'auto_increment' => $autoinc,
                 'extra' => $row[5],
             ]);
         }
@@ -140,12 +143,12 @@ class PdbMysql extends Pdb
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $key = $row[0];
+            $columns = explode(',', $row[2]);
 
-            $rows[$key] = new PdbIndex([
+            $rows[] = new PdbIndex([
                 'name' => $row[0],
-                'type' => $row[1] == 0 ? 'index' : 'unique',
-                'columns' => explode(',', $row[2]),
+                'type' => $row[1] == 0 ? 'unique' : 'index',
+                'columns' => array_combine($columns, $columns),
             ]);
         }
 
