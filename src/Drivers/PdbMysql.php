@@ -17,6 +17,29 @@ class PdbMysql extends Pdb
 {
 
     /** @inheritdoc */
+    public function getPermissions()
+    {
+        $q = "SHOW GRANTS FOR CURRENT_USER()";
+        $res = $this->query($q, [], 'col');
+
+        $perms = [];
+        $matches = [];
+
+        foreach ($res as $val) {
+            preg_match('/GRANT ([^ ]+) ON/', $val, $matches);
+            $perms += explode(', ', strtoupper($matches[1]));
+        }
+
+        if (in_array('ALL PRIVILEGES', $perms)) {
+            return PdbHelpers::TYPES;
+        }
+
+        // Of the available types, which do we have?
+        return array_intersect(PdbHelpers::TYPES, $perms);
+    }
+
+
+    /** @inheritdoc */
     public function listTables()
     {
         $q = "SELECT TABLE_NAME

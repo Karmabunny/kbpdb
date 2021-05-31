@@ -8,6 +8,12 @@ use karmabunny\pdb\Pdb;
 class PdbNoDriver extends Pdb
 {
 
+    public function getPermissions()
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
+
+
     public function getForeignKeys(string $table)
     {
         throw new Exception('Not implemented: ' . __METHOD__);

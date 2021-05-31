@@ -15,6 +15,14 @@ class PdbSqlite extends Pdb
 {
 
     /** @inheritdoc */
+    public function getPermissions()
+    {
+        // SQLite doesn't have users/permissions - anything goes.
+        return PdbHelpers::TYPES;
+    }
+
+
+    /** @inheritdoc */
     public function listTables()
     {
         $q = 'SELECT name FROM sqlite_master';

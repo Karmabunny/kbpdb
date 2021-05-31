@@ -765,16 +765,24 @@ abstract class Pdb implements Loggable
 
 
     /**
-     * Fetches the current list of tables
+     * Get the permissions of the current connection.
      *
-     * @return string[] Each element is a table name (with the prefix removed)
+     * @return string[]
+     */
+    public abstract function getPermissions();
+
+
+    /**
+     * Fetches the current list of tables.
+     *
+     * @return string[] non-prefixed
      */
     public abstract function listTables();
 
 
     /**
      *
-     * @param string $table
+     * @param string $table non-prefixed
      * @return bool
      */
     public abstract function tableExists(string $table);
@@ -782,7 +790,7 @@ abstract class Pdb implements Loggable
 
     /**
      *
-     * @param string $table
+     * @param string $table non-prefixed
      * @return PdbIndex[]
      */
     public abstract function indexList(string $table);
@@ -790,7 +798,7 @@ abstract class Pdb implements Loggable
 
     /**
      *
-     * @param string $table
+     * @param string $table non-prefixed
      * @return PdbColumn[]
      */
     public abstract function fieldList(string $table);
@@ -799,7 +807,7 @@ abstract class Pdb implements Loggable
     /**
      * Gets all of the columns which have foreign key constraints in a table
      *
-     * @param string $table The table to check for columns which link to other tables
+     * @param string $table non-prefixed
      * @return PdbForeignKey[]
      */
     public abstract function getForeignKeys(string $table);
@@ -810,7 +818,7 @@ abstract class Pdb implements Loggable
      * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
      * which link to the id column of a specific table
      *
-     * @param string $table The table which contains the id column which the foreign key columns link to
+     * @param string $table non-prefixed
      * @return PdbForeignKey[]
      */
     public abstract function getDependentKeys(string $table);
@@ -820,8 +828,8 @@ abstract class Pdb implements Loggable
     /**
      * Returns definition list from column of type ENUM
      *
-     * @param string $table The DB table name, without prefix
-     * @param string $column The column name
+     * @param string $table non-prefixed
+     * @param string $column
      * @return string[]
      */
     public abstract function extractEnumArr(string $table, string $column);
