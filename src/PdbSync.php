@@ -12,7 +12,6 @@ use InvalidArgumentException;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbSqlite;
-use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -112,7 +111,6 @@ class PdbSync
      * @param SyncActions|array $do
      * @return array [ type, body ]
      * @throws InvalidArgumentException
-     * @throws PDOException
      * @throws Exception
      * @throws QueryException
      */
@@ -129,7 +127,6 @@ class PdbSync
      * @param mixed|null $do
      * @return void
      * @throws InvalidArgumentException
-     * @throws PDOException
      * @throws Exception
      * @throws QueryException
      */
@@ -158,6 +155,9 @@ class PdbSync
      * @param PdbTable[] $tables
      * @param SyncActions|array $do
      * @return void
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function migrateTables(array $tables, $do = null)
     {
@@ -907,6 +907,7 @@ class PdbSync
      *
      * @param string $table_name
      * @param PdbForeignKey[] $defined
+     * @return void
      **/
     private function checkRemovedForeignKeys(string $table_name, array $defined)
     {
@@ -935,8 +936,12 @@ class PdbSync
 
 
     /**
-    * Create or update a view
-    **/
+     * Create or update a view
+     *
+     * @param string $view_name
+     * @param string $view_def
+     * @return void
+     */
     private function createView(string $view_name, string $view_def)
     {
         $view_name = trim($view_name);

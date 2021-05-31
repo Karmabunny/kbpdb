@@ -157,6 +157,7 @@ abstract class Pdb implements Loggable
      *
      * @param PdbConfig|array $config
      * @return PDO
+     * @throws ConnectionException
      */
     public static function connect($config)
     {
@@ -254,7 +255,7 @@ abstract class Pdb implements Loggable
      * Gets a PDO connection, creating a new one if necessary
      *
      * @return PDO
-     * @throws PDOException If connection fails
+     * @throws ConnectionException If connection fails
      */
     public function getConnection()
     {
@@ -279,8 +280,17 @@ abstract class Pdb implements Loggable
 
     /**
      * Alias for {@see Pdb::query}
-     **/
-    public function q($query, array $params, $return_type)
+     *
+     * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
+     *        table prefix, e.g. ~pages will be converted to fwc_pages
+     * @param array $params Parameters to bind to the query
+     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @return array|string|int|null|PDOStatement
+     * @throws InvalidArgumentException If the return type isn't valid
+     * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
+     */
+    public function q($query, array $params, string $return_type)
     {
         return $this->query($query, $params, $return_type);
     }
@@ -309,9 +319,9 @@ abstract class Pdb implements Loggable
      * @param array $params Parameters to bind to the query
      * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
      * @return array|string|int|null|PDOStatement
-     * @throws InvalidArgumentException If $query isn't a string
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
      */
     public function query(string $query, array $params, string $return_type)
     {
@@ -327,6 +337,7 @@ abstract class Pdb implements Loggable
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @return PDOStatement The prepared statement, for execution with {@see Pdb::execute}
      * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
      */
     public function prepare(string $query) {
         $pdo = $this->getConnection();
@@ -362,6 +373,7 @@ abstract class Pdb implements Loggable
      * @return mixed For all other types; see {@see Pdb::formatRs}
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
      */
     public function execute(PDOStatement $st, array $params, string $return_type)
     {
@@ -506,6 +518,8 @@ abstract class Pdb implements Loggable
      * @return array The record data
      * @throws QueryException If the query fails
      * @throws RowMissingException If there's no row
+     * @throws InvalidArgumentException
+     * @throws ConnectionException
      */
     public function get(string $table, $id)
     {
@@ -524,6 +538,7 @@ abstract class Pdb implements Loggable
      * @return int The id of the newly-inserted record, if applicable
      * @throws InvalidArgumentException
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function insert($table, array $data)
     {
@@ -559,6 +574,7 @@ abstract class Pdb implements Loggable
      * @return int The number of affected rows
      * @throws InvalidArgumentException
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function update(string $table, array $data, array $conditions)
     {
@@ -603,6 +619,7 @@ abstract class Pdb implements Loggable
      * @return int
      * @throws InvalidArgumentException
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function upsert(string $table, array $data, array $conditions)
     {
@@ -629,6 +646,7 @@ abstract class Pdb implements Loggable
      * @return int The number of affected rows
      * @throws InvalidArgumentException
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function delete(string $table, array $conditions)
     {
@@ -677,6 +695,7 @@ abstract class Pdb implements Loggable
      * Starts a transaction
      * @return void
      * @throws TransactionRecursionException if already in a transaction
+     * @throws ConnectionException If the connection fails
      */
     public function transact()
     {
@@ -693,6 +712,8 @@ abstract class Pdb implements Loggable
     /**
      * Commits a transaction
      * @return void
+     * @throws ConnectionException If the connection fails
+     * @throws PDOException
      */
     public function commit()
     {
@@ -705,6 +726,8 @@ abstract class Pdb implements Loggable
     /**
      * Rolls a transaction back
      * @return void
+     * @throws ConnectionException If the connection fails
+     * @throws PDOException
      */
     public function rollback()
     {
@@ -881,7 +904,7 @@ abstract class Pdb implements Loggable
      * @param string $field
      * @param string $type
      * @return string
-     * @throws PDOException
+     * @throws ConnectionException
      */
     public function quote(string $field, string $type = self::QUOTE_VALUE): string
     {
@@ -893,6 +916,7 @@ abstract class Pdb implements Loggable
      * @param string[] $fields
      * @param string $type
      * @return string[]
+     * @throws ConnectionException
      */
     public function quoteAll(array $fields, string $type = self::QUOTE_VALUE): array
     {

@@ -457,6 +457,8 @@ class PdbQuery
      * @param string|null $field
      * @return string
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function value(string $field = null): string
     {
@@ -495,6 +497,8 @@ class PdbQuery
      * @param string $class
      * @return array|object
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function one(string $class = null)
     {
@@ -522,6 +526,8 @@ class PdbQuery
      * @param int|null $limit
      * @return array
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function all(int $limit = null): array
     {
@@ -556,6 +562,7 @@ class PdbQuery
      * @return Generator
      * @throws InvalidArgumentException
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function iterator(): Generator
     {
@@ -587,6 +594,8 @@ class PdbQuery
      * @param string|null $value
      * @return array
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function map(string $key = null, string $value = null): array
     {
@@ -613,6 +622,8 @@ class PdbQuery
      * @param string|null $key
      * @return array
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function keyed(string $key = null): array
     {
@@ -652,6 +663,8 @@ class PdbQuery
      * @param string|null $field
      * @return array
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function column(string $field = null): array
     {
@@ -672,6 +685,9 @@ class PdbQuery
      * @param string|null $table
      * @param array $conditions
      * @return int
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function count(string $table = null, array $conditions = []): int
     {
@@ -696,6 +712,8 @@ class PdbQuery
      *
      * @return PDOStatement
      * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function pdo(): PDOStatement
     {
