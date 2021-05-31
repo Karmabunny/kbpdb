@@ -133,6 +133,13 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
+    public function getTableAttributes(string $table)
+    {
+        return [];
+    }
+
+
+    /** @inheritdoc */
     public function extractEnumArr(string $table, string $column)
     {
         // Enums kinda exist.

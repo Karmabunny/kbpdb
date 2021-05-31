@@ -824,6 +824,14 @@ abstract class Pdb implements Loggable
     public abstract function getDependentKeys(string $table);
 
 
+    /**
+     * Get adapter specific table information.
+     *
+     * @param string $table non-prefixed
+     * @return array key => value
+     */
+    public abstract function getTableAttributes(string $table);
+
 
     /**
      * Returns definition list from column of type ENUM

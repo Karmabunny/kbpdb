@@ -253,6 +253,27 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
+    public function getTableAttributes(string $table)
+    {
+        $q = "SELECT
+                `charset`,
+                `engine`,
+                `collate`
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = ?
+            AND TABLE_NAME = ?
+        ";
+
+        $params = [
+            $this->config->database,
+            $this->config->prefix . $table,
+        ];
+
+        return $this->query($q, $params, 'row');
+    }
+
+
+    /** @inheritdoc */
     public function extractEnumArr(string $table, string $column)
     {
         Pdb::validateIdentifier($table);

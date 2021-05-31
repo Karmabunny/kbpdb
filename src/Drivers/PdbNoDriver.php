@@ -26,6 +26,13 @@ class PdbNoDriver extends Pdb
     }
 
 
+    /** @inheritdoc */
+    public function getTableAttributes(string $table)
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
+
+
     public function extractEnumArr(string $table, string $column)
     {
         throw new Exception('Not implemented: ' . __METHOD__);
