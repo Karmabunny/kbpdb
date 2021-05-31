@@ -248,36 +248,65 @@ class PdbParser
 
 
     /**
-    * Run a sanity check over all loaded tables
-    **/
+     * Run a sanity check over all loaded tables
+     *
+     * @return bool
+     */
     public function sanityCheck()
     {
         foreach ($this->tables as $table) {
             $errors = $table->check($this->tables);
 
             if (!empty($errors)) {
-                $this->errors["table \"{$table->name}\""] = $errors;
+                $this->errors[$table->name] = $errors;
             }
         }
+
+        return $this->hasErrors();
     }
 
 
     /**
-    * Were there any load or sanity check errors?
-    **/
-    public function hasErrors()
+     * Were there any load or sanity check errors?
+     *
+     * @return bool
+     */
+    public function hasErrors(): bool
     {
         return !empty($this->errors);
     }
 
 
     /**
+     * Get a list of errors.
      *
-     * @return string[][]
+     * @return string[][] table => errors[]
      */
-    public function getErrors()
+    public function getErrors(): array
     {
         return $this->errors;
+    }
+
+
+    /**
+     * Get a formatted error log.
+     *
+     * @return array
+     */
+    public function getErrorsLog(): array
+    {
+        $log = [];
+        $log[] = [ 'section', 'Load Errors' ];
+
+        foreach ($this->errors as $table => $errors) {
+            $log[] = [ 'heading', $table ];
+
+            foreach ($errors as $error) {
+                $log[] = [ 'message', $error ];
+            }
+        }
+
+        return $log;
     }
 
 
