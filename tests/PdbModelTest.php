@@ -1,6 +1,7 @@
 <?php
 
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
@@ -15,10 +16,13 @@ class PdbModelTest extends TestCase
         $pdb = Database::getConnection();
         $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
 
-        $sync = new PdbSync($pdb, true);
-        $sync->loadXml(__DIR__ . '/db_struct.xml');
-        $sync->sanityCheck();
-        $sync->updateDatabase();
+        $sync = new PdbSync($pdb);
+
+        $struct = new PdbParser();
+        $struct->loadXml(__DIR__ . '/db_struct.xml');
+        $struct->sanityCheck();
+
+        $sync->updateDatabase($struct);
     }
 
 
