@@ -105,23 +105,18 @@ class PdbSync
     /**
     * Are the permissions of the current user adequate?
     *
-    * Return TRUE on success, or an array of missing permissions on failure.
+    * @return true|string[] true on success, or an array of missing permissions on failure.
     **/
     public function checkConnPermissions()
     {
-        // SQLite doesn't have users/permissions.
-        if ($this->pdb->config->type === 'sqlite') return true;
+        $permissions = $this->pdb->getPermissions();
 
-        $q = "SHOW GRANTS FOR CURRENT_USER()";
-        $res = $this->pdb->query($q, [], 'col');
+        $require = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'];
+        $missing = array_diff($require, $permissions);
+        if (count($missing) == 0) return true;
 
-        $perms = [];
-        $matches = null;
-        foreach ($res as $val) {
-            preg_match('!GRANT (.+) ON!', $val, $matches);
-            $p = explode(', ', strtoupper($matches[1]));
-            $perms = array_merge($perms, $p);
-        }
+        return $missing;
+    }
 
         if (in_array('ALL PRIVILEGES', $perms)) {
             return true;
