@@ -72,7 +72,11 @@ class PdbParser
             /** @var DOMElement $table_node */
 
             $table_name = $table_node->getAttribute('name');
-            if (!$table_name) throw new Exception('A table exists in the xml without a defined name');
+
+            if (!$table_name) {
+                $this->errors[$table_name][] = 'A table exists in the xml without a defined name';
+                continue;
+            }
 
             $this->tables[$table_name] = $this->parseTable($table_node);
         }
@@ -83,7 +87,11 @@ class PdbParser
             /** @var DOMElement $view_node */
 
             $view_name = $view_node->getAttribute('name');
-            if (!$view_name) throw new Exception('A view exists in the xml without a defined name');
+
+            if (!$view_name) {
+                $this->errors[$view_name][] = 'A view exists in the xml without a defined name';
+                continue;
+            }
 
             $this->views[$view_name] = $this->parseView($view_node);
         }
