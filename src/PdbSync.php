@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -21,6 +22,7 @@ use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\SyncFix;
 use karmabunny\pdb\Models\SyncQuery;
 use PDOException;
+use Throwable;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -252,11 +254,13 @@ class PdbSync
      *
      * @return array [ type, body ] execution log
      */
-    public function execute()
+    public function execute($act = true)
     {
         $log = [];
-
         $log[] = [ 'section', 'Tables' ];
+
+        /** @var Throwable[] $errors */
+        $errors = [];
 
         $heading = '';
         foreach ($this->getQueries() as $query) {
@@ -266,8 +270,16 @@ class PdbSync
                 $log[] = [ 'heading', $query->heading ];
             }
 
-            $log[] = [ 'query', $query->query ];
-            $this->pdb->query($query->query, [], 'pdo');
+            try {
+                $log[] = [ 'query', $query->query ];
+                if ($act) {
+                    $this->pdb->query($query->query, [], 'pdo');
+                }
+            }
+            catch (Throwable $error) {
+                $log[] = [ 'message', $error->getMessage() ];
+                $errors[] = $error;
+            }
 
             if ($query->message) {
                 $log[] = [ 'message', $query->message ];
@@ -293,6 +305,14 @@ class PdbSync
                 $log[] = [ 'message', $fix->name ];
                 $log[] = [ 'query', $fix->query ];
             }
+        }
+
+        if (!empty($errors)) {
+            $logs[] = [ 'section', 'Errors' ];
+        }
+
+        foreach ($errors as $error) {
+            $log[] = [ 'message', $error->getMessage() ];
         }
 
         return $log;
