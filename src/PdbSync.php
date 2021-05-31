@@ -250,6 +250,19 @@ class PdbSync
 
 
     /**
+     *
+     * @return bool
+     */
+    public function hasQueries()
+    {
+        foreach ($this->getQueries() as $query) {
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
      * Execute the stored queries.
      *
      * @return array [ type, body ] execution log
@@ -257,7 +270,10 @@ class PdbSync
     public function execute($act = true)
     {
         $log = [];
-        $log[] = [ 'section', 'Tables' ];
+
+        if ($this->hasQueries()) {
+            $log[] = [ 'section', 'Tables' ];
+        }
 
         /** @var Throwable[] $errors */
         $errors = [];
