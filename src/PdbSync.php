@@ -813,21 +813,31 @@ class PdbSync
 
 
     /**
-     * Stores a query in a list of queries to run
-     * @param string $type One of the types listed in {@see DatabaseSync::$query_types}
-     * @param string|array $query The query or queries.
-     *        If an array, each query will be tried until one succeeds or all have failed.
-     * @param string $message A message to display after the query
-     * @return bool True
-     * @throws Exception if unknown query type
+     * Stores a query in a list of queries to run.
+     *
+     * TODO $message isn't used anywhere.
+     * Perhaps we could fold in fixes and warnings here.
+     * Like, temp store fixes/warnings, copy into the stored query and clear the temp.
+     *
+     * TODO Should throw if the 'heading' in missing.
+     *
+     * @param string $type One of QUERY_TYPES
+     * @param string $query
+     * @param string $message
+     * @return void
+     * @throws InvalidArgumentException if unknown query type
      */
-    private function storeQuery($type, $query, $message = '')
+    private function storeQuery(string $type, string $query, $message = '')
     {
-        if (!in_array($type, self::$query_types)) {
-            throw new Exception('Unknown query type: ' . $type);
+        if (!in_array($type, self::QUERY_TYPES)) {
+            throw new InvalidArgumentException('Unknown query type: ' . $type);
         }
-        $this->queries[$type][] = [$query, $this->heading, $message];
-        return true;
+
+        $this->queries[$type][] = new SyncQuery([
+            'query' => $query,
+            'heading' => $this->heading,
+            'message' => $message,
+        ]);
     }
 
 
