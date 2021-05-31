@@ -107,6 +107,9 @@ abstract class Pdb implements Loggable
     /** @var int|null */
     protected $last_insert_id = null;
 
+    /** @var string */
+    private $_prefix_pattern;
+
 
     /**
      *
@@ -120,6 +123,8 @@ abstract class Pdb implements Loggable
         else {
             $this->config = clone $config;
         }
+
+        $this->_prefix_pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
     }
 
 
@@ -1090,15 +1095,7 @@ abstract class Pdb implements Loggable
      */
     protected function stripPrefix(string $value)
     {
-        static $patterns = [];
-
-        $pattern = $patterns[$this->config->prefix] ?? null;
-        if (!$pattern) {
-            $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-            $patterns[$this->config->prefix] = $pattern;
-        }
-
-        return preg_replace($pattern, '', $value) ?? '';
+        return preg_replace($this->_prefix_pattern, '', $value) ?? '';
     }
 
 
