@@ -25,12 +25,11 @@ class PdbColumn extends Collection
     /**
      * This controls whether the field is auto incrementing.
      *
-     * Given null, the field will not auto increment.
-     * Otherwise, the increments will begin at the given number.
+     * TODO The start number is determined by the parent table.
      *
-     * @var int|null
+     * @var bool
      */
-    public $auto_increment = null;
+    public $auto_increment = false;
 
     /** @var string|null */
     public $default = null;

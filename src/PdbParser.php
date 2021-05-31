@@ -130,7 +130,7 @@ class PdbParser
                 'name' => $node->getAttribute('name'),
                 'type' => self::parseColumnType($node),
                 'is_nullable' => (bool) $node->getAttribute('allownull'),
-                'auto_increment' => (int) $node->getAttribute('autoinc') ?: null,
+                'auto_increment' => (bool) $node->getAttribute('autoinc'),
                 'default' => $node->getAttribute('default') ?: null,
                 'previous_names' => self::parseStringArray($node->getAttribute('previous-names')),
             ]));
