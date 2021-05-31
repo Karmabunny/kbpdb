@@ -81,4 +81,35 @@ class PdbConfig extends Collection
         }
 
     }
+
+
+    /**
+     * Get parameter quotes as appropriate for the underlying DBMS.
+     *
+     * For things like fields, tables, etc.
+     *
+     * @return string[] [left, right]
+     */
+    public function getFieldQuotes()
+    {
+        switch ($this->type) {
+            case PdbConfig::TYPE_MYSQL:
+                $lquote = $rquote = '`';
+                break;
+
+            case PdbConfig::TYPE_MSSQL:
+                $lquote = '[';
+                $rquote = ']';
+                break;
+
+            case PdbConfig::TYPE_SQLITE:
+            case PdbConfig::TYPE_PGSQL:
+            case PdbConfig::TYPE_ORACLE:
+            default:
+                $lquote = $rquote = '"';
+        }
+
+        return [$lquote, $rquote];
+    }
+
 }

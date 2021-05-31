@@ -902,50 +902,78 @@ abstract class Pdb implements Loggable
     /**
      *
      * @param string $field
-     * @param string $type
+     * @param string $type Pdb::QUOTE
      * @return string
      * @throws ConnectionException
      */
     public function quote(string $field, string $type): string
     {
-        return $this->quoteAll([$field], $type)[0];
+        if ($type === self::QUOTE_FIELD) {
+            return $this->quoteField($field);
+        }
+        else {
+            return $this->quoteValue($field);
+        }
     }
 
 
     /**
      * @param string[] $fields
-     * @param string $type
+     * @param string $type Pdb::QUOTE
      * @return string[]
      * @throws ConnectionException
      */
     public function quoteAll(array $fields, string $type): array
     {
-        $pdo = $this->getConnection();
-        [$left, $right] = $this->getFieldQuotes();
-
         foreach ($fields as &$field) {
-            // Integers are valid column names, so we escape them all the same.
-            if (is_numeric($field)) {
-                $field = $pdo->quote($field, PDO::PARAM_INT);
-                continue;
-            }
-
-            // Escape fields.
-            if ($type === self::QUOTE_FIELD) {
-                $parts = explode('.', $field, 2);
-                foreach ($parts as &$part) {
-                    $part = $left . trim($part, '\'"[]`') . $right;
-                }
-                unset($part);
-
-                $field = implode('.', $parts);
-                continue;
-            }
-
-            $field = $pdo->quote($field, PDO::PARAM_STR);
+            $field = $this->quote($field, $type);
         }
         unset($field);
         return $fields;
+    }
+
+
+    /**
+     *
+     * @param string $value
+     * @return string
+     * @throws ConnectionException
+     */
+    public function quoteValue(string $value): string
+    {
+        $pdo = $this->getConnection();
+
+        if (is_numeric($value)) {
+            return $pdo->quote($value, PDO::PARAM_INT);
+        }
+
+        if (is_bool($value)) {
+            return $pdo->quote($value, PDO::PARAM_BOOL);
+        }
+
+        return $pdo->quote($value, PDO::PARAM_STR);
+    }
+
+
+    /**
+     *
+     * @param string $field
+     * @return string
+     */
+    public function quoteField(string $field): string
+    {
+        $quotes = $this->config->getFieldQuotes();
+        [$left, $right] = $quotes;
+
+        $field = str_replace($quotes, '', $field);
+        $parts = explode('.', $field, 2);
+
+        foreach ($parts as &$part) {
+            $part = $left . trim($part, '\'"[]`') . $right;
+        }
+        unset($part);
+
+        return implode('.', $parts);
     }
 
 
@@ -1078,38 +1106,6 @@ abstract class Pdb implements Loggable
 
 
     /**
-     * Get parameter quotes as appropriate for the underlying DBMS.
-     *
-     * For things like fields, tables, etc.
-     *
-     * @return string[] [left, right]
-     */
-    protected function getFieldQuotes()
-    {
-        $pdo = $this->getConnection();
-
-        switch ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) {
-            case PdbConfig::TYPE_MYSQL:
-                $lquote = $rquote = '`';
-                break;
-
-            case PdbConfig::TYPE_MSSQL:
-                $lquote = '[';
-                $rquote = ']';
-                break;
-
-            case PdbConfig::TYPE_SQLITE:
-            case PdbConfig::TYPE_PGSQL:
-            case PdbConfig::TYPE_ORACLE:
-            default:
-                $lquote = $rquote = '"';
-        }
-
-        return [$lquote, $rquote];
-    }
-
-
-    /**
      * Replaces tilde placeholders with table prefixes, and quotes tables according to the rules of the underlying DBMS
      *
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
@@ -1117,7 +1113,7 @@ abstract class Pdb implements Loggable
      */
     public function insertPrefixes(string $query)
     {
-        [$lquote, $rquote] = $this->getFieldQuotes();
+        [$lquote, $rquote] = $this->config->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
             $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
