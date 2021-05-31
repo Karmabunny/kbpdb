@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use Exception;
 use Generator;
 use InvalidArgumentException;
 use karmabunny\kb\Uuid;
@@ -17,7 +16,6 @@ use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\SyncActions;
-use karmabunny\pdb\Models\PdbSyncReport;
 use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\SyncFix;
 use karmabunny\pdb\Models\SyncQuery;
