@@ -10,7 +10,6 @@ use DOMAttr;
 use DOMDocument;
 use DOMElement;
 use Exception;
-use karmabunny\kb\Enc;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
 use karmabunny\kb\XMLException;
@@ -41,10 +40,10 @@ class PdbParser
     /** @var PdbTable[] name => PdbTable */
     public $tables = [];
 
-    /** @var array name => string */
+    /** @var string[] name => string */
     public $views = [];
 
-    /** @var array[] name => string[] */
+    /** @var string[][] name => string[] */
     private $errors = [];
 
 
@@ -266,33 +265,13 @@ class PdbParser
 
 
     /**
-    * Return HTML of the load or sanity check errors
-    *
-    * @return string HTML
-    **/
-    public function getErrorsHtml()
-    {
-        $out = '';
-
-        foreach ($this->errors as $file => $errors) {
-            $out .= "<h3>Errors in " . Enc::html($file) . "</h3>";
-            $out .= "<ul>";
-            foreach ($errors as $error) {
-                $out .= "<li>" . Enc::html($error) . "</li>";
-            }
-            $out .= "</ul>";
-        }
-
-        return $out;
-    }
-
-
+     *
+     * @return string[][]
+     */
     public function getErrors()
     {
         return $this->errors;
     }
-
-
 
 
     /**
