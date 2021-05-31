@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use DOMElement;
 use InvalidArgumentException;
 
 /**
@@ -15,12 +16,24 @@ use InvalidArgumentException;
 class PdbHelpers
 {
 
+    // TODO Find a better home for these.
     const TYPE_SELECT = 'SELECT';
     const TYPE_INSERT = 'INSERT';
     const TYPE_UPDATE = 'UPDATE';
     const TYPE_CREATE = 'CREATE';
     const TYPE_ALTER  = 'ALTER';
+    const TYPE_DELETE = 'DELETE';
+    const TYPE_DROP   = 'DROP';
 
+    const TYPES = [
+        self::TYPE_SELECT,
+        self::TYPE_INSERT,
+        self::TYPE_UPDATE,
+        self::TYPE_CREATE,
+        self::TYPE_ALTER,
+        self::TYPE_DELETE,
+        self::TYPE_DROP,
+    ];
 
     /**
      * Determine the query type.
@@ -34,16 +47,8 @@ class PdbHelpers
         preg_match('/^\s*(\w+)[^\w]/', $query, $matches);
         $type = strtoupper($matches[1] ?? '');
 
-        switch ($type) {
-            case self::TYPE_SELECT:
-            case self::TYPE_INSERT:
-            case self::TYPE_UPDATE:
-            case self::TYPE_CREATE:
-            case self::TYPE_ALTER:
-                return $type;
-        }
-
-        return null;
+        if (!in_array($type, self::TYPES)) return null;
+        return $type;
     }
 
 
@@ -97,19 +102,26 @@ class PdbHelpers
 
 
     /**
-    * Converts a column type definition to its uppercase variant, leaving the
-    * data for ENUM and SET fields alone
-    */
-    public static function typeToUpper(string $type): string
+     * Normalise a column type to something a bit more consistent.
+     *
+     * @param string $type
+     * @return string
+     */
+    public static function normalizeType(string $type): string
     {
-        // Don't force ENUM or SET values to be uppercase
-        if (preg_match('/^enum\s*\(/i', $type)) {
-            $type = 'ENUM' . substr($type, 4);
-            return str_replace("', '", "','", $type);
-        } else if (preg_match('/^set\s*\(/i', $type)) {
-            $type = 'SET' . substr($type, 3);
-            return str_replace("', '", "','", $type);
-        } else {
+        $matches = [];
+
+        // - Ensure enum/set is uppercase, leaving value casing alone.
+        // - Values should have no spaces between items.
+        if (preg_match('/^(enum|set)\s*\(([^)]+)\)/i', $type, $matches)) {
+            $type = strtoupper($matches[1]);
+            $values = preg_replace("/'\s*,\s*'/", $matches[2], "','");
+            return "{$type}({$values})";
+        }
+        // - Strip integer display sizes while we're here.
+        // - Always uppercase.
+        else {
+            $type = preg_replace('/int\([0-9]+\)/i', 'INT', $type);
             return strtoupper($type);
         }
     }

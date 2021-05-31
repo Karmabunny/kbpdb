@@ -28,11 +28,21 @@ use karmabunny\pdb\Models\PdbTable;
 **/
 class PdbParser
 {
+    /**
+     * MySQL names for the foreign key actions.
+     */
+    const FOREIGN_KEY_ACTIONS = [
+        'restrict' => 'RESTRICT',
+        'set-null' => 'SET NULL',
+        'cascade' => 'CASCADE',
+    ];
+
+
     /** @var PdbTable[] name => PdbTable */
     public $tables = [];
 
-    /** @var array name => array? */
-    private $views = [];
+    /** @var array name => string */
+    public $views = [];
 
     /** @var array[] name => string[] */
     private $errors = [];
@@ -99,7 +109,16 @@ class PdbParser
         if (!$table) {
             $table = new PdbTable([
                 'name' => $table_name,
+                'previous_names' => self::parseStringArray($table_node->getAttribute('previous-names')),
             ]);
+
+            $engine = $table_node->getAttribute('engine');
+            $charset = $table_node->getAttribute('charset');
+            $collate = $table_node->getAttribute('collate');
+
+            if ($engine) $table->attributes['engine'] = $engine;
+            if ($charset) $table->attributes['charset'] = $charset;
+            if ($collate) $table->attributes['collate'] = $collate;
         }
 
 
@@ -110,11 +129,11 @@ class PdbParser
 
             $table->addColumn(new PdbColumn([
                 'name' => $node->getAttribute('name'),
-                'type' => PdbHelpers::typeToUpper($node->getAttribute('type')),
+                'type' => self::parseColumnType($node),
                 'is_nullable' => (bool) $node->getAttribute('allownull'),
                 'auto_increment' => (int) $node->getAttribute('autoinc') ?: null,
                 'default' => $node->getAttribute('default') ?: null,
-                'previous_names' => explode(',', $node->getAttribute('previous-names')),
+                'previous_names' => self::parseStringArray($node->getAttribute('previous-names')),
             ]));
         }
 
@@ -125,7 +144,7 @@ class PdbParser
             /** @var DOMElement $index_node */
 
             $index = new PdbIndex([
-                'type' => $index_node->getAttribute('type'),
+                'type' => strtolower($index_node->getAttribute('type')),
             ]);
 
             // The schema ensures we only have 0 or 1.
@@ -143,8 +162,8 @@ class PdbParser
                     'from_column' => $col_name,
                     'to_table' => $fk_node->getAttribute('table'),
                     'to_column' => $fk_node->getAttribute('column'),
-                    'update_rule' => $fk_node->getAttribute('update'),
-                    'delete_rule' => $fk_node->getAttribute('delete'),
+                    'update_rule' => self::parseConstraintAction($fk_node->getAttribute('update')),
+                    'delete_rule' => self::parseConstraintAction($fk_node->getAttribute('delete')),
                 ]);
             }
             // Non-FK indexes.
@@ -271,5 +290,87 @@ class PdbParser
     public function getErrors()
     {
         return $this->errors;
+    }
+
+
+
+
+    /**
+     * Extract a list of strings from a string.
+     *
+     * The results are all lowercase + trimmed.
+     *
+     * @param string $value
+     * @return string[]
+     */
+    public static function parseStringArray(string $value): array
+    {
+        if (empty($value)) return [];
+
+        $items = explode(',', $value);
+        // return array_map('trim', $items);
+
+        foreach ($items as &$item) {
+            $item = strtolower(trim($item));
+        }
+        unset($item);
+        return $items;
+    }
+
+
+    /**
+     * Get a list of strings from the target child element.
+     *
+     * TODO This could live in the kbphp XML helper.
+     *
+     * @param DOMElement $node
+     * @param string $tag
+     * @return string[]
+     */
+    public static function parseValues(DOMElement $node, string $tag): array
+    {
+        $items = XML::xpath($node, './' . $tag, 'list');
+
+        foreach ($items as &$item) {
+            $item = XML::text($item);
+        }
+
+        return $items;
+    }
+
+
+    /**
+     * Parse the column type definition.
+     *
+     * In particular this supports normalising/parsing of ENUM/SET types.
+     *
+     * @param DOMElement $node
+     * @return string
+     */
+    public static function parseColumnType(DOMElement $node): string
+    {
+        $type = $node->getAttribute('type');
+        $type = trim($type);
+
+        switch (strtoupper($type)) {
+            case 'ENUM(XML)':
+            case 'SET(XML)':
+                $values = self::parseValues($node, 'val');
+                return str_replace('XML', implode(',', $values), $type);
+
+            default:
+                return PdbHelpers::normalizeType($type);
+        }
+    }
+
+
+    /**
+     *
+     * @param string $action
+     * @return string
+     */
+    public static function parseConstraintAction(string $action): string
+    {
+        return self::FOREIGN_KEY_ACTIONS[$action] ?? '';
     }
 }

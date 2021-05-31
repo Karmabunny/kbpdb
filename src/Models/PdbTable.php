@@ -36,9 +36,19 @@ class PdbTable extends Collection
      *
      * These are not added on ALTER.
      *
-     * @var array[] list of [name => value (string)]
+     * @var string[][] list of [name => value (string)]
      */
     public $default_records = [];
+
+
+    /**
+     * Old names that this table used to have.
+     *
+     * Populated by PdbParser.
+     *
+     * @var string[]
+     */
+    public $previous_names = [];
 
 
     /**

@@ -15,6 +15,9 @@ class PdbIndex extends Collection
     const TYPE_UNIQUE = 'unique';
 
     /** @var string */
+    public $name;
+
+    /** @var string */
     public $type = 'index';
 
     /** @var string[] */
