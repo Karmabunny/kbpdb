@@ -4,7 +4,9 @@ namespace karmabunny\pdb\Drivers;
 
 use Exception;
 use karmabunny\pdb\Models\PdbColumn;
+use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbHelpers;
 use PDO;
 
 /**
@@ -25,12 +27,14 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     public function listTables()
     {
-        $q = 'SELECT name FROM sqlite_master';
+        $q = "SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+        ";
         $res = $this->query($q, [], 'col');
-        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
 
         foreach ($res as &$row) {
-            $row = preg_replace($pattern, '', $row);
+            $this->stripPrefix($row);
         }
         unset($row);
 
@@ -71,7 +75,8 @@ class PdbSqlite extends Pdb
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = new PdbColumn([
+            $key = $row[0];
+            $rows[$key] = new PdbColumn([
                 'column_name' => $row[0],
                 'column_type' => $row[1],
                 'is_nullable' => ! (bool) $row[2],
@@ -89,14 +94,27 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     public function indexList(string $table)
     {
-        return [];
-    }
+        $table = $this->config->prefix . $table;
 
+        $q = "SELECT * FROM pragma_index_list(?)";
+        $res = $this->query($q, [$table], 'arr');
 
-    /** @inheritdoc */
-    public function foreignKeyList(string $table)
-    {
-        return [];
+        $rows = [];
+
+        foreach ($res as $row) {
+            $key = $row['name'];
+
+            $q = "SELECT name from pragma_index_info(?)";
+            $columns = $this->query($q, [$key], 'col');
+
+            $rows[$key] = new PdbIndex([
+                'name' => $row['name'],
+                'type' => $row['unique'] == 0 ? 'index' : 'unique',
+                'columns' => $columns,
+            ]);
+        }
+
+        return $rows;
     }
 
 

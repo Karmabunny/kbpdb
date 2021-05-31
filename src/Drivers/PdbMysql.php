@@ -102,7 +102,8 @@ class PdbMysql extends Pdb
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $rows[] = new PdbColumn([
+            $key = $row[0];
+            $rows[$key] = new PdbColumn([
                 'column_name' => $row[0],
                 'column_type' => $row[1],
                 'is_nullable' => (bool) $row[2],
@@ -123,10 +124,11 @@ class PdbMysql extends Pdb
         $q = "SELECT
                 INDEX_NAME,
                 NON_UNIQUE,
-                COLUMN_NAME
+                group_concat(COLUMN_NAME) as COLUMNS
             FROM INFORMATION_SCHEMA.STATISTICS
             WHERE TABLE_SCHEMA = ?
-            AND TABLE_NAME = ?
+                AND TABLE_NAME = ?
+            GROUP BY INDEX_NAME
         ";
 
         $params = [
@@ -140,14 +142,11 @@ class PdbMysql extends Pdb
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $key = $row[0];
 
-            // Ohhhhh I want nullish assignment.
-            $item = $rows[$key] ?? new PdbIndex([
+            $rows[$key] = new PdbIndex([
                 'name' => $row[0],
-                'type' => $row[1],
+                'type' => $row[1] == 0 ? 'index' : 'unique',
+                'columns' => explode(',', $row[2]),
             ]);
-
-            $item->columns[] = $row[2];
-            $rows[$key] = $item;
         }
 
         $res->closeCursor();
@@ -190,12 +189,12 @@ class PdbMysql extends Pdb
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $rows[] = new PdbForeignKey([
                 'constraint_name' => $row[0],
-                'source_table' => $this->stripPrefix($row[1]),
-                'source_column' => $row[2],
-                'target_table' => $this->stripPrefix($row[3]),
-                'target_column' => $row[4],
-                'update_rule' => $row[4],
-                'delete_rule' => $row[5],
+                'from_table' => $this->stripPrefix($row[1]),
+                'from_column' => $row[2],
+                'to_table' => $this->stripPrefix($row[3]),
+                'to_column' => $row[4],
+                'update_rule' => $row[5],
+                'delete_rule' => $row[6],
             ]);
         }
 
