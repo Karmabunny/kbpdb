@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use Exception;
 use Generator;
 use InvalidArgumentException;
 use karmabunny\kb\Uuid;
@@ -19,6 +20,7 @@ use karmabunny\pdb\Models\SyncActions;
 use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\SyncFix;
 use karmabunny\pdb\Models\SyncQuery;
+use PDOException;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -104,20 +106,32 @@ class PdbSync
 
     /**
      *
-     * Functions:
-     *  - `'create'`      - create table, update table attributes
-     *  - `'primary'`     - update primary key
-     *  - `'column'`      - create/modify columns
-     *  - `'index'`       - update indexes
-     *  - `'foreign_key'` - update constraints
-     *  - `'remove'`      - remove columns
-     *  - `'views'`       - process views
-     *
      * @param PdbParser $parser
      * @param SyncActions|array $do
      * @return array [ type, body ]
+     * @throws InvalidArgumentException
+     * @throws PDOException
+     * @throws Exception
+     * @throws QueryException
      */
     public function updateDatabase(PdbParser $parser, $do = null)
+    {
+        $this->migrate($parser, $do);
+        return $this->execute();
+    }
+
+
+    /**
+     *
+     * @param PdbParser $parser
+     * @param mixed|null $do
+     * @return void
+     * @throws InvalidArgumentException
+     * @throws PDOException
+     * @throws Exception
+     * @throws QueryException
+     */
+    public function migrate(PdbParser $parser, $do = null)
     {
         // Mush it.
         if (is_array($do)) {
@@ -133,17 +147,14 @@ class PdbSync
         if ($do->views) {
             $this->migrateViews($parser->views);
         }
-
-        return $this->execute();
     }
-
 
 
     /**
      * Prepare a set of ALTER TABLE statements which will sync the database to the provided layout.
      *
      * @param PdbTable[] $tables
-     * @param SyncActions|array $do Which functions to perform, default all.
+     * @param SyncActions|array $do
      * @return void
      */
     public function migrateTables(array $tables, $do = null)
@@ -369,7 +380,7 @@ class PdbSync
             }
 
             // Otherwise...
-            $this->heading = "MISSING - Table '{$table->name}";
+            $this->heading = "MISSING - Table '{$table->name}'";
             $this->createTable($table);
 
             return false;
