@@ -395,12 +395,12 @@ class PdbSync
             $collate = $table->attributes['collate'];
 
             $bad_engine = false;
-            if ($attributes['Engine'] != $engine) {
+            if ($attributes['engine'] != $engine) {
                 $bad_engine = true;
             }
 
             $bad_collate = false;
-            if ($attributes['Collation'] != $collate) {
+            if ($attributes['table_collation'] != $collate) {
                 $bad_collate = true;
             }
 

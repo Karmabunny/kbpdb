@@ -259,9 +259,13 @@ class PdbMysql extends Pdb
     public function getTableAttributes(string $table)
     {
         $q = "SELECT
-                `charset`,
-                `engine`,
-                `collate`
+                CREATE_TIME,
+                UPDATE_TIME,
+                ENGINE,
+                TABLE_COLLATION,
+                TABLE_COMMENT,
+                AUTO_INCREMENT,
+                MAX_INDEX_LENGTH
             FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = ?
             AND TABLE_NAME = ?
@@ -272,7 +276,8 @@ class PdbMysql extends Pdb
             $this->config->prefix . $table,
         ];
 
-        return $this->query($q, $params, 'row');
+        $row = $this->query($q, $params, 'row');
+        return array_change_key_case($row, CASE_LOWER);
     }
 
 
