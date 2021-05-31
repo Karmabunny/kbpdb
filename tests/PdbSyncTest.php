@@ -1,5 +1,6 @@
 <?php
 
+use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use kbtests\Database;
@@ -21,7 +22,7 @@ class PdbSyncTest extends TestCase
         $struct->sanityCheck();
 
         $log = $sync->updateDatabase($struct);
-        PdbSync::printMigration($log);
+        PdbLog::print($log);
     }
 
 

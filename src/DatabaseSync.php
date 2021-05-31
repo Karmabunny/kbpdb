@@ -136,7 +136,7 @@ class DatabaseSync
         $log = $this->sync->updateDatabase($this->parser, $do);
 
         ob_start();
-        PdbSync::printMigration($log);
+        PdbLog::print($log);
         return ob_end_clean();
     }
 }

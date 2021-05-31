@@ -1016,38 +1016,4 @@ class PdbSync
 
         return $spec;
     }
-
-    /**
-     *
-     * @param array $log
-     * @return void echos output
-     */
-    public static function printMigration(array $log)
-    {
-        foreach ($log as [$type, $body]) {
-            switch ($type) {
-                case 'section':
-                    echo ' ' . $body . PHP_EOL;
-                    echo '--------------' . PHP_EOL;
-                    echo PHP_EOL;
-                break;
-
-                case 'heading':
-                    echo '## ' . $body . PHP_EOL;
-                    echo PHP_EOL;
-                break;
-
-                case 'query':
-                    echo '> ' . str_replace("\n", "\n> ", $body) . PHP_EOL;
-                    echo PHP_EOL;
-                    break;
-
-                case 'message':
-                    echo '!! ' . $body . PHP_EOL;
-                    echo PHP_EOL;
-            }
-        }
-        echo 'Done!' . PHP_EOL;
-        echo PHP_EOL;
-    }
 }
