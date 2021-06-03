@@ -64,6 +64,8 @@ class PdbCondition
     /** @var mixed */
     public $value;
 
+    /** @var string|null Pdb::QUOTE_FIELD|QUOTE_VALUE|null */
+    public $bind_type;
 
     /**
      * Create a condition.
@@ -72,11 +74,12 @@ class PdbCondition
      * @param string $column
      * @param mixed $value
      */
-    public function __construct($operator, $column, $value)
+    public function __construct($operator, $column, $value, string $bind = null)
     {
-        $this->operator = $operator;
+        $this->operator = strtoupper($operator);
         $this->column = $column;
         $this->value = $value;
+        $this->bind_type = $bind;
     }
 
 
@@ -206,6 +209,20 @@ class PdbCondition
         }
 
         Pdb::validateIdentifierExtended($this->column);
+
+        if ($this->bind_type === Pdb::QUOTE_FIELD) {
+            if (is_iterable($this->value)) {
+                foreach ($this->value as $value) {
+                    if (!is_scalar($value)) {
+                        throw new InvalidArgumentException('Column array must be scalar');
+                    }
+                    Pdb::validateIdentifierExtended((string) $value);
+                }
+            }
+            else {
+                Pdb::validateIdentifierExtended((string) $this->value);
+            }
+        }
     }
 
 
@@ -223,7 +240,14 @@ class PdbCondition
      */
     public function build(Pdb $pdb, array &$values): string
     {
-        $column = $pdb->quote($this->column, Pdb::QUOTE_FIELD);
+        $column = $pdb->quoteField($this->column);
+
+        if ($this->bind_type and is_scalar($this->value)) {
+            $bind = $pdb->quote($this->value, $this->bind_type);
+        }
+        else {
+            $bind = '?';
+        }
 
         switch ($this->operator) {
             case self::EQUAL:
@@ -238,8 +262,8 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                $values[] = $this->value;
-                return "{$column} {$this->operator} ?";
+                if (!$this->bind_type) $values[] = $this->value;
+                return "{$column} {$this->operator} {$bind}";
 
             case self::IS:
                 $value = $this->value;
@@ -272,9 +296,16 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                $values[] = $low;
-                $values[] = $high;
-                return "{$column} BETWEEN ? AND ?";
+                if (!$this->bind_type) {
+                    $values[] = $low;
+                    $values[] = $high;
+                }
+                else {
+                    $low = $pdb->quoteValue($low);
+                    $high = $pdb->quoteValue($high);
+                }
+
+                return "{$column} BETWEEN {$low} AND {$high}";
 
             case self::IN:
             case self::NOT_IN:
@@ -293,33 +324,57 @@ class PdbCondition
 
                 if (empty($items)) return '';
 
-                $where = implode(', ', array_fill(0, count($items), '?'));
-                $where = "{$column} {$this->operator} ({$where})";
+                if (!$this->bind_type) {
+                    $binds = PdbHelpers::bindPlaceholders(count($items));
 
-                foreach ($items as $item) {
-                    $values[] = $item;
+                    foreach ($items as $item) {
+                        $values[] = $item;
+                    }
                 }
-                return $where;
+                else {
+                    $items = $pdb->quoteAll($items, $this->bind_type);
+                    $binds = implode(', ', $items);
+                }
+
+                return "{$column} {$this->operator} ({$binds})";
 
             case self::CONTAINS:
-                $values[] = PdbHelpers::likeEscape($this->value);
-                return "{$column} LIKE CONCAT('%', ?, '%')";
+                $bind = $this->likeEscape($pdb, $values);
+                return "{$column} LIKE CONCAT('%', {$bind}, '%')";
 
             case self::BEGINS:
-                $values[] = PdbHelpers::likeEscape($this->value);
-                return "{$column} LIKE CONCAT(?, '%')";
+                $bind = $this->likeEscape($pdb, $values);
+                return "{$column} LIKE CONCAT({$bind}, '%')";
 
             case self::ENDS:
-                $values[] = PdbHelpers::likeEscape($this->value);
-                return "{$column} LIKE CONCAT('%', ?)";
+                $bind = $this->likeEscape($pdb, $values);
+                return "{$column} LIKE CONCAT('%', {$bind})";
 
             case self::IN_SET:
-                $values[] = PdbHelpers::likeEscape($this->value);
-                return "FIND_IN_SET(?, {$column}) > 0";
+                $bind = $this->likeEscape($pdb, $values);
+                return "FIND_IN_SET({$bind}, {$column}) > 0";
 
             default:
                 $err = "Operator not implemented: {$this->operator}";
                 throw new InvalidArgumentException($err);
+        }
+    }
+
+
+    private function likeEscape(Pdb $pdb, array &$values)
+    {
+        if (!$this->bind_type) {
+            $values[] = PdbHelpers::likeEscape($this->value);
+            return '?';
+        }
+        else {
+            if (!is_scalar($this->value)) {
+                throw new InvalidArgumentException("Operator {$this->operator} value must be scalar");
+            }
+
+            $value = PdbHelpers::likeEscape($this->value);
+            $value = $pdb->quoteField($value, $this->bind_type);
+            return $value;
         }
     }
 }
