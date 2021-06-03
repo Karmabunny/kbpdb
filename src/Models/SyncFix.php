@@ -18,5 +18,5 @@ class SyncFix extends Collection
     public $name;
 
     /** @var string */
-    public $query;
+    public $sql;
 }

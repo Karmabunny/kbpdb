@@ -288,9 +288,9 @@ class PdbSync
             }
 
             try {
-                $log[] = [ 'query', $query->query ];
+                $log[] = [ 'query', $query->sql ];
                 if ($act) {
-                    $this->pdb->query($query->query, [], 'pdo');
+                    $this->pdb->query($query->sql, [], 'pdo');
                 }
             }
             catch (Throwable $error) {
@@ -320,7 +320,7 @@ class PdbSync
 
             foreach ($fixes as $fix) {
                 $log[] = [ 'message', $fix->name ];
-                $log[] = [ 'query', $fix->query ];
+                $log[] = [ 'query', $fix->sql ];
             }
         }
 
@@ -355,7 +355,7 @@ class PdbSync
             }
 
             // The juicy bits.
-            $sql[] = $query->query;
+            $sql[] = $query->sql;
 
             // Some queries have extra messages, also comments.
             if ($query->message) {
@@ -381,7 +381,7 @@ class PdbSync
             $sql[] = '-- ! Broken ' . $type;
 
             foreach ($fixes as $fix) {
-                $sql[] = '-- ' . $fix->query;
+                $sql[] = '-- ' . $fix->sql;
             }
         }
 

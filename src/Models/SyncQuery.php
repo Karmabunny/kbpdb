@@ -22,7 +22,7 @@ class SyncQuery extends Collection
     /**
      * @var string
      */
-    public $query;
+    public $sql;
 
 
     /**
