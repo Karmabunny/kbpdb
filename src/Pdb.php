@@ -964,6 +964,12 @@ abstract class Pdb implements Loggable
      */
     public function quoteField(string $field): string
     {
+        // Integer-ish fields are ok.
+        // TODO At least for SELECT, everything else though?
+        if (is_numeric($field) and (int) $field == (float) $field) {
+            return $field;
+        }
+
         $quotes = $this->config->getFieldQuotes();
         [$left, $right] = $quotes;
 
@@ -1024,11 +1030,13 @@ abstract class Pdb implements Loggable
      * Validates a identifier (column name, table name, etc)
      *
      * @param string $name The identifier to check
+     * @param bool $loose Permit integers as fields - e.g. SELECT 1
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
-    public static function validateIdentifier($name)
+    public static function validateIdentifier($name, $loose = false)
     {
+        if ($loose and is_numeric($name) and (int) $name == (float) $name) return;
         if (!preg_match('/^[a-z_][a-z_0-9]*$/i', $name)) {
             throw new InvalidArgumentException("Invalid identifier: {$name}");
         }
@@ -1040,11 +1048,13 @@ abstract class Pdb implements Loggable
      * Also accepts short format like {@see validateIdentifier} does.
      *
      * @param string $name The identifier to check
+     * @param bool $loose Permit integers as fields - e.g. SELECT 1
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
-    public static function validateIdentifierExtended($name)
+    public static function validateIdentifierExtended($name, $loose = false)
     {
+        if ($loose and is_numeric($name) and (int) $name == (float) $name) return;
         if (!preg_match('/^(?:[a-z_][a-z_0-9]*\.)?[a-z_][a-z_0-9]*$/i', $name)) {
             throw new InvalidArgumentException("Invalid identifier: {$name}");
         }
@@ -1072,10 +1082,11 @@ abstract class Pdb implements Loggable
      * The second item is null if no alias present.
      *
      * @param string|string[] $field
+     * @param bool $loose Permit integers as fields
      * @return string[] [field, alias]
      * @throws InvalidArgumentException
      */
-    public static function validateAlias($field): array
+    public static function validateAlias($field, $loose = false): array
     {
         if (is_string($field)) {
             [$field, $alias] = PdbHelpers::alias($field);
@@ -1088,7 +1099,8 @@ abstract class Pdb implements Loggable
             [$field, $alias] = $field;
         }
 
-        Pdb::validateIdentifierExtended($field);
+        // Only permit integer fields if there is no alias.
+        Pdb::validateIdentifierExtended($field, !$alias and $loose);
 
         if ($alias) {
             Pdb::validateIdentifier($alias);

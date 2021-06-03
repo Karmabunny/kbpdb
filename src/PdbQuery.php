@@ -130,10 +130,10 @@ class PdbQuery
 
         foreach ($fields as $key => $value) {
             if (is_numeric($key)) {
-                $this->_select[] = Pdb::validateAlias($value);
+                $this->_select[] = Pdb::validateAlias($value, true);
             }
             else {
-                Pdb::validateIdentifierExtended($key);
+                Pdb::validateIdentifierExtended($key, true);
                 $this->_select[] = [$key, $value];
             }
         }
