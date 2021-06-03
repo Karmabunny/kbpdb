@@ -767,7 +767,7 @@ class PdbSync
 
                 $this->storeFix($row->constraint_name, [
                     'name' => 'Drop FK',
-                    'query' => "ALTER TABLE ~{$table_name} DROP FOREIGN KEY {$row->constraint_name}",
+                    'sql' => "ALTER TABLE ~{$table_name} DROP FOREIGN KEY {$row->constraint_name}",
                 ]);
             }
 
@@ -807,7 +807,7 @@ class PdbSync
 
                 $this->storeFix($foreign_key->constraint_name, [
                     'name' => 'Find records',
-                    'query' => $q,
+                    'sql' => $q,
                 ]);
 
                 $q = "DELETE FROM ~{$table_name}
@@ -816,7 +816,7 @@ class PdbSync
 
                 $this->storeFix($foreign_key->constraint_name, [
                     'name' => 'Delete records',
-                    'query' => $q,
+                    'sql' => $q,
                 ]);
 
                 $q = "UPDATE ~{$table_name}
@@ -826,7 +826,7 @@ class PdbSync
 
                 $this->storeFix($foreign_key->constraint_name, [
                     'name' => 'NULL offending values',
-                    'query' => $q,
+                    'sql' => $q,
                 ]);
             }
         } catch (QueryException $ex) {
@@ -985,7 +985,7 @@ class PdbSync
         }
 
         $this->queries[$type][] = new SyncQuery([
-            'query' => $query,
+            'sql' => $query,
             'heading' => $this->heading,
             'message' => $message,
         ]);
