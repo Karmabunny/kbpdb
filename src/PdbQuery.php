@@ -8,6 +8,7 @@ namespace karmabunny\pdb;
 
 use Generator;
 use InvalidArgumentException;
+use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use PDOStatement;
@@ -65,11 +66,11 @@ class PdbQuery
 
     private $_joins = [];
 
+    /** @var string[] field => order */
     private $_order = [];
 
-    private $_direction = '';
-
-    private $_group = '';
+    /** @var string[] */
+    private $_group = [];
 
     private $_limit = 0;
 
@@ -248,34 +249,31 @@ class PdbQuery
 
     /**
      *
-     * @param string $field
+     * @param string|string[] $field
      * @return static
      */
-    public function groupBy(string $field)
+    public function groupBy(...$fields)
     {
-        $this->_group = $field;
+        $fields = Arrays::flatten($fields);
+        $this->_group = $fields;
         return $this;
     }
 
 
     /**
      *
-     * @param string $fields
+     * @param string|string[] $fields
      * @return static
      */
     public function orderBy(...$fields)
     {
-        foreach ($fields as $field) {
-            // Extract 'direction' tokens.
-            switch (strtoupper($field)) {
-                case 'DESC':
-                case 'ASC':
-                    $this->_direction = $field;
-                    continue 2;
-            }
+        $fields = Arrays::flatten($fields, true);
+        $fields = Arrays::normalizeOptions($fields, 'ASC');
 
+        foreach ($fields as $field => $order) {
             Pdb::validateIdentifierExtended($field);
-            $this->_order[] = $field;
+            Pdb::validateDirection($order);
+            $this->_order[$field] = $order;
         }
 
         return $this;
@@ -386,11 +384,9 @@ class PdbQuery
 
         if ($this->_order) {
             $sql .= 'ORDER BY ';
-            $sql .= implode(',', $this->_order);
-            $sql .= ' ';
 
-            if ($this->_direction) {
-                $sql .= "{$this->_direction} ";
+            foreach ($this->_order as $field => $order) {
+                $sql .= " {$field} {$order}";
             }
         }
 

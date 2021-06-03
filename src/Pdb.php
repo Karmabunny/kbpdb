@@ -1052,6 +1052,21 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Validates an order-by direction.
+     *
+     * @param string $name The identifier to check
+     * @return void
+     * @throws InvalidArgumentException If the identifier is invalid
+     */
+    public static function validateDirection($name)
+    {
+        if (!in_array(strtoupper($name), ['DESC', 'ASC'])) {
+            throw new InvalidArgumentException("Invalid direction: {$name}");
+        }
+    }
+
+
+    /**
      * Validates a value meant for an ENUM field, e.g.
      * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
      *
