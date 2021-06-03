@@ -9,6 +9,7 @@ namespace karmabunny\pdb;
 use Exception;
 use Generator;
 use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use PDOStatement;
 use PDO;

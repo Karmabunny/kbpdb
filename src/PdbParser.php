@@ -344,13 +344,9 @@ class PdbParser
      */
     public static function parseValues(DOMElement $node, string $tag): array
     {
+        /** @var DOMElement[] $items */
         $items = XML::xpath($node, './' . $tag, 'list');
-
-        foreach ($items as &$item) {
-            $item = XML::text($item);
-        }
-
-        return $items;
+        return array_map([XML::class, 'text'], $items);
     }
 
 

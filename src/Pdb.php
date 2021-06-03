@@ -935,20 +935,22 @@ abstract class Pdb implements Loggable
 
     /**
      *
-     * @param string $value
+     * @param mixed $value
      * @return string
      * @throws ConnectionException
      */
-    public function quoteValue(string $value): string
+    public function quoteValue($value): string
     {
         $pdo = $this->getConnection();
 
         if (is_numeric($value)) {
-            return $pdo->quote($value, PDO::PARAM_INT);
+            $result = $pdo->quote($value, PDO::PARAM_INT);
+            if ($result !== false) return $result;
         }
 
         if (is_bool($value)) {
-            return $pdo->quote($value, PDO::PARAM_BOOL);
+            $result = $pdo->quote((string) $value, PDO::PARAM_BOOL);
+            if ($result !== false) return $result;
         }
 
         return $pdo->quote($value, PDO::PARAM_STR);
@@ -994,9 +996,8 @@ abstract class Pdb implements Loggable
     {
         if ($id == 0) return Uuid::nil();
 
-        $scheme = $this->config->database . '.';
-        $scheme .= $this->config->prefix . $table . '.';
-        $scheme .= $this->id;
+        ['database' => $database, 'prefix' => $prefix] = $this->config;
+        $scheme = "{$database}.{$prefix}.{$table}.{$id}";
         return Uuid::uuid5(self::UUID_NAMESPACE, $scheme);
     }
 

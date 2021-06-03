@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -380,7 +381,7 @@ class PdbSync
             $sql[] = '-- ! Broken ' . $type;
 
             foreach ($fixes as $fix) {
-                $sql[] = '-- ' . $fix;
+                $sql[] = '-- ' . $fix->query;
             }
         }
 
@@ -793,13 +794,14 @@ class PdbSync
                     ON main.{$from_column} = extant.{$to_column}
                 WHERE extant.id IS NULL
             ";
+            /** @var string */
             $num_invalid_records = $this->pdb->query($q, [], 'val');
 
             if ($num_invalid_records > 0) {
-                $this->storeWarning(
+                $this->storeWarning([
                     "{$num_invalid_records} invalid records found:",
-                    "in '{$table_name}' table (foreign key on '{$foreign_key->from_column}' column)"
-                );
+                    "in '{$table_name}' table (foreign key on '{$foreign_key->from_column}' column)",
+                ]);
 
                 $q = str_replace('COUNT(*)', "main.id, main.{$from_column}", $q);
 
@@ -919,8 +921,7 @@ class PdbSync
     private function checkRemovedForeignKeys(string $table_name, array $defined)
     {
         $current_fks = $this->pdb->getForeignKeys($table_name);
-
-        $prefix = $this->prefix;
+        $prefix = $this->pdb->getPrefix();
 
         foreach ($current_fks as $fk) {
 

@@ -99,7 +99,7 @@ class DatabaseSync
     {
         $out = '';
 
-        foreach ($this->errors as $file => $errors) {
+        foreach ($this->getErrors() as $file => $errors) {
             $out .= "<h3>Errors in " . Enc::html($file) . "</h3>";
             $out .= "<ul>";
             foreach ($errors as $error) {
@@ -125,7 +125,7 @@ class DatabaseSync
     /**
      *
      * @param SyncActions|array|null $do
-     * @return void
+     * @return string
      * @throws InvalidArgumentException
      * @throws PDOException
      * @throws Exception
@@ -137,6 +137,6 @@ class DatabaseSync
 
         ob_start();
         PdbLog::print($log);
-        return ob_end_clean();
+        return ob_get_clean();
     }
 }
