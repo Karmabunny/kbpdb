@@ -107,10 +107,25 @@ class PdbCondition
 
         // Value-style conditions.
         if (is_numeric($key) and is_array($item)) {
+            $count = count($item);
+
+            // key-style condition.
+            // :: [COLUMN => VALUE]
+            if ($count == 1) {
+                $column = key($item);
+                $value = $item[$column];
+
+                $operator = PdbCondition::EQUAL;
+                if ($value === null) {
+                    $operator = PdbCondition::IS;
+                }
+
+                return new PdbCondition($operator, $column, $value);
+            }
 
             // Modified key-style condition.
             // :: [OPERATOR, COLUMN => VALUE]
-            if (count($item) == 2) {
+            if ($count == 2) {
                 /** @var string $operator */
                 $operator = array_shift($item);
 
@@ -122,41 +137,54 @@ class PdbCondition
 
             // Value-style condition.
             // :: [FIELD, OPERATOR, VALUE]
-            if (count($item) == 3) {
+            if ($count == 3) {
                 [$column, $operator, $value] = $item;
 
                 return new PdbCondition($operator, $column, $value);
             }
 
-            throw new InvalidArgumentException('Conditions must have 2 or 3 items, not: ' . count($item));
+            throw new InvalidArgumentException('Conditions must have 1, 2 or 3 items, not: ' . $count);
         }
 
         // String-style conditions.
         // :: 'operator = value'
-        // Particularly useful for joins.
-        // NOT to be used for unescaped values. Stick to array or key style.
+        // - Particularly useful for joins.
+        // - NOT to be used for unescaped values. Stick to array or key style.
+        // - Doesn't support non-scalar values.
         if (is_numeric($key) and is_string($item)) {
             $matches = [];
-            if (!preg_match('/([a-z0-9_.]+)\s*([=!<>]+)\s*([a-z0-9_.]+)/i', $item, $matches)) {
+            if (!preg_match('/^([a-z0-9_\.\']+)\s+([=!<>]+|IS|IS NOT)\s+(.+?)$/i', $item, $matches)) {
                 throw new InvalidArgumentException("Invalid string condition: [{$item}]");
             }
 
             [$_, $left, $operator, $right] = $matches;
-            Pdb::validateIdentifierExtended($left);
-            Pdb::validateIdentifierExtended($right);
+            $value = trim($right, '\'');
 
-            return new PdbCondition($operator, $key, $item);
+            // Perform ? binding if the right field is wrapped in ''.
+            // Otherwise treat it like a column/table will be `` escaped.
+            if ($value != $right) {
+                $bind = null;
+            }
+            else {
+                $bind = Pdb::QUOTE_FIELD;
+            }
+
+            return new PdbCondition($operator, $left, $value, $bind);
         }
 
         // Key-style conditions.
         // :: OPERATOR => VALUE
-        $operator = PdbCondition::EQUAL;
+        if (is_string($key)) {
+            $operator = PdbCondition::EQUAL;
 
-        if ($item === null) {
-            $operator = PdbCondition::IS;
+            if ($item === null) {
+                $operator = PdbCondition::IS;
+            }
+
+            return new PdbCondition($operator, $key, $item);
         }
 
-        return new PdbCondition($operator, $key, $item);
+        throw new InvalidArgumentException('Invalid condition');
     }
 
 
