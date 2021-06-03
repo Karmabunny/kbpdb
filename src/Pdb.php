@@ -918,18 +918,18 @@ abstract class Pdb implements Loggable
 
 
     /**
-     * @param string[] $fields
+     * @param iterable<string> $fields
      * @param string $type Pdb::QUOTE
      * @return string[]
      * @throws ConnectionException
      */
-    public function quoteAll(array $fields, string $type): array
+    public function quoteAll($fields, string $type): array
     {
-        foreach ($fields as &$field) {
-            $field = $this->quote($field, $type);
+        $values = [];
+        foreach ($fields as $field) {
+            $values[] = $this->quote($field, $type);
         }
-        unset($field);
-        return $fields;
+        return $values;
     }
 
 
