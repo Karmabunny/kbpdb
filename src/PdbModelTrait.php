@@ -54,6 +54,7 @@ trait PdbModelTrait
      */
     public static function findOne(array $conditions)
     {
+        /** @var static */
         return self::find($conditions)
             ->as(static::class)
             ->one();

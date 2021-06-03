@@ -7,6 +7,7 @@
 namespace karmabunny\pdb;
 
 use DateTimeImmutable;
+use DateTimeInterface;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Uuid;
 
@@ -51,9 +52,9 @@ abstract class PdbModel extends Collection implements PdbModelInterface
      *
      * @return DateTimeInterface
      */
-    public function getDateUpdated()
+    public function getDateModified()
     {
-        return new DateTimeImmutable($this->date_updated);
+        return new DateTimeImmutable($this->date_modified);
     }
 
 
@@ -137,7 +138,7 @@ abstract class PdbModel extends Collection implements PdbModelInterface
         $this->date_added = $data['date_added'];
         $this->date_modified = $data['date_modified'];
 
-        return $this->id;
+        return (bool) $this->id;
     }
 
 
