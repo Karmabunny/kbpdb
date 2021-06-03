@@ -282,6 +282,29 @@ class PdbQuery
 
     /**
      *
+     * @param string|string[] $fields
+     * @return static
+     */
+    public function order(...$fields)
+    {
+        return $this->orderBy(...$fields);
+    }
+
+
+
+    /**
+     *
+     * @param string|string[] $fields
+     * @return static
+     */
+    public function group(...$fields)
+    {
+        return $this->orderBy(...$fields);
+    }
+
+
+    /**
+     *
      * @param int $limit
      * @return static
      */
