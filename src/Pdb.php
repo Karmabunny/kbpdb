@@ -553,7 +553,7 @@ abstract class Pdb implements Loggable
 
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            $cols[] = $col;
+            $columns[] = $col;
             $values[] = $val;
         }
 
