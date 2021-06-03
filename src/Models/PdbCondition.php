@@ -106,7 +106,7 @@ class PdbCondition
         if (is_numeric($key) and is_array($item)) {
 
             // Modified key-style condition.
-            // => [OPERATOR, COLUMN => VALUE]
+            // :: [OPERATOR, COLUMN => VALUE]
             if (count($item) == 2) {
                 /** @var string $operator */
                 $operator = array_shift($item);
@@ -118,7 +118,7 @@ class PdbCondition
             }
 
             // Value-style condition.
-            // [FIELD, OPERATOR, VALUE]
+            // :: [FIELD, OPERATOR, VALUE]
             if (count($item) == 3) {
                 [$column, $operator, $value] = $item;
 
@@ -128,8 +128,25 @@ class PdbCondition
             throw new InvalidArgumentException('Conditions must have 2 or 3 items, not: ' . count($item));
         }
 
+        // String-style conditions.
+        // :: 'operator = value'
+        // Particularly useful for joins.
+        // NOT to be used for unescaped values. Stick to array or key style.
+        if (is_numeric($key) and is_string($item)) {
+            $matches = [];
+            if (!preg_match('/([a-z0-9_.]+)\s*([=!<>]+)\s*([a-z0-9_.]+)/i', $item, $matches)) {
+                throw new InvalidArgumentException("Invalid string condition: [{$item}]");
+            }
+
+            [$_, $left, $operator, $right] = $matches;
+            Pdb::validateIdentifierExtended($left);
+            Pdb::validateIdentifierExtended($right);
+
+            return new PdbCondition($operator, $key, $item);
+        }
+
         // Key-style conditions.
-        // OPERATOR => VALUE
+        // :: OPERATOR => VALUE
         $operator = PdbCondition::EQUAL;
 
         if ($item === null) {
