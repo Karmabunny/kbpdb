@@ -73,35 +73,6 @@ class PdbHelpers
 
 
     /**
-     * Normalize an alias.
-     *
-     * @param string $field
-     * @return string
-     */
-    public static function normalizeAlias(string $field): string
-    {
-        [$field, $alias] = self::alias($field);
-        if ($alias) $field .= " AS {$alias}";
-        return $field;
-    }
-
-
-    /**
-     * Normalize all the aliases in a list.
-     *
-     * @param string[] $fields
-     * @return string[]
-     */
-    public static function normalizeAliases(array $fields): array
-    {
-        foreach ($fields as &$field) {
-            $field = self::normalizeAlias($field);
-        }
-        return $fields;
-    }
-
-
-    /**
      * Normalise a column type to something a bit more consistent.
      *
      * @param string $type

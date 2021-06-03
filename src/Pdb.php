@@ -1067,6 +1067,38 @@ abstract class Pdb implements Loggable
 
 
     /**
+     *
+     *
+     * The second item is null if no alias present.
+     *
+     * @param string|string[] $field
+     * @return string[] [field, alias]
+     * @throws InvalidArgumentException
+     */
+    public static function validateAlias($field): array
+    {
+        if (is_string($field)) {
+            [$field, $alias] = PdbHelpers::alias($field);
+        }
+        else {
+            if (count($field) != 2) {
+                throw new InvalidArgumentException('Alias must have two elements: [name, alias]');
+            }
+
+            [$field, $alias] = $field;
+        }
+
+        Pdb::validateIdentifierExtended($field);
+
+        if ($alias) {
+            Pdb::validateIdentifier($alias);
+        }
+
+        return [$field, $alias];
+    }
+
+
+    /**
      * Validates a value meant for an ENUM field, e.g.
      * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
      *
