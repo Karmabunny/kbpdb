@@ -11,6 +11,7 @@ use InvalidArgumentException;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
+use karmabunny\pdb\Models\PdbCondition;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
@@ -21,7 +22,6 @@ use ReflectionClass;
  * - `select(...$fields)`
  * - `andSelect(...$fields)`
  * - `from($table)`
- * - `join($type, $table, $conditions, $combine)`
  * - `leftJoin($table, $conditions, $combine)`
  * - `innerJoin($table, $conditions, $combine)`
  * - `where($conditions, $combine)`
@@ -58,15 +58,19 @@ class PdbQuery
     /** @var Pdb|null */
     protected $pdb;
 
+    /** @var array list [type, conditions, combine] */
     private $_conditions = [];
 
+    /** @var array list [field, alias] */
     private $_select = [];
 
-    private $_from = '';
+    /** @var array single [field, alias] */
+    private $_from = [];
 
+    /** @var array list [type, [table, alias], conditions, combine] */
     private $_joins = [];
 
-    /** @var string[] field => order */
+    /** @var array list [field, order] */
     private $_order = [];
 
     /** @var string[] */
@@ -99,19 +103,14 @@ class PdbQuery
      *
      * Note, this will replace any previous select().
      *
-     * @param string $fields
+     * @param string|string[] $fields field => alias
      * @return static
+     * @throws InvalidArgumentException
      */
     public function select(...$fields)
     {
-        foreach ($fields as $field) {
-            // This feels hacky.
-            if (!(is_numeric($field) and intval($field) == floatval($field))) {
-                Pdb::validateIdentifierExtended($field);
-            }
-        }
-
-        $this->_select = $fields;
+        $this->_select = [];
+        $this->andSelect(...$fields);
         return $this;
     }
 
@@ -123,30 +122,35 @@ class PdbQuery
      *
      * @param string ...$fields
      * @return static
+     * @throws InvalidArgumentException
      */
     public function andSelect(...$fields)
     {
-        foreach ($fields as $field) {
-            if (!(is_numeric($field) and intval($field) == floatval($field))) {
-                Pdb::validateIdentifierExtended($field);
-            }
+        $fields = Arrays::flatten($fields, true);
 
-            $this->_select[] = $field;
+        foreach ($fields as $key => $value) {
+            if (is_numeric($key)) {
+                $this->_select[] = Pdb::validateAlias($value);
+            }
+            else {
+                Pdb::validateIdentifierExtended($key);
+                $this->_select[] = [$key, $value];
+            }
         }
+
         return $this;
     }
 
 
     /**
      *
-     * @param string $table
+     * @param string|string[] $table
      * @return static
+     * @throws InvalidArgumentException
      */
-    public function from(string $table)
+    public function from($table)
     {
-        Pdb::validateIdentifier($table);
-
-        $this->_from = $table;
+        $this->_from = Pdb::validateAlias($table);
         return $this;
     }
 
@@ -154,58 +158,72 @@ class PdbQuery
     /**
      *
      * @param string $type
-     * @param string $table
-     * @param array $conditions
+     * @param string|string[] $table
+     * @param (array|string|PdbCondition)[] $conditions
      * @param string $combine
      * @return static
+     * @throws InvalidArgumentException
      */
-    public function join(string $type, string $table, array $conditions, string $combine = 'AND')
+    private function _join(string $type, $table, array $conditions, string $combine = 'AND')
     {
-        Pdb::validateIdentifier($table);
-
-        $this->_joins[$type][$table] = [$conditions, $combine];
+        $table = Pdb::validateAlias($table);
+        $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
     }
 
 
     /**
      *
-     * @param string $table
-     * @param array $conditions
+     * @param string|string[] $table
+     * @param (array|string|PdbCondition)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function leftJoin(string $table, array $conditions, string $combine = 'AND')
+    public function join($table, array $conditions, string $combine = 'AND')
     {
-        $this->join('left', $table, $conditions, $combine);
+        return $this->innerJoin($table, $conditions, $combine);
+    }
+
+
+    /**
+     *
+     * @param string|string[] $table
+     * @param (array|string|PdbCondition)[] $conditions
+     * @param string $combine
+     * @return static
+     */
+    public function leftJoin($table, array $conditions, string $combine = 'AND')
+    {
+        $this->_join('LEFT', $table, $conditions, $combine);
         return $this;
     }
 
 
     /**
      *
-     * @param string $table
-     * @param array $conditions
+     * @param string|string[] $table
+     * @param (array|string|PdbCondition)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function innerJoin(string $table, array $conditions, string $combine = 'AND')
+    public function innerJoin($table, array $conditions, string $combine = 'AND')
     {
-        $this->join('inner', $table, $conditions, $combine);
+        $this->_join('INNER', $table, $conditions, $combine);
         return $this;
     }
 
 
     /**
      *
-     * @param array $conditions
+     * @param (array|string|PdbCondition)[] $conditions
      * @param string $combine
      * @return static
      */
     public function where(array $conditions, $combine = 'AND')
     {
+        $this->conditions = [];
         if (!empty($conditions)) {
-            $this->_conditions['WHERE'] = [[$conditions, $combine]];
+            $this->conditions[] = ['WHERE', $conditions, $combine];
         }
         return $this;
     }
@@ -213,17 +231,14 @@ class PdbQuery
 
     /**
      *
-     * @param array $conditions
-     * @param string $combine
+     * @param (array|string|PdbCondition)[] $conditions
+     * @param string $combine AND | OR
      * @return static
      */
     public function andWhere(array $conditions, $combine = 'AND')
     {
-        if (empty($this->_conditions)) {
-            $this->where($conditions, $combine);
-        }
-        else if (!empty($conditions)) {
-            $this->_conditions['AND'][] = [$conditions, $combine];
+        if (!empty($conditions)) {
+            $this->_conditions[] = ['AND', $conditions, $combine];
         }
         return $this;
     }
@@ -231,17 +246,14 @@ class PdbQuery
 
     /**
      *
-     * @param array $conditions
-     * @param string $combine
+     * @param (array|string|PdbCondition)[] $conditions
+     * @param string $combine AND | OR
      * @return static
      */
     public function orWhere(array $conditions, $combine = 'OR')
     {
-        if (empty($this->_conditions)) {
-            $this->where($conditions, $combine);
-        }
-        else if (!empty($conditions)) {
-            $this->_conditions['OR'][] = [$conditions, $combine];
+        if (!empty($conditions)) {
+            $this->_conditions[] = ['OR', $conditions, $combine];
         }
         return $this;
     }
@@ -249,7 +261,7 @@ class PdbQuery
 
     /**
      *
-     * @param string|string[] $field
+     * @param string|string[] $fields
      * @return static
      */
     public function groupBy(...$fields)
@@ -291,7 +303,6 @@ class PdbQuery
     }
 
 
-
     /**
      *
      * @param string|string[] $fields
@@ -299,7 +310,7 @@ class PdbQuery
      */
     public function group(...$fields)
     {
-        return $this->orderBy(...$fields);
+        return $this->groupBy(...$fields);
     }
 
 
@@ -353,17 +364,26 @@ class PdbQuery
 
         // Build 'select'.
         if ($this->_select) {
-            $fields = PdbHelpers::normalizeAliases($this->_select);
-            $fields = $this->pdb->quoteAll($fields, Pdb::QUOTE_FIELD);
+            $fields = [];
 
-            $fields = implode(',', $fields);
-            $sql .= 'SELECT ' . $fields;
+            foreach ($this->_select as [$field, $alias]) {
+                $field = $this->pdb->quoteField($field);
+
+                if ($alias) {
+                    $field .= ' AS ';
+                    $field .= $this->pdb->quoteField($alias);
+                }
+
+                $fields[] = $field;
+            }
+
+            $sql .= 'SELECT ';
+            $sql .= implode(', ', $fields);
             $sql .= ' ';
         }
-
         // No select? Build a wildcard.
-        if (strtolower(substr(trim($sql), 0, 6)) !== 'select') {
-            [$from, $alias] = PdbHelpers::alias($this->_from);
+        else {
+            [$from, $alias] = $this->_from;
             if ($from) {
                 $sql .= "SELECT ~{$from}.* ";
             }
@@ -374,51 +394,76 @@ class PdbQuery
 
         // Build 'from'.
         if ($this->_from) {
-            [$from, $alias] = PdbHelpers::alias($this->_from);
+            [$from, $alias] = $this->_from;
 
             $sql .= "FROM ~{$from} ";
-            if ($alias) $sql .= "AS {$alias} ";
+            if ($alias) {
+                $sql .= 'AS ';
+                $sql .= $this->pdb->quoteField($alias);
+                $sql .= ' ';
+            }
         }
 
         // Build joiners.
-        foreach ($this->_joins as $type => $join) {
-            foreach ($join as $table => [$conditions, $combine]) {
-                [$table, $alias] = PdbHelpers::alias($table);
+        foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
+            [$table, $alias] = $table;
 
-                $sql .= "{$type} JOIN ~{$table} ";
-                if ($alias) $sql .= "AS {$alias} ";
-                $sql .= 'ON ' . $this->pdb->buildClause($conditions, $combine);
+            $sql .= "{$type} JOIN ~{$table} ";
+            if ($alias) {
+                $sql .= 'AS ';
+                $sql .= $this->pdb->quoteField($alias);
                 $sql .= ' ';
             }
+
+            $sql .= 'ON ' . $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= ' ';
         }
 
         // Build where clauses.
-        foreach ($this->_conditions as $type => $clauses) {
-            foreach ($clauses as [$conditions, $combine]) {
-                $sql .= $type . ' ';
-                $sql .= $this->pdb->buildClause($conditions, $params, $combine);
-                $sql .= ' ';
+        $first = false;
+        foreach ($this->_conditions as [$type, $conditions, $combine]) {
+            if ($first) {
+                $type = 'WHERE';
+                $first = false;
             }
+
+            $sql .= $type . ' ';
+            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= ' ';
         }
 
         if ($this->_group) {
-            $sql .= "GROUP BY {$this->_group} ";
+            $fields = [];
+            foreach ($this->_group as $field) {
+                $fields[] = $this->pdb->quoteField($field);
+            }
+
+            $sql .= 'GROUP BY ';
+            $sql .= implode(', ', $fields);
+            $sql .= ' ';
         }
 
         if ($this->_order) {
-            $sql .= 'ORDER BY ';
-
+            $fields = [];
             foreach ($this->_order as $field => $order) {
-                $sql .= " {$field} {$order}";
+                $field = $this->pdb->quoteField($field);
+                $fields[] = "{$field} {$order}";
             }
+
+            $sql .= 'ORDER BY ';
+            $sql .= implode(', ', $fields);
+            $sql .= ' ';
+
         }
 
         if ($this->_limit) {
-            $sql .= "LIMIT {$this->_limit} ";
+            $params[] = $this->_limit;
+            $sql .= 'LIMIT ? ';
         }
 
         if ($this->_offset) {
-            $sql .= "OFFSET {$this->_offset} ";
+            $params[] = $this->_offset;
+            $sql .= 'OFFSET ? ';
         }
 
         return [trim($sql), $params];
