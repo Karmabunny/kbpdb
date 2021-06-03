@@ -21,14 +21,14 @@ use Traversable;
  * Also good because the PdbModel is pretty lightweight.
  * This is a good chance to combine in Collections and other helpers.
  */
-abstract class Model implements PdbModel, IteratorAggregate
+abstract class Model extends PdbModel
 {
     use PdbModelTrait;
 
     protected static $pdb;
 
 
-    protected static function getConnection(): Pdb
+    public static function getConnection(): Pdb
     {
         return Database::getConnection();
     }
