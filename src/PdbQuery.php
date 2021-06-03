@@ -221,9 +221,9 @@ class PdbQuery
      */
     public function where(array $conditions, $combine = 'AND')
     {
-        $this->conditions = [];
+        $this->_conditions = [];
         if (!empty($conditions)) {
-            $this->conditions[] = ['WHERE', $conditions, $combine];
+            $this->_conditions[] = ['WHERE', $conditions, $combine];
         }
         return $this;
     }
@@ -422,7 +422,7 @@ class PdbQuery
         // Build where clauses.
         $first = false;
         foreach ($this->_conditions as [$type, $conditions, $combine]) {
-            if ($first) {
+            if (!$first) {
                 $type = 'WHERE';
                 $first = false;
             }
