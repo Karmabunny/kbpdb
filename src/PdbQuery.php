@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use Exception;
 use Generator;
 use InvalidArgumentException;
 use karmabunny\pdb\Exceptions\ConnectionException;
@@ -60,8 +59,6 @@ class PdbQuery
 
     private $_conditions = [];
 
-    private $_sql = [];
-
     private $_select = [];
 
     private $_from = '';
@@ -78,8 +75,6 @@ class PdbQuery
 
     private $_offset = 0;
 
-    private $_last_cmd = '';
-
     private $_as = null;
 
 
@@ -95,20 +90,6 @@ class PdbQuery
         else {
             $this->pdb = Pdb::create($pdb);
         }
-
-        $this->_last_cmd = __METHOD__;
-    }
-
-
-    /**
-     *
-     * @param string $sql
-     * @return static
-     */
-    public function sql(string $sql)
-    {
-        $this->_sql[$this->_last_cmd] = $sql;
-        return $this;
     }
 
 
@@ -130,7 +111,6 @@ class PdbQuery
         }
 
         $this->_select = $fields;
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -166,7 +146,6 @@ class PdbQuery
         Pdb::validateIdentifier($table);
 
         $this->_from = $table;
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -184,7 +163,6 @@ class PdbQuery
         Pdb::validateIdentifier($table);
 
         $this->_joins[$type][$table] = [$conditions, $combine];
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -227,7 +205,6 @@ class PdbQuery
     {
         if (!empty($conditions)) {
             $this->_conditions['WHERE'] = [[$conditions, $combine]];
-            $this->_last_cmd = __METHOD__;
         }
         return $this;
     }
@@ -277,7 +254,6 @@ class PdbQuery
     public function groupBy(string $field)
     {
         $this->_group = $field;
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -302,7 +278,6 @@ class PdbQuery
             $this->_order[] = $field;
         }
 
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -315,7 +290,6 @@ class PdbQuery
     public function limit(int $limit)
     {
         $this->_limit = $limit;
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -328,7 +302,6 @@ class PdbQuery
     public function offset(int $offset)
     {
         $this->_offset = $offset;
-        $this->_last_cmd = __METHOD__;
         return $this;
     }
 
@@ -357,8 +330,6 @@ class PdbQuery
         $sql = '';
         $params = [];
 
-        $sql .= $this->raw('__construct');
-
         // Build 'select'.
         if ($this->_select) {
             $fields = PdbHelpers::normalizeAliases($this->_select);
@@ -380,16 +351,12 @@ class PdbQuery
             }
         }
 
-        $sql .= $this->raw('select');
-
         // Build 'from'.
         if ($this->_from) {
             [$from, $alias] = PdbHelpers::alias($this->_from);
 
             $sql .= "FROM ~{$from} ";
             if ($alias) $sql .= "AS {$alias} ";
-
-            $sql .= $this->raw('from');
         }
 
         // Build joiners.
@@ -413,12 +380,8 @@ class PdbQuery
             }
         }
 
-        $sql .= $this->raw('where');
-
         if ($this->_group) {
             $sql .= "GROUP BY {$this->_group} ";
-
-            $sql .= $this->raw('groupBy');
         }
 
         if ($this->_order) {
@@ -429,20 +392,14 @@ class PdbQuery
             if ($this->_direction) {
                 $sql .= "{$this->_direction} ";
             }
-
-            $sql .= $this->raw('orderBy');
         }
 
         if ($this->_limit) {
             $sql .= "LIMIT {$this->_limit} ";
-
-            $sql .= $this->raw('limit');
         }
 
         if ($this->_offset) {
             $sql .= "OFFSET {$this->_offset} ";
-
-            $sql .= $this->raw('offset');
         }
 
         return [trim($sql), $params];
@@ -719,23 +676,4 @@ class PdbQuery
         return $this->pdb->query($sql, $params, 'pdo');
     }
 
-
-    /**
-     *
-     * @param string $method
-     * @return string
-     */
-    private function raw(string $method)
-    {
-        // Not user error, it's a developer error. Bad. Make noise.
-        if (!method_exists($this, $method)) {
-            throw new Exception("injectRaw(): Invalid method: {$method}");
-        }
-
-        $method = static::class . '::' . $method;
-        $inject = $this->_sql[$method] ?? null;
-
-        if (!$inject) return '';
-        return trim($inject) . ' ';
-    }
 }
