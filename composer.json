@@ -9,7 +9,7 @@
         "ext-dom": "*",
         "ext-libxml": "*",
         "ext-pdo": "*",
-        "karmabunny/kb": "^2|dev-master"
+        "karmabunny/kb": "^2.13"
     },
     "require-dev": {
         "phpcompatibility/php-compatibility": "^9.3",

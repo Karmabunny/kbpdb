@@ -4,23 +4,27 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4e972b3ba8552cd14afafc907d74580e",
+    "content-hash": "ae33fa98e55e6992326534c0bea76777",
     "packages": [
         {
             "name": "karmabunny/kb",
-            "version": "v2.6.0",
+            "version": "v2.13.8",
             "source": {
                 "type": "git",
                 "url": "git@github.com:Karmabunny/kbphp.git",
-                "reference": "690ee5d432f14d309122ecd173e14ec4af8132aa"
+                "reference": "5660953785a4f5d5bba2f6c57f30b972d58d728b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-690ee5d432f14d309122ecd173e14ec4af8132aa-zip-1f3c22.zip",
-                "reference": "690ee5d432f14d309122ecd173e14ec4af8132aa",
-                "shasum": "54d410c24cef503247fcdefea5d8a65c3e6abda9"
+                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-5660953785a4f5d5bba2f6c57f30b972d58d728b-zip-e78459.zip",
+                "reference": "5660953785a4f5d5bba2f6c57f30b972d58d728b",
+                "shasum": "1f21f070f151739c541a4370f7000abd4aaa5438"
+            },
+            "require": {
+                "symfony/polyfill-php73": "*"
             },
             "require-dev": {
+                "phpcompatibility/php-compatibility": "^9.3",
                 "phpstan/phpstan": "^0.12.82",
                 "phpunit/phpunit": "^9.3"
             },
@@ -36,6 +40,15 @@
                 }
             },
             "scripts": {
+                "register-phpcs": [
+                    "phpcs --config-set installed_paths vendor/phpcompatibility/php-compatibility"
+                ],
+                "post-install-cmd": [
+                    "@register-phpcs"
+                ],
+                "post-update-cmd": [
+                    "@register-phpcs"
+                ],
                 "tests": [
                     "phpunit --testdox tests"
                 ],
@@ -47,6 +60,9 @@
                 ],
                 "analyse": [
                     "phpstan analyse --level 5 src"
+                ],
+                "compat": [
+                    "phpcs -p --standard=PHPCompatibility --colors --extensions=php --runtime-set testVersion 7.1 src"
                 ]
             },
             "license": [
@@ -54,10 +70,89 @@
             ],
             "description": "Common KB utilities",
             "support": {
-                "source": "https://github.com/Karmabunny/kbphp/tree/v2.6.0",
+                "source": "https://github.com/Karmabunny/kbphp/tree/v2.13.8",
                 "issues": "https://github.com/Karmabunny/kbphp/issues"
             },
-            "time": "2021-04-06T07:06:24+00:00"
+            "time": "2021-06-03T07:05:19+00:00"
+        },
+        {
+            "name": "symfony/polyfill-php73",
+            "version": "v1.23.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/polyfill-php73.git",
+                "reference": "fba8933c384d6476ab14fb7b8526e5287ca7e010"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/polyfill-php73/zipball/fba8933c384d6476ab14fb7b8526e5287ca7e010",
+                "reference": "fba8933c384d6476ab14fb7b8526e5287ca7e010",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.1"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-main": "1.23-dev"
+                },
+                "thanks": {
+                    "name": "symfony/polyfill",
+                    "url": "https://github.com/symfony/polyfill"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Polyfill\\Php73\\": ""
+                },
+                "files": [
+                    "bootstrap.php"
+                ],
+                "classmap": [
+                    "Resources/stubs"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony polyfill backporting some PHP 7.3+ features to lower PHP versions",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "compatibility",
+                "polyfill",
+                "portable",
+                "shim"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/polyfill-php73/tree/v1.23.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2021-02-19T12:13:01+00:00"
         }
     ],
     "packages-dev": [
@@ -2328,9 +2423,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "karmabunny/kb": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
