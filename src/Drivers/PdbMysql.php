@@ -26,8 +26,9 @@ class PdbMysql extends Pdb
         $matches = [];
 
         foreach ($res as $val) {
-            preg_match('/GRANT ([^ ]+) ON/', $val, $matches);
-            $perms += explode(', ', strtoupper($matches[1]));
+            if (!preg_match('/GRANT (.+) ON/', $val, $matches)) continue;
+            $matches = explode(', ', strtoupper($matches[1]));
+            array_push($perms, ...$matches);
         }
 
         if (in_array('ALL PRIVILEGES', $perms)) {
