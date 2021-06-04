@@ -98,9 +98,6 @@ abstract class Pdb implements Loggable
     /** @var PDO|null */
     protected $connection;
 
-    /** @var PDO|null */
-    protected $override_connection = null;
-
     /** @var bool */
     protected $in_transaction = false;
 
@@ -223,28 +220,6 @@ abstract class Pdb implements Loggable
     }
 
 
-    /**
-     * Set an override PDO connection.
-     *
-     * @param PDO $connection
-     * @return void
-     */
-    public function setOverrideConnection(PDO $connection)
-    {
-        $connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->override_connection = $connection;
-    }
-
-
-    /**
-     * Clear any overridden connection, reverting behaviour back to
-     * the default connection logic.
-     */
-    public function clearOverrideConnection()
-    {
-        $this->override_connection = null;
-    }
-
 
     // ===========================================================
     //     Query builder
@@ -259,15 +234,10 @@ abstract class Pdb implements Loggable
      */
     public function getConnection()
     {
-        if (isset($this->override_connection)) {
-            return $this->override_connection;
+        if (!isset($this->connection)) {
+            $this->connection = self::connect($this->config);
         }
 
-        if (isset($this->connection)) {
-            return $this->connection;
-        }
-
-        $this->connection = self::connect($this->config);
         return $this->connection;
     }
 
