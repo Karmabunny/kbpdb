@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use Exception;
 use Generator;
 use InvalidArgumentException;
 use karmabunny\kb\Uuid;
@@ -21,7 +20,6 @@ use karmabunny\pdb\Models\SyncActions;
 use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\SyncFix;
 use karmabunny\pdb\Models\SyncQuery;
-use PDOException;
 use Throwable;
 
 /**
@@ -112,7 +110,6 @@ class PdbSync
      * @param SyncActions|array $do
      * @return array [ type, body ]
      * @throws InvalidArgumentException
-     * @throws Exception
      * @throws QueryException
      */
     public function updateDatabase(PdbParser $parser, $do = null)
@@ -125,11 +122,11 @@ class PdbSync
     /**
      *
      * @param PdbParser $parser
-     * @param mixed|null $do
+     * @param SyncActions|array|null $do
      * @return void
      * @throws InvalidArgumentException
-     * @throws Exception
      * @throws QueryException
+     * @throws ConnectionException
      */
     public function migrate(PdbParser $parser, $do = null)
     {
