@@ -783,7 +783,6 @@ class PdbSync
         $to_column = $this->pdb->quote($foreign_key->to_column, Pdb::QUOTE_FIELD);
 
         // Look for records which fail to join to the foreign table
-        $message = '';
         try {
             $q = "SELECT COUNT(*)
                 FROM ~{$table_name} AS main
@@ -802,7 +801,9 @@ class PdbSync
 
                 $q = str_replace('COUNT(*)', "main.id, main.{$from_column}", $q);
 
-                $this->storeFix($foreign_key->constraint_name, [
+                $fix_name = "{$table_name}.{$foreign_key->from_column}";
+
+                $this->storeFix($fix_name, [
                     'name' => 'Find records',
                     'sql' => $q,
                 ]);
@@ -811,7 +812,7 @@ class PdbSync
                     WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
                 ";
 
-                $this->storeFix($foreign_key->constraint_name, [
+                $this->storeFix($fix_name, [
                     'name' => 'Delete records',
                     'sql' => $q,
                 ]);
@@ -821,7 +822,7 @@ class PdbSync
                     WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
                 ";
 
-                $this->storeFix($foreign_key->constraint_name, [
+                $this->storeFix($fix_name, [
                     'name' => 'NULL offending values',
                     'sql' => $q,
                 ]);
