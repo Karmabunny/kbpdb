@@ -334,13 +334,16 @@ abstract class Pdb implements Loggable
      * When working with datasets larger than about 50 rows, you may run out of ram when using
      * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
      *
+     * Return types:
+     * - PDOStatement For type 'pdo'
+     * - int For type 'count'
+     * - null For type 'null'
+     * - mixed For all other types; see {@see Pdb::formatRs}
+     *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
      * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
-     * @return PDOStatement For type 'pdo'
-     * @return int For type 'count'
-     * @return null For type 'null'
-     * @return mixed For all other types; see {@see Pdb::formatRs}
+     * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
@@ -1225,7 +1228,7 @@ abstract class Pdb implements Loggable
      * @return string|int|null|array For 'val'
      * @throws RowMissingException If the result set didn't contain the required row
      */
-    protected static function formatRs(PDOStatement $rs, string $type)
+    public static function formatRs(PDOStatement $rs, string $type)
     {
         switch ($type) {
         case 'null':
