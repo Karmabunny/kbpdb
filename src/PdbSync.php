@@ -741,13 +741,12 @@ class PdbSync
     **/
     private function checkForeignKeyMatches(string $table_name, PdbForeignKey $foreign_key)
     {
-        $prefix = $this->pdb->getPrefix();
         $current_fks = $this->pdb->getForeignKeys($table_name);
 
         // Filter out non-matching FKs.
         foreach ($current_fks as $id => $fk) {
             if (
-                $prefix . $foreign_key->to_table != $fk->to_table or
+                $foreign_key->to_table != $fk->to_table or
                 $foreign_key->from_column != $fk->from_column or
                 $foreign_key->to_column != $fk->to_column or
                 $foreign_key->update_rule != $fk->update_rule or
@@ -873,7 +872,7 @@ class PdbSync
             $q = "ALTER TABLE ~{$table_name} DROP COLUMN ";
             $q .= $this->pdb->quote($col->name, Pdb::QUOTE_FIELD);
 
-            $this->heading = "REMOVED - Table '{$table_name}', Column '{$col->name}";
+            $this->heading = "REMOVED - Table '{$table_name}', Column '{$col->name}'";
             $this->storeQuery('drop_column', $q);
         }
     }
@@ -919,14 +918,12 @@ class PdbSync
     private function checkRemovedForeignKeys(string $table_name, array $defined)
     {
         $current_fks = $this->pdb->getForeignKeys($table_name);
-        $prefix = $this->pdb->getPrefix();
-
         foreach ($current_fks as $fk) {
 
             foreach ($defined as $def_fk) {
                 if (
                     $def_fk->from_column == $fk->from_column and
-                    $prefix . $def_fk->to_table == $fk->to_table and
+                    $def_fk->to_table == $fk->to_table and
                     $def_fk->to_column == $fk->to_column and
                     $def_fk->update_rule == $fk->update_rule and
                     $def_fk->delete_rule == $fk->delete_rule
