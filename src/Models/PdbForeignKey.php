@@ -10,16 +10,16 @@ use karmabunny\kb\Collection;
  */
 class PdbForeignKey extends Collection
 {
-    /** @var string */
+    /** @var string|null */
     public $constraint_name;
 
-    /** @var string */
+    /** @var string non-prefixed */
     public $from_table;
 
     /** @var string */
     public $from_column;
 
-    /** @var string */
+    /** @var string non-prefixed */
     public $to_table;
 
     /** @var string */

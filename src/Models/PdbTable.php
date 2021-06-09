@@ -10,7 +10,7 @@ use karmabunny\kb\Collection;
  */
 class PdbTable extends Collection
 {
-    /** @var string */
+    /** @var string non-prefixed */
     public $name;
 
     /** @var PdbColumn[] name => PdbColumn */
