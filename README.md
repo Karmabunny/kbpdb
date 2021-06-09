@@ -118,48 +118,24 @@ Schema stuff:
 - put db_struct.xsd somewhere online
 - tie down boolean properties to 0|1
 
-Refactoring:
-- Rename DatabaseSync - PdbSync
-- split up DatabaseSync
-  - DbSync parser
-  - DbSync executer
-  - DbSync _writer_...?
+Compat:
+- finish sprout compatibility stuff
+
+Refactor:
+- rename extended methods (fieldList, indexList)
 
 New stuff:
-- Make DbSync output a set of SQL 'migration' files
-  - provides opportunity to add migration _data_
-  - execute each of one these
-  - store execution history somewhere... files? table?
+- should return row keys lower-cased? via config?
 - `Pdb::transact()` should return a transaction ID
   - commits can only be done with this ID
   - forces the user to manage the transaction lifecycle
   - rollback prevents any commits
     - throws an error? returns bool?
 
-PdbQuery:
-- Should everything be a generator?
-- Maybe remove raw SQL stuff.
-- Do we need more escaping?
-- Support for select(['column' => 'as'])
-  - Or should it be 'as' => 'column' ?
-- Support for:
-  - from('table', 'as')
-  - from(['table' => 'as'])
-  - join('inner', ['table' => 'as'], ['id' => 'abc'])
-- I got orderBy() wrong, fix that.
-
-Pdb:
-- create consts for row/arr/row-arr/map-arr/etc
-
 Fixes:
 - Pdb::find() should respect 'date_deleted'
 
-Kinda related:
-- Rename kbphp XML class as DOM
-
-
-UUIDs:
-
+Document UUIDs somewhere:
 - 'PDB' has a single namespace (uuidv4)
 - each table then hashes that with 'schema.table.id'
 - eg. 'twee.users.123'
