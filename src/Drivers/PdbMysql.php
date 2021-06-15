@@ -106,12 +106,17 @@ class PdbMysql extends Pdb
             $key = $row[0];
             $autoinc = stripos($row[5], 'auto_increment') !== false;
 
+            $default = trim($row[4], '\'');
+            if (strcasecmp($row[4], 'null') === 0) {
+                $default = null;
+            }
+
             $rows[$key] = new PdbColumn([
                 'name' => $row[0],
                 'type' => $row[1],
                 'is_nullable' => $row[2] == 'YES',
                 'is_primary' => $row[3] == 'PRI',
-                'default' => $row[4],
+                'default' => $default,
                 'auto_increment' => $autoinc,
                 'extra' => $row[5],
             ]);

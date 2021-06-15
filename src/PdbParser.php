@@ -134,12 +134,18 @@ class PdbParser
         foreach ($column_nodes as $node) {
             /** @var DOMElement $node */
 
+            // TODO Update to use kbphp (v2.16) XML.
+            $default = null;
+            if ($node->hasAttribute('default')) {
+                $default = $node->getAttribute('default');
+            }
+
             $table->addColumn(new PdbColumn([
                 'name' => $node->getAttribute('name'),
                 'type' => self::parseColumnType($node),
                 'is_nullable' => (bool) $node->getAttribute('allownull'),
                 'auto_increment' => (bool) $node->getAttribute('autoinc'),
-                'default' => $node->getAttribute('default') ?: null,
+                'default' => $default,
                 'previous_names' => self::parseStringArray($node->getAttribute('previous-names')),
             ]));
         }
@@ -336,7 +342,7 @@ class PdbParser
     /**
      * Get a list of strings from the target child element.
      *
-     * TODO This could live in the kbphp XML helper.
+     * TODO Update to use kbphp (v2.16) XML.
      *
      * @param DOMElement $node
      * @param string $tag

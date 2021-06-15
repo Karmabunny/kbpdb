@@ -653,11 +653,18 @@ class PdbSync
         if ($col->is_nullable !== $column->is_nullable) {
             $errors[] = 'null';
         }
-        if ($col->default != $column->default) {
-            $errors[] = 'default';
-        }
         if ($col->auto_increment !== $column->auto_increment) {
             $errors[] = 'autoinc';
+        }
+
+        // Default comparisons are strict if the new column is nullable.
+        if ($column->is_nullable and $col->default !== $column->default) {
+            $errors[] = 'default';
+        }
+        // Otherwise non-strict because of a reason I can't remember.
+        // Either way, this is working at the moment so I'm happy.
+        else if ($col->default != $column->default) {
+            $errors[] = 'default';
         }
 
         if ($errors) {
