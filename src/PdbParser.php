@@ -367,10 +367,17 @@ class PdbParser
         $type = trim($type);
 
         switch (strtoupper($type)) {
+            case 'ENUM':
+            case 'SET':
             case 'ENUM(XML)':
             case 'SET(XML)':
                 $values = self::parseValues($node, 'val');
-                return str_replace('XML', implode(',', $values), $type);
+                foreach ($values as &$value) {
+                    $value = addcslashes($value, '\'');
+                    $value = "'{$value}'";
+                }
+                unset($value);
+                return str_replace('xml', implode(',', $values), $type);
 
             default:
                 return $type;
