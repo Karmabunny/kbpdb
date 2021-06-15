@@ -160,6 +160,35 @@ class PdbHelpers
 
 
     /**
+     *
+     *
+     * @param string $type
+     * @param bool $strict
+     * @return string|null
+     */
+    public static function convertDataType(string $type, $strict = false)
+    {
+        $matches = [];
+
+        if (!preg_match('/(?:
+            (char|text|binary|blob|^enum|^bit$)|
+            (int|year)|
+            (float|dec|real|double|fixed)|
+            (date|time)|
+            (^set)
+        )/ix', $type, $matches)) return null;
+
+        if ($matches[1]) return 'string';
+        if ($matches[2]) return 'int';
+        if ($matches[3]) return 'float';
+        if ($matches[4]) return $strict ? 'string' : 'datetime';
+        if ($matches[5]) return $strict ? 'string' : 'array';
+
+        return null;
+    }
+
+
+    /**
      * Convert an ENUM or SET definition from MySQL into an array of values
      *
      * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
