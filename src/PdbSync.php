@@ -525,7 +525,18 @@ class PdbSync
 
         if ($table->primary_key) {
             $primary_key = implode(', ', $this->pdb->quoteAll($table->primary_key, Pdb::QUOTE_FIELD));
-            $defs[] = "PRIMARY KEY ({$primary_key})";
+            $spec = "PRIMARY KEY ({$primary_key})";
+
+            if ($this->pdb instanceof PdbSqlite) {
+                $name = $table->primary_key[0];
+                $column = $table->columns[$name] ?? null;
+
+                // if ($column and $column->auto_increment) {
+                //     $spec .= ' AUTOINCREMENT';
+                // }
+            }
+
+            $defs[] = $spec;
         }
 
         foreach ($table->indexes as $index) {
@@ -1092,6 +1103,12 @@ class PdbSync
     {
         $spec = $column->type;
 
+        if ($this->pdb instanceof PdbSqlite) {
+            if (preg_match('/^(ENUM|SET)/', $column->type)) {
+                $spec = 'TEXT';
+            }
+        }
+
         if (!$column->is_nullable) {
             $spec .= ' NOT NULL';
         }
@@ -1099,10 +1116,6 @@ class PdbSync
         if ($column->auto_increment) {
             if ($this->pdb instanceof PdbMysql) {
                 $spec .= ' AUTO_INCREMENT';
-            }
-
-            if ($this->pdb instanceof PdbSqlite) {
-                $spec .= ' AUTOINCREMENT';
             }
 
             // Postgres - SERIAL
