@@ -14,6 +14,8 @@ class PdbModelTest extends TestCase
     public function setUp(): void
     {
         $pdb = Database::getConnection();
+        if (!Database::isConnected()) $this->markTestSkipped();
+
         $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
 
         $sync = new PdbSync($pdb);

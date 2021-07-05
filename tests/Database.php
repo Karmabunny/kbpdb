@@ -2,6 +2,7 @@
 
 namespace kbtests;
 
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
 
 
@@ -16,5 +17,18 @@ final class Database
             $pdb = Pdb::create($config);
         }
         return $pdb;
+    }
+
+
+    public static function isConnected(): bool
+    {
+        $pdb = self::getConnection();
+        try {
+            $pdb->getConnection();
+            return true;
+        }
+        catch (ConnectionException $error) {
+            return false;
+        }
     }
 }

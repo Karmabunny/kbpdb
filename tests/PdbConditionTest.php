@@ -124,6 +124,7 @@ class PdbConditionTest extends TestCase
     public function testNoBindValue(): void
     {
         $pdb = Database::getConnection();
+        if (!Database::isConnected()) $this->markTestSkipped();
 
         $condition = new PdbCondition(
             PdbCondition::NOT_IN,
@@ -143,6 +144,7 @@ class PdbConditionTest extends TestCase
     public function testNoBindField(): void
     {
         $pdb = Database::getConnection();
+        if (!Database::isConnected()) $this->markTestSkipped();
 
         $condition = new PdbCondition(
             PdbCondition::NOT_IN,
