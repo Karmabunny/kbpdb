@@ -23,12 +23,13 @@ use karmabunny\pdb\Models\SyncQuery;
 use Throwable;
 
 /**
-* Provides a system for syncing a database to a database definition.
-*
-* The database definition is stored in one or more XML files, which get merged
-* together before the sync is done.
-* Contains code that may be MySQL specific.
-**/
+ * Provides a system for syncing a database to a database definition.
+ *
+ * The database definition is stored in one or more XML files, which get merged
+ * together before the sync is done.
+ *
+ * Contains code that may be MySQL specific.
+ **/
 class PdbSync
 {
     /** @var Pdb */
@@ -105,9 +106,22 @@ class PdbSync
 
 
     /**
+     * Migrate and execute the sync - all in one.
+     *
+     * This is shorthand for {@see migrate()} and {@see execute()}.
+     *
+     * This returns a 'pdb log' that can be converted to whichever format you
+     * please. The {@see PdbLog::print} method has a sample implementation.
      *
      * @param PdbParser $parser
      * @param SyncActions|array $do
+     *   - `'create'`      - create table, update table attributes
+     *   - `'primary'`     - update primary key
+     *   - `'column'`      - create/modify columns
+     *   - `'index'`       - update indexes
+     *   - `'foreign_key'` - update constraints
+     *   - `'remove'`      - remove columns
+     *   - `'views'`       - process views
      * @return array [ type, body ]
      * @throws InvalidArgumentException
      * @throws QueryException
@@ -120,9 +134,27 @@ class PdbSync
 
 
     /**
+     * Process the diff between the real database and the provided schema from
+     * the PdbParser object.
+     *
+     * This will populate the internal queries.
+     *
+     * - Get them with {@see getQueries()}
+     * - Store them for later with {@see getMigration()}
+     * - Process with {@see execute()}
+     *
+     * Optionally limit the migration actions with the 'do' parameter.
+     * {@see SyncActions}
      *
      * @param PdbParser $parser
      * @param SyncActions|array|null $do
+     *   - `'create'`      - create table, update table attributes
+     *   - `'primary'`     - update primary key
+     *   - `'column'`      - create/modify columns
+     *   - `'index'`       - update indexes
+     *   - `'foreign_key'` - update constraints
+     *   - `'remove'`      - remove columns
+     *   - `'views'`       - process views
      * @return void
      * @throws InvalidArgumentException
      * @throws QueryException
@@ -148,10 +180,18 @@ class PdbSync
 
 
     /**
-     * Prepare a set of ALTER TABLE statements which will sync the database to the provided layout.
+     * Prepare a set of ALTER TABLE statements which will sync the database to
+     * the provided layout.
      *
      * @param PdbTable[] $tables
-     * @param SyncActions|array $do
+     * @param SyncActions|array|null $do
+     *   - `'create'`      - create table, update table attributes
+     *   - `'primary'`     - update primary key
+     *   - `'column'`      - create/modify columns
+     *   - `'index'`       - update indexes
+     *   - `'foreign_key'` - update constraints
+     *   - `'remove'`      - remove columns
+     *   - `'views'`       - process views
      * @return void
      * @throws InvalidArgumentException
      * @throws QueryException
@@ -218,6 +258,7 @@ class PdbSync
 
 
     /**
+     * Prepare queries for creating (or replacing) views.
      *
      * @param string[] $views [name => SQL]
      * @return void
@@ -232,10 +273,11 @@ class PdbSync
 
 
     /**
+     * Get the stored queries.
      *
      * @return Generator<SyncQuery>
      */
-    public function getQueries()
+    public function getQueries(): Generator
     {
         foreach (self::QUERY_TYPES as $type) {
             if (empty($this->queries[$type])) continue;
@@ -248,6 +290,7 @@ class PdbSync
 
 
     /**
+     * Does this sync have queries to execute?
      *
      * @return bool
      */
@@ -262,6 +305,9 @@ class PdbSync
 
     /**
      * Execute the stored queries.
+     *
+     * This returns a 'pdb log' that can be converted to whichever format you
+     * please. The {@see PdbLog::print()} method has a sample implementation.
      *
      * @return array [ type, body ] execution log
      */
