@@ -34,7 +34,7 @@ class PdbSqlite extends Pdb
         $res = $this->query($q, [], 'col');
 
         foreach ($res as &$row) {
-            $this->stripPrefix($row);
+            $row = $this->stripPrefix($row);
         }
         unset($row);
 
@@ -62,9 +62,9 @@ class PdbSqlite extends Pdb
     public function fieldList(string $table)
     {
         $q = "SELECT
-                name,
-                type,
-                notnull,
+                \"name\",
+                \"type\",
+                \"notnull\",
                 pk,
                 dflt_value
             FROM pragma_table_info(?)

@@ -20,7 +20,7 @@ class PdbColumn extends Collection
     public $is_nullable = true;
 
     /** @var bool */
-    public $is_primary;
+    public $is_primary = false;
 
     /**
      * This controls whether the field is auto incrementing.
