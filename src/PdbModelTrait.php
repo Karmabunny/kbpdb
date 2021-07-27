@@ -8,12 +8,16 @@ namespace karmabunny\pdb;
 
 
 /**
- * This implements basic querying interfaces for a model.
+ * This implements basic methods for {@see PdbModelInterface}.
  *
  * @package karmabunny\pdb
  */
 trait PdbModelTrait
 {
+
+    /** @var int */
+    public $id = 0;
+
 
     /**
      * The connection used queries in this model.
@@ -73,4 +77,47 @@ trait PdbModelTrait
             ->as(static::class)
             ->all();
     }
+
+
+    /**
+     * Save this model.
+     *
+     * @return bool
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function save(): bool
+    {
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+        $data = iterator_to_array($this);
+
+        if ($this->id > 0) {
+            $pdb->update($table, $data, [ 'id' => $this->id ]);
+        }
+        else {
+            $this->id = $pdb->insert($table, $data);
+        }
+
+        return (bool) $this->id;
+    }
+
+
+    /**
+     * Delete this model.
+     *
+     * @param bool $soft Ignored.
+     * @return bool True if the record was deleted.
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function delete($soft = true): bool
+    {
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+        return (bool) $pdb->delete($table, ['id' => $this->id]);
+    }
+
 }

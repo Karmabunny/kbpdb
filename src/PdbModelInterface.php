@@ -14,6 +14,10 @@ namespace karmabunny\pdb;
  * - Saving (create/update)
  * - Deleting
  *
+ * There are two implementations:
+ * - {@see PdbModelTrait} (basic) only required an 'id' field.
+ * - {@see PdbModel} (advanced) audit fields, soft deletes + uuids.
+ *
  * @package karmabunny\pdb
  */
 interface PdbModelInterface

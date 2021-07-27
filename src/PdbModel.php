@@ -8,10 +8,19 @@ namespace karmabunny\pdb;
 
 use DateTimeImmutable;
 use DateTimeInterface;
+use Exception;
+use InvalidArgumentException;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Uuid;
+use karmabunny\pdb\Exceptions\QueryException;
+use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\TransactionRecursionException;
+use PDOException;
 
 /**
+ * This implements an complete version of {@see PdbModelInterface}.
+ *
+ * It includes audit fields, soft deletes and UUIDv5.
  *
  * @package karmabunny\pdb
  */
@@ -72,9 +81,14 @@ abstract class PdbModel extends Collection implements PdbModelInterface
 
 
     /**
-     * Generate a
+     * Generate an appropriate UUID.
+     *
+     * Beware - new records are created with a UUIDv4 while the save() method
+     * generates a UUIDv5. Theoretically this shouldn't be externally apparent
+     * due to the wrapping transaction.
      *
      * @return string
+     * @throws Exception
      */
     protected function getUid()
     {
@@ -88,8 +102,15 @@ abstract class PdbModel extends Collection implements PdbModelInterface
 
 
     /**
+     * Save this model.
      *
      * @return bool
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     * @throws Exception
+     * @throws TransactionRecursionException
+     * @throws PDOException
      */
     public function save(): bool
     {
@@ -143,8 +164,13 @@ abstract class PdbModel extends Collection implements PdbModelInterface
 
 
     /**
+     * Delete this model.
      *
+     * @param bool $soft 'Delete' without removing the record.
      * @return bool
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
      */
     public function delete($soft = true): bool
     {

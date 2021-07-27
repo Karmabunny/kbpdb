@@ -4,10 +4,8 @@ namespace kbtests\Models;
 
 use ArrayIterator;
 use kbtests\Database;
-use IteratorAggregate;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbModel;
-use karmabunny\pdb\PdbModelTrait;
 use Traversable;
 
 /**
@@ -23,7 +21,6 @@ use Traversable;
  */
 abstract class Model extends PdbModel
 {
-    use PdbModelTrait;
 
     protected static $pdb;
 
