@@ -420,7 +420,7 @@ class PdbQuery
         }
 
         // Build where clauses.
-        $first = false;
+        $first = true;
         foreach ($this->_conditions as [$type, $conditions, $combine]) {
             if (!$first) {
                 $type = 'WHERE';
