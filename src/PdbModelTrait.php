@@ -46,7 +46,8 @@ trait PdbModelTrait
         $pdb = static::getConnection();
         $table = static::getTableName();
         return (new PdbQuery($pdb))
-            ->find($table, $conditions);
+            ->find($table, $conditions)
+            ->as(static::class);
     }
 
 
