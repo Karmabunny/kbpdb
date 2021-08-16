@@ -114,9 +114,9 @@ abstract class PdbModel extends Collection implements PdbModelInterface
                 $data['active'] = true;
             }
 
-            // TODO Add nested transaction support with IDs.
+            // TODO Add shared transaction support.
             $ts_id = 0;
-            if ($pdb->inTransaction()) {
+            if (!$pdb->inTransaction()) {
                 $ts_id = 1;
                 $pdb->transact();
             }
