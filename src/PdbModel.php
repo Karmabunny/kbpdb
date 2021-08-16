@@ -136,11 +136,7 @@ abstract class PdbModel extends Collection implements PdbModelInterface
             }
 
             // TODO Add nested transaction support with IDs.
-            $ts_id = 0;
-            if ($pdb->inTransaction()) {
-                $ts_id = 1;
-                $pdb->transact();
-            }
+            $ts = $pdb->transact();
 
             $this->id = $pdb->insert($table, $data);
             $this->uid = $this->getUid();
@@ -151,9 +147,7 @@ abstract class PdbModel extends Collection implements PdbModelInterface
                 ['id' => $this->id]
             );
 
-            if ($ts_id === 1) {
-                $pdb->commit();
-            }
+            $pdb->commit($ts);
         }
 
         $this->date_added = $data['date_added'];

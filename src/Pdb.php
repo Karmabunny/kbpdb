@@ -13,11 +13,13 @@ use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
-use karmabunny\pdb\Exceptions\TransactionRecursionException;
+use karmabunny\pdb\Exceptions\TransactionException;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbNoDriver;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\PdbException;
+use karmabunny\pdb\Exceptions\TransactionRecursionException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -98,8 +100,8 @@ abstract class Pdb implements Loggable
     /** @var PDO|null */
     protected $connection;
 
-    /** @var bool */
-    protected $in_transaction = false;
+    /** @var int|null */
+    protected $transaction_id;
 
     /** @var int|null */
     protected $last_insert_id = null;
@@ -656,57 +658,142 @@ abstract class Pdb implements Loggable
 
     /**
      * Checks if there's a current transaction in progress
-     * @return bool True if inside a transaction
+     *
+     * @return bool
      */
     public function inTransaction()
     {
-        return $this->in_transaction;
+        return (bool) $this->transaction_id;
     }
 
 
     /**
      * Starts a transaction
-     * @return void
-     * @throws TransactionRecursionException if already in a transaction
+     *
+     * Use the returned ID to validate the commit(). This helps ensure that a
+     * transaction is created and finished within the same lexical scope.
+     *
+     * @param bool $exclusive Require this transaction to be the 'base' transaction.
+     * @return int
      * @throws ConnectionException If the connection fails
+     * @throws TransactionException
      */
-    public function transact()
+    public function transact($exclusive = false)
     {
-        if ($this->in_transaction) {
-            throw new TransactionRecursionException();
+        // This transaction demand that it is the base transaction.
+        if ($exclusive and $this->transaction_id != 0) {
+            throw new TransactionException('This transaction is not exclusive');
         }
 
-        $pdo = $this->getConnection();
-        $pdo->beginTransaction();
-        $this->in_transaction = true;
+        if (!$this->transaction_id) {
+            try {
+                $pdo = $this->getConnection();
+                $ok = $pdo->beginTransaction();
+            }
+            catch (PDOException $exception) {
+                throw new TransactionException($exception->getLine(), $exception->getCode(), $exception);
+            }
+
+            if (!$ok) {
+                throw new TransactionException('Failed to begin transaction.');
+            }
+        }
+
+        // Undo the rollback flag.
+        if ($this->transaction_id < 0){
+            $this->transaction_id = 0;
+        }
+
+        $this->transaction_id += 1;
+
+        return $this->transaction_id;
     }
 
 
     /**
      * Commits a transaction
-     * @return void
+     *
+     * Pdb support 'shared' transactions. These are not 'nested' because they
+     * cannot perform partial rollbacks.
+     *
+     * - Performing a rollback will delete all data.
+     * - A 'commit' will only commit on the base transaction.
+     *
+     * The advantage however, means that in dynamic situations where
+     * transactions needs to exist - they will always exist.
+     *
+     * @param int $id The transaction ID from {@see transact()}
+     * @return bool If this is the 'bottom' transaction
      * @throws ConnectionException If the connection fails
-     * @throws PDOException
+     * @throws TransactionException
      */
-    public function commit()
+    public function commit(int $id)
     {
-        $pdo = $this->getConnection();
-        $pdo->commit();
-        $this->in_transaction = false;
+        // Rollback, get mad.
+        if ($this->transaction_id < 0) {
+            throw new TransactionException('This transaction has been cancelled');
+        }
+
+        // We want people to behave. Create and finish your own transactions.
+        if ($id != $this->transaction_id) {
+            throw new TransactionException('Out of order transaction');
+        }
+
+        // No transaction, it's 'already completed' - true.
+        if (!$this->transaction_id) {
+            return true;
+        }
+
+        $this->transaction_id -= 1;
+
+        // Not at the bottom of the stack yet.
+        if ($this->transaction_id) {
+            return false;
+        }
+
+        try {
+            $pdo = $this->getConnection();
+            $pdo->commit();
+        }
+        catch (PDOException $exception) {
+            // I don't expect this to happen because we guard our open/closed
+            // transactions with the transaction_id. That said, someone
+            // could do funky things with the internal pdo object.
+            throw new TransactionException($exception->getLine(), $exception->getCode(), $exception);
+        }
+
+        return true;
     }
 
 
     /**
      * Rolls a transaction back
-     * @return void
+     *
+     * You can roll back a transaction at any time, but this will break the
+     * nested commit stack. Therefore, a rollback will mean that subsequent
+     * rollbacks and commits will always fail.
+     *
+     * @return bool If this is the 'bottom' transaction
      * @throws ConnectionException If the connection fails
-     * @throws PDOException
+     * @throws TransactionException
      */
     public function rollback()
     {
-        $pdo = $this->getConnection();
-        $pdo->rollBack();
-        $this->in_transaction = false;
+        if ($this->transaction_id < 0) {
+            throw new TransactionException('This transaction has been cancelled');
+        }
+
+        $this->transaction_id = -1;
+
+        try {
+            $pdo = $this->getConnection();
+            $pdo->rollBack();
+        }
+        catch (PDOException $exception) {
+            throw new TransactionException($exception->getLine(), $exception->getCode(), $exception);
+        }
+
+        return true;
     }
 
 
