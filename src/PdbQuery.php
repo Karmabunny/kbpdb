@@ -266,6 +266,7 @@ class PdbQuery
      */
     public function groupBy(...$fields)
     {
+        $fields = array_filter($fields);
         $fields = Arrays::flatten($fields);
         $this->_group = $fields;
         return $this;
@@ -279,8 +280,11 @@ class PdbQuery
      */
     public function orderBy(...$fields)
     {
+        $fields = array_filter($fields);
         $fields = Arrays::flatten($fields, true);
         $fields = Arrays::normalizeOptions($fields, 'ASC');
+
+        $this->_order = [];
 
         foreach ($fields as $field => $order) {
             Pdb::validateIdentifierExtended($field);
