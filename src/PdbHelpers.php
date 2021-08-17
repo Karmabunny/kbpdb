@@ -35,6 +35,14 @@ class PdbHelpers
         self::TYPE_DROP,
     ];
 
+
+    const RE_IDENTIFIER = '/^[a-z_][a-z_0-9]*$/i';
+
+    const RE_IDENTIFIER_EXTENDED = '/^(?:[a-z_][a-z_0-9]*\.)?[a-z_][a-z_0-9]*$/i';
+
+    const RE_FUNCTION = '/[a-z_]+\(.+\)$/i';
+
+
     /**
      * Determine the query type.
      *
@@ -63,7 +71,7 @@ class PdbHelpers
     public static function alias(string $value): array
     {
         $match = [];
-        if (!preg_match('/([^\s]+)\s+(?:AS\s+)?([^\s]+)/i', $value, $match)) {
+        if (!preg_match('/^\s*(.+)\s+(?:AS\s+)?([^\s]+)/i', $value, $match)) {
             return [ trim($value), null ];
         }
 

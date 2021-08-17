@@ -371,7 +371,10 @@ class PdbQuery
             $fields = [];
 
             foreach ($this->_select as [$field, $alias]) {
-                $field = $this->pdb->quoteField($field);
+
+                if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    $field = $this->pdb->quoteField($field);
+                }
 
                 if ($alias) {
                     $field .= ' AS ';
@@ -439,7 +442,11 @@ class PdbQuery
         if ($this->_group) {
             $fields = [];
             foreach ($this->_group as $field) {
-                $fields[] = $this->pdb->quoteField($field);
+                if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    $field = $this->pdb->quoteField($field);
+                }
+
+                $fields[] = $field;
             }
 
             $sql .= 'GROUP BY ';
@@ -450,7 +457,10 @@ class PdbQuery
         if ($this->_order) {
             $fields = [];
             foreach ($this->_order as $field => $order) {
-                $field = $this->pdb->quoteField($field);
+                if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    $field = $this->pdb->quoteField($field);
+                }
+
                 $fields[] = "{$field} {$order}";
             }
 

@@ -1003,14 +1003,25 @@ abstract class Pdb implements Loggable
      * Validates a identifier (column name, table name, etc)
      *
      * @param string $name The identifier to check
-     * @param bool $loose Permit integers as fields - e.g. SELECT 1
+     * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
+     *   - Use for select(), do not use for tables or joins.
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
     public static function validateIdentifier($name, $loose = false)
     {
-        if ($loose and is_numeric($name) and (int) $name == (float) $name) return;
-        if (!preg_match('/^[a-z_][a-z_0-9]*$/i', $name)) {
+        if ($loose) {
+            // Numbers are ok.
+            if (is_numeric($name) and (int) $name == (float) $name) {
+                return;
+            }
+
+            // Functions are kinda ok.
+            // This is could be improved.
+            if (preg_match(PdbHelpers::RE_FUNCTION, $name)) return;
+        }
+
+        if (!preg_match(PdbHelpers::RE_IDENTIFIER, $name)) {
             throw new InvalidArgumentException("Invalid identifier: {$name}");
         }
     }
@@ -1021,15 +1032,41 @@ abstract class Pdb implements Loggable
      * Also accepts short format like {@see validateIdentifier} does.
      *
      * @param string $name The identifier to check
-     * @param bool $loose Permit integers as fields - e.g. SELECT 1
+     * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
+     *   - Use for select(), do not use for tables or joins.
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
     public static function validateIdentifierExtended($name, $loose = false)
     {
-        if ($loose and is_numeric($name) and (int) $name == (float) $name) return;
-        if (!preg_match('/^(?:[a-z_][a-z_0-9]*\.)?[a-z_][a-z_0-9]*$/i', $name)) {
+        if ($loose) {
+            // Numbers are ok.
+            if (is_numeric($name) and (int) $name == (float) $name) {
+                return;
+            }
+
+            // Functions are kinda ok.
+            // This is could be improved.
+            if (preg_match(PdbHelpers::RE_FUNCTION, $name)) return;
+        }
+
+        if (!preg_match(PdbHelpers::RE_IDENTIFIER_EXTENDED, $name)) {
             throw new InvalidArgumentException("Invalid identifier: {$name}");
+        }
+    }
+
+
+    /**
+     * Validate an SQL function.
+     *
+     * @param string $value
+     * @return void
+     * @throws InvalidArgumentException
+     */
+    public static function validateFunction($value)
+    {
+        if (!preg_match(PdbHelpers::RE_FUNCTION, $value)) {
+            throw new InvalidArgumentException("Invalid function: {$value}");
         }
     }
 
@@ -1050,19 +1087,22 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Validate an alias.
      *
-     *
-     * The second item is null if no alias present.
      *
      * @param string|string[] $field
-     * @param bool $loose Permit integers as fields
-     * @return string[] [field, alias]
+     * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
+     *   - Use for select(), do not use for tables or joins.
+     * @return array [field, alias]
+     *   - The second item is null if no alias present.
+     *
      * @throws InvalidArgumentException
      */
     public static function validateAlias($field, $loose = false): array
     {
         if (is_string($field)) {
-            [$field, $alias] = PdbHelpers::alias($field);
+            // [$field, $alias] = PdbHelpers::alias($field);
+            $alias = null;
         }
         else {
             if (count($field) != 2) {
@@ -1073,7 +1113,9 @@ abstract class Pdb implements Loggable
         }
 
         // Only permit integer fields if there is no alias.
-        Pdb::validateIdentifierExtended($field, !$alias and $loose);
+        // Pdb::validateIdentifierExtended($field, !$alias and $loose);
+
+        Pdb::validateIdentifierExtended($field, $loose);
 
         if ($alias) {
             Pdb::validateIdentifier($alias);
