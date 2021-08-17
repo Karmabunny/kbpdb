@@ -60,9 +60,7 @@ trait PdbModelTrait
     public static function findOne(array $conditions)
     {
         /** @var static */
-        return self::find($conditions)
-            ->as(static::class)
-            ->one();
+        return self::find($conditions)->one();
     }
 
 
@@ -74,9 +72,7 @@ trait PdbModelTrait
      */
     public static function findAll(array $conditions = [])
     {
-        return self::find($conditions)
-            ->as(static::class)
-            ->all();
+        return self::find($conditions)->all();
     }
 
 
