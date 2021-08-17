@@ -2,10 +2,13 @@
 
 namespace karmabunny\pdb\Drivers;
 
+use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
 use PDO;
 
@@ -15,6 +18,40 @@ use PDO;
  */
 class PdbMysql extends Pdb
 {
+
+    /**
+     *
+     * @param PdbConfig|array $config
+     * @return PDO
+     * @throws ConnectionException
+     * @throws InvalidArgumentException
+     */
+    public static function connect($config)
+    {
+        if (!($config instanceof PdbConfig)) {
+            $config = new PdbConfig($config);
+        }
+
+        $pdo = parent::connect($config);
+        $hacks = $config->getHacks();
+
+        if ($hacks[PdbConfig::HACK_NO_ENGINE_SUBSTUTION] ?? false) {
+            $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
+        }
+
+        if (is_string($tz = $hacks[PdbConfig::HACK_TIME_ZONE] ?? false)) {
+            if (!is_string($tz) or !preg_match('!^[^/0-9]+/[^/0-9]+$!', $tz)) {
+                $tz = is_object($tz) ? gettype($tz) : (string) $tz;
+                throw new InvalidArgumentException("Invalid time zone: {$tz}");
+            }
+
+            $tz = $pdo->quote($tz, PDO::PARAM_STR);
+            $pdo->query("SET SESSION time_zone = {$tz}");
+        }
+
+        return $pdo;
+    }
+
 
     /** @inheritdoc */
     public function getPermissions()

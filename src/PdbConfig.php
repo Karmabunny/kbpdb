@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 
 /**
@@ -21,6 +22,8 @@ class PdbConfig extends Collection
     const TYPE_MSSQL  = 'mssql';
     const TYPE_ORACLE = 'oracle';
 
+    const HACK_NO_ENGINE_SUBSTUTION = 'no_engine_substitution';
+    const HACK_TIME_ZONE = 'time_zone';
 
     /** @var string */
     public $type;
@@ -52,10 +55,18 @@ class PdbConfig extends Collection
     /** @var callable[] [class => fn] */
     public $formatters = [];
 
-    /** @var string */
+    /** @var string|null */
     public $dsn;
 
+    /** @var string[] */
+    public $hacks = [];
 
+
+    /**
+     * The 'Data Source Name' used to connect to the database.
+     *
+     * @return string
+     */
     public function getDsn(): string
     {
         if ($this->dsn) {
@@ -79,7 +90,17 @@ class PdbConfig extends Collection
 
             return $this->type . ':' . implode(';', $parts);
         }
+    }
 
+
+    /**
+     * The hacks applied to this configuration.
+     *
+     * @return array [option => value]
+     */
+    public function getHacks(): array
+    {
+        return Arrays::normalizeOptions($this->hacks, true);
     }
 
 
