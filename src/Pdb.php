@@ -1277,6 +1277,12 @@ abstract class Pdb implements Loggable
             return null;
 
         case 'count':
+            // Using SQL count() is always faster than rowCount().
+            if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
+                $row = $rs->fetch(PDO::FETCH_NUM);
+                return $row[0] ?? 0;
+            }
+
             return $rs->rowCount();
 
         case 'arr':

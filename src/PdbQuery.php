@@ -725,8 +725,10 @@ class PdbQuery
     {
         $query = clone $this;
 
-        // Counts never need a complex select.
-        $query->select('1');
+        // Use a fast search if no fields are given.
+        if (!$this->_select) {
+            $query->select('count(1)');
+        }
 
         if ($table) {
             $query->from($table);
