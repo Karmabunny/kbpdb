@@ -110,6 +110,8 @@ Tests:
   - executors
 - PdbSync
 
+performance tracing
+
 Schema stuff:
 - add 'autoinc-start' per table
 - add 'secret=1|0' per column
@@ -134,6 +136,10 @@ New stuff:
 
 Fixes:
 - Pdb::find() should respect 'date_deleted'
+- as(null) should remove class convert
+- select should be keyed by alias
+- keyed() should probably not default to ID
+- tidy up other terminator params
 
 Document UUIDs somewhere:
 - 'PDB' has a single namespace (uuidv4)
