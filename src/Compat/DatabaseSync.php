@@ -13,7 +13,7 @@ use karmabunny\kb\Enc;
 use karmabunny\kb\XMLException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\SyncActions;
-use karmabunny\pdb\PdbLog;
+use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use PDOException;
@@ -24,10 +24,9 @@ use PDOException;
  * This is a wrapper around PdbParser + PdbSync with some additions so it
  * feels like home.
  *
- * It's recommended to create your abstractions around the core classes however.
- * You'll have a lot more power of over the logging output and error handling.
+ * Extend this class and implement the `getPdb()` method.
  */
-class DatabaseSync
+abstract class DatabaseSync
 {
     /** @var bool */
     public $act;
@@ -47,9 +46,17 @@ class DatabaseSync
     public function __construct(bool $act)
     {
         $this->act = $act;
-        $this->sync = new PdbSync(Pdb::$pdb);
+        $this->sync = new PdbSync(static::getPdb());
         $this->parser = new PdbParser();
     }
+
+
+    /**
+     * The pdb connection instance.
+     *
+     * @return Pdb
+     */
+    public static abstract function getPdb(): Pdb;
 
 
     /**

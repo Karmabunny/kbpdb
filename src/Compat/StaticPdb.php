@@ -3,7 +3,8 @@
 namespace karmabunny\pdb\Compat;
 
 use InvalidArgumentException;
-use karmabunny\pdb\PdbConfig;
+use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
 use PDO;
 use PDOException;
@@ -14,8 +15,7 @@ use PDOStatement;
  *
  * This a compatibility class, all methods are static variants.
  *
- * To patch this in, start by including `Pdb::config()` somewhere in your
- * bootstrap code to configure things.
+ * Extend this class and implement the `getInstance()` method.
  *
  * TODOs:
  * - connect(string) compat
@@ -26,8 +26,6 @@ use PDOStatement;
  * - setPrefix()
  * - rework PdbForeignKey/PdbColumn methods
  *
- * @method static PDO connect(array|PdbConfig $config)
- * @method static PDO getConnection()
  * @method static void setFormatter(string $class_name, callable $func)
  * @method static void removeFormatter(string $class_name)
  * @method static void setTablePrefixOverride(string $table, string $prefix)
@@ -77,34 +75,50 @@ use PDOStatement;
  *
  * @package karmabunny\pdb\Compat
  */
-class Pdb
+abstract class StaticPdb
 {
-    /** @var \karmabunny\pdb\Pdb */
-    public static $pdb;
+
+    /**
+     * Get the pdb instance.
+     *
+     * @param string $config
+     * @return Pdb
+     */
+    public static abstract function getInstance(string $config = 'RW'): Pdb;
 
 
     /**
+     * Loads a config and creates a new PDO connection with it.
      *
-     * @param PdbConfig|array $config
-     * @return void
+     * You probably want getConnection() or getInstance().
+     *
+     * @param string $config
+     * @return PDO
+     * @throws PDOException If connection fails
      */
-    public static function config($config)
-    {
-        if (isset(self::$pdb)) return;
-        self::$pdb = \karmabunny\pdb\Pdb::create($config);
-    }
+    public static abstract function connect(string $config): PDO;
 
 
     /**
      *
      * @param mixed $name
      * @param mixed $arguments
-     * @return void
+     * @return mixed
      */
     public static function __callStatic($name, $arguments)
     {
-        if (method_exists(self::$pdb, $name)) {
-            return self::$pdb->$name(...$arguments);
+        $pdb = static::getInstance();
+
+        try {
+            if (method_exists($pdb, $name)) {
+                return $pdb->$name(...$arguments);
+            }
+        }
+        catch (ConnectionException $exception) {
+            if ($exception->getPrevious() instanceof PDOException) {
+                throw $exception->getPrevious();
+            }
+            throw new PDOException($exception->getMessage(), $exception->getCode());
         }
 
         if (method_exists(PdbHelpers::class, $name)) {
@@ -116,18 +130,17 @@ class Pdb
 
 
     /**
+     * Builds a clause string by combining conditions, e.g. for a WHERE or ON clause.
+     * The resultant clause will contain ? markers for safe use in a prepared SQL statement.
+     * The statement and the generated $values can then be run via {@see Pdb::query}.
      *
-     * @param mixed $name
-     * @param mixed $arguments
-     * @return void
-     */
-    public function __call($name, $arguments)
-    {
-        return self::__callStatic($name, $arguments);
-    }
-
-
-    /**
+     * Each condition (see $conditions) is one of:
+     *   - The scalar value 1 or 0 (to match either all or no records)
+     *   - A column => value pair
+     *   - An array with three elements: [column, operator, value(s)].
+     *   - An array like: [operator, column => value].
+     *
+     * Conditions are usually combined using AND, but can also be OR or XOR.
      *
      * @param array $conditions
      * @param array $values
@@ -138,7 +151,34 @@ class Pdb
      */
     public static function buildClause(array $conditions, array &$values, $combine = 'AND')
     {
-        return self::$pdb->buildClause($conditions, $values, $combine);
+        // Because references can't be passed through variadic args.
+        $pdb = static::getInstance();
+        return $pdb->buildClause($conditions, $values, $combine);
+    }
+
+
+    /**
+     * Gets a PDO connection, creating a new one if necessary
+     *
+     * @param string $type 'RW': read-write, or 'RO': read-only. If replication
+     *        isn't being used, then only 'RW' is ever necessary.
+     * @return PDO
+     * @throws PDOException If connection fails
+     */
+    public static function getConnection($type = 'RW')
+    {
+        // TODO finish this properly.
+
+        try {
+            $pdb = static::getInstance();
+            return $pdb->getConnection();
+        }
+        catch (ConnectionException $exception) {
+            if ($exception->getPrevious() instanceof PDOException) {
+                throw $exception->getPrevious();
+            }
+            throw new PDOException($exception->getMessage(), $exception->getCode());
+        }
     }
 
 
@@ -149,7 +189,8 @@ class Pdb
      */
     public static function prefix()
     {
-        return self::$pdb->getPrefix();
+        $pdb = static::getInstance();
+        return $pdb->getPrefix();
     }
 
 
@@ -158,7 +199,7 @@ class Pdb
      * Only use this to override the existing prefix; e.g. in the Preview helper
      * @param string $prefix The overriding prefix
      */
-    public static function setPrefix()
+    public static function setPrefix(string $prefix)
     {
         // TODO
     }
