@@ -40,8 +40,8 @@ class PdbMysql extends Pdb
         }
 
         if (is_string($tz = $hacks[PdbConfig::HACK_TIME_ZONE] ?? false)) {
-            if (!is_string($tz) or !preg_match('!^[^/0-9]+/[^/0-9]+$!', $tz)) {
-                $tz = is_object($tz) ? gettype($tz) : (string) $tz;
+            if (!is_string($tz) and !preg_match('!^[^/0-9]+/[^/0-9]+$!', $tz)) {
+                $tz = is_scalar($tz) ? (string) $tz : gettype($tz);
                 throw new InvalidArgumentException("Invalid time zone: {$tz}");
             }
 
