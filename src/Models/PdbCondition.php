@@ -401,7 +401,7 @@ class PdbCondition
             }
 
             $value = PdbHelpers::likeEscape($this->value);
-            $value = $pdb->quoteField($value, $this->bind_type);
+            $value = $pdb->quote($value, $this->bind_type);
             return $value;
         }
     }
