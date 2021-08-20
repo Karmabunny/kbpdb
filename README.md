@@ -47,12 +47,9 @@ $res = $pdb->find('clubs', ['status' => 'active'])->keyed('id');
 $res = $pdb->count('clubs', ['status' => 'active']);
 
 
-// Models
-class ClubModel implements PdbModel
+// This a model based on \kb\Collection
+class ClubModel extends PdbModel
 {
-    // This trait includes default behaviours.
-    // Or you can implement your own with just the PdbModel interface.
-    use PdbModelTrait;
 
     // Create one here, or cache it wherever you please.
     protected static function getConnection(): Pdb
