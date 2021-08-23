@@ -59,7 +59,7 @@ class PdbQuery
     protected $pdb;
 
     /** @var array list [type, conditions, combine] */
-    private $_conditions = [];
+    private $_where = [];
 
     /** @var array list [field, alias] */
     private $_select = [];
@@ -224,9 +224,9 @@ class PdbQuery
      */
     public function where(array $conditions, $combine = 'AND')
     {
-        $this->_conditions = [];
+        $this->_where = [];
         if (!empty($conditions)) {
-            $this->_conditions[] = ['WHERE', $conditions, $combine];
+            $this->_where[] = ['WHERE', $conditions, $combine];
         }
         return $this;
     }
@@ -241,7 +241,7 @@ class PdbQuery
     public function andWhere(array $conditions, $combine = 'AND')
     {
         if (!empty($conditions)) {
-            $this->_conditions[] = ['AND', $conditions, $combine];
+            $this->_where[] = ['AND', $conditions, $combine];
         }
         return $this;
     }
@@ -256,7 +256,7 @@ class PdbQuery
     public function orWhere(array $conditions, $combine = 'OR')
     {
         if (!empty($conditions)) {
-            $this->_conditions[] = ['OR', $conditions, $combine];
+            $this->_where[] = ['OR', $conditions, $combine];
         }
         return $this;
     }
@@ -447,7 +447,7 @@ class PdbQuery
 
         // Build where clauses.
         $first = true;
-        foreach ($this->_conditions as [$type, $conditions, $combine]) {
+        foreach ($this->_where as [$type, $conditions, $combine]) {
             if ($first) {
                 $type = 'WHERE';
                 $first = false;
@@ -486,6 +486,7 @@ class PdbQuery
             $sql .= ' ';
         }
 
+        // Build order by.
         if ($this->_order) {
             $fields = [];
             foreach ($this->_order as $field => $order) {
@@ -502,11 +503,14 @@ class PdbQuery
 
         }
 
+
+        // Limit.
         if ($this->_limit) {
             $params[] = $this->_limit;
             $sql .= 'LIMIT ? ';
         }
 
+        // Offset.
         if ($this->_offset) {
             $params[] = $this->_offset;
             $sql .= 'OFFSET ? ';
