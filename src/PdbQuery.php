@@ -597,19 +597,14 @@ class PdbQuery
 
     /**
      *
-     * @param int|null $limit
      * @return array
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function all(int $limit = null): array
+    public function all(): array
     {
         $query = clone $this;
-
-        if ($limit) {
-            $query->limit($limit);
-        }
 
         [$sql, $params] = $query->build();
         $pdo = $this->pdb->query($sql, $params, 'pdo');
@@ -756,27 +751,18 @@ class PdbQuery
 
     /**
      *
-     * @param string|null $table
-     * @param array $conditions
      * @return int
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function count(string $table = null, array $conditions = []): int
+    public function count(): int
     {
         $query = clone $this;
 
         // Use a fast search if no fields are given.
         if (!$this->_select) {
             $query->select('count(1)');
-        }
-
-        if ($table) {
-            $query->from($table);
-        }
-        if ($conditions) {
-            $query->where($conditions);
         }
 
         [$sql, $params] = $query->build();
