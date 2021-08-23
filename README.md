@@ -133,10 +133,8 @@ New stuff:
 
 Fixes:
 - Pdb::find() should respect 'date_deleted'
-- as(null) should remove class convert
 - select should be keyed by alias
-- keyed() should probably not default to ID
-- tidy up other terminator params
+- sync doesn't remove indexes when renaming a table (needs additional sync)
 
 Document UUIDs somewhere:
 - 'PDB' has a single namespace (uuidv4)
