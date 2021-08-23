@@ -798,4 +798,18 @@ class PdbQuery
         return $this->pdb->query($sql, $params, 'pdo');
     }
 
+
+    /**
+     *
+     * @param string $return_type
+     * @return array|string|int|null|PDOStatement
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function execute(string $return_type)
+    {
+        [$sql, $params] = $this->build();
+        return $this->pdb->query($sql, $params, $return_type);
+    }
 }
