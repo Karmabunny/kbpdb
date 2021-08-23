@@ -523,19 +523,21 @@ class PdbQuery
     /**
      *
      * @param string|null $field
+     * @param bool $throw
      * @return string
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function value(string $field = null): string
+    public function value(string $field = null, bool $throw = true): string
     {
         if ($field) {
             $this->select($field);
         }
 
         [$sql, $params] = $this->build();
-        return $this->pdb->query($sql, $params, 'val');
+        $type = $throw ? 'val' : 'val?';
+        return $this->pdb->query($sql, $params, $type);
     }
 
 
@@ -562,23 +564,22 @@ class PdbQuery
 
     /**
      *
-     * @param string $class
+     * @param bool $throw
      * @return array|object
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function one(string $class = null)
+    public function one(bool $throw = true)
     {
         $query = clone $this;
 
         $query->limit(1);
-        if ($class) {
-            $query->as($class);
-        }
 
         [$sql, $params] = $query->build();
-        $item = $this->pdb->query($sql, $params, 'row');
+
+        $type = $throw ? 'row' : 'row?';
+        $item = $this->pdb->query($sql, $params, $type);
 
         if ($query->_as) {
             $class = $query->_as;
