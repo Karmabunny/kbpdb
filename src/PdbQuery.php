@@ -543,11 +543,16 @@ class PdbQuery
 
     /**
      *
-     * @param string $class
+     * @param string|null $class
      * @return static
      */
-    public function as(string $class)
+    public function as(?string $class)
     {
+        if (!$class) {
+            $this->_as = null;
+            return $this;
+        }
+
         if (!class_exists($class)) {
             throw new InvalidArgumentException("as({$class}) class does not exist");
         }
