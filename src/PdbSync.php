@@ -1014,7 +1014,7 @@ class PdbSync
         $view_name = trim($view_name);
         $view_def = trim($view_def);
 
-        $q = "DROP VIEW ~{$view_name}";
+        $q = "DROP VIEW IF EXISTS ~{$view_name}";
         $this->storeQuery('views', $q);
 
         $q = "CREATE VIEW ~{$view_name}\nAS\n\t{$view_def}";
