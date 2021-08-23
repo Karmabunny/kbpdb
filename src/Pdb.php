@@ -728,8 +728,7 @@ abstract class Pdb implements Loggable
      **/
     public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
     {
-        return (new PdbQuery($this))
-            ->find($table, $conditions)
+        return $this->find($table, $conditions)
             ->orderBy(...$order)
             ->map('id', $name);
     }
@@ -748,10 +747,7 @@ abstract class Pdb implements Loggable
      */
     public function recordExists(string $table, array $conditions)
     {
-        $count = (new PdbQuery($this))
-            ->count($table, $conditions);
-
-        return $count !== 0;
+        return (bool) $this->find($table, $conditions)->count();
     }
 
 
