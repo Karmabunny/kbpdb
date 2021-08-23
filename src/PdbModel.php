@@ -124,7 +124,13 @@ abstract class PdbModel extends Collection implements PdbModelInterface
 
         if ($this->id > 0) {
             $data['date_modified'] = $now;
+
+            if ($data['uid'] === Uuid::nil()) {
+                $data['uid'] = $this->getUid();
+            }
+
             $pdb->update($table, $data, $conditions);
+            $this->uid = $data['uid'];
         }
         else {
             $data['date_added'] = $now;
