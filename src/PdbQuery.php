@@ -688,38 +688,35 @@ class PdbQuery
      *
      * This ends a query.
      *
-     * @param string|null $key
+     * @param string $key
      * @return array
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function keyed(string $key = null): array
+    public function keyed(string $key): array
     {
         $query = clone $this;
-
-        // Explicitly defined key.
-        if (!$key) $key = 'id';
-
-        $query->andSelect($key);
 
         [$sql, $params] = $query->build();
         $pdo = $this->pdb->query($sql, $params, 'pdo');
 
+        $map = [];
+
         // Convert into objects.
         if ($query->_as) {
             $class = $query->_as;
-        }
 
-        $map = [];
-        while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-            $id = $row[$key];
-
-            if (isset($class)) {
-                $row = new $class($row);
+            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                $id = $row[$key];
+                $map[$id] = new $class($row);
             }
-
-            $map[$id] = $row;
+        }
+        else {
+            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                $id = $row[$key];
+                $map[$id] = $row;
+            }
         }
 
         $pdo->closeCursor();
