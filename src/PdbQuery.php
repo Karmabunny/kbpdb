@@ -70,6 +70,9 @@ class PdbQuery
     /** @var array list [type, [table, alias], conditions, combine] */
     private $_joins = [];
 
+    /** @var array list [type, conditions, combine] */
+    private $_having = [];
+
     /** @var array list [field, order] */
     private $_order = [];
 
@@ -254,6 +257,22 @@ class PdbQuery
     {
         if (!empty($conditions)) {
             $this->_conditions[] = ['OR', $conditions, $combine];
+        }
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param (array|string|PdbCondition)[] $conditions
+     * @param string $combine
+     * @return static
+     */
+    public function having(array $conditions, $combine = 'AND')
+    {
+        $this->_having = [];
+        if (!empty($conditions)) {
+            $this->_having[] = ['HAVING', $conditions, $combine];
         }
         return $this;
     }
@@ -451,6 +470,19 @@ class PdbQuery
 
             $sql .= 'GROUP BY ';
             $sql .= implode(', ', $fields);
+            $sql .= ' ';
+        }
+
+        // Build having clauses.
+        $first = true;
+        foreach ($this->_having as [$type, $conditions, $combine]) {
+            if ($first) {
+                $type = 'HAVING';
+                $first = false;
+            }
+
+            $sql .= $type . ' ';
+            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
             $sql .= ' ';
         }
 
