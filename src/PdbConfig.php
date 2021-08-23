@@ -22,7 +22,7 @@ class PdbConfig extends Collection
     const TYPE_MSSQL  = 'mssql';
     const TYPE_ORACLE = 'oracle';
 
-    const HACK_NO_ENGINE_SUBSTUTION = 'no_engine_substitution';
+    const HACK_NO_ENGINE_SUBSTITUTION = 'no_engine_substitution';
     const HACK_TIME_ZONE = 'time_zone';
 
     /** @var string */

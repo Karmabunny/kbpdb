@@ -35,7 +35,7 @@ class PdbMysql extends Pdb
         $pdo = parent::connect($config);
         $hacks = $config->getHacks();
 
-        if ($hacks[PdbConfig::HACK_NO_ENGINE_SUBSTUTION] ?? false) {
+        if ($hacks[PdbConfig::HACK_NO_ENGINE_SUBSTITUTION] ?? false) {
             $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         }
 
