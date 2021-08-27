@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb\Exceptions;
 
-use Exception;
 use PDOException;
 
 /**
@@ -71,8 +70,14 @@ class QueryException extends PdbException
         $state_class = substr($exception->getCode(), 0, 2);
 
         switch ($state_class) {
+            case '22':
+                return DataQueryException::class;
+
             case '23':
                 return ConstraintQueryException::class;
+
+            case '25':
+                return TransactionQueryException::class;
 
             case '00':
             default:
