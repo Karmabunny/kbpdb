@@ -229,12 +229,32 @@ class PdbHelpers
     /**
      * Create a bunch of placeholder bind thingos.
      *
-     * @param int $count
+     * This accepts a number or a keyed array.
+     * - If a number, it will create that many placeholders.
+     * - If a keyed array, it will create placeholders for each key.
+     *
+     * Examples:
+     * - `(int) 4 => '?, ?, ?, ?'`
+     * - `[a, b, c] => '?, ?, ?'`
+     * - `[a => b, c => d, e => f] => ':a, :c, :e'`
+     *
+     * @param int|string[] $data
      * @return string
      */
-    public static function bindPlaceholders(int $count): string
+    public static function bindPlaceholders($data): string
     {
-        return implode(', ', array_fill(0, $count, '?'));
+        if (is_array($data)) {
+            $keys = [];
+            foreach ($keys as $key => $_) {
+                $key = is_numeric($key) ? $key : ':' . $key;
+            }
+            unset($key);
+        }
+        else {
+            $keys = array_fill(0, $data, '?');
+        }
+
+        return implode(', ', $keys);
     }
 
 

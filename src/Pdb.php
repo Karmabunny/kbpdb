@@ -566,15 +566,9 @@ abstract class Pdb implements Loggable
 
         foreach ($data as $col => $val) {
             self::validateIdentifier($col);
-            $cols[] = $col;
+            $cols[] = $col . ' = ?';
             $values[] = $val;
         }
-
-        $cols = $this->quoteAll($cols, Pdb::QUOTE_FIELD);
-        foreach ($cols as &$col) {
-            $col .= ' = ?';
-        }
-        unset($col);
 
         $cols = implode(', ', $cols);
 
