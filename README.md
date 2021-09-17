@@ -1,6 +1,43 @@
 
 ## PDB
 
+A PDO wrapper for fun and profit.
+
+This is ripped directly from Sprout 3 with a lot of modification. There's a set of (in-progress) compat classes to enable one to 'backport' the updates here into a Sprout site.
+
+General improvements are things like:
+- consistent db-agnostic column escapes
+- query builder
+- models
+- improved dbsync
+- migration exports
+- adapter architecture for other DBs (postgres, sqlite, mssql)
+- more tests
+
+
+## Install
+
+Install with composer from our private package repo.
+
+Add the repository:
+
+```json
+"repositories": [
+    {
+        "type": "composer",
+        "url": "https://packages.bunnysites.com"
+    }
+]
+```
+
+Add as a dependency:
+
+```sh
+composer require karmabunny/pdb
+```
+
+
+## Example
 
 ```php
 
