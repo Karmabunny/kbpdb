@@ -4,7 +4,7 @@
     "description": "PDO wrapper",
     "keywords": ["pdo", "pdb", "mysql", "database", "sqlite", "pgsql", "postgres", "dbsync", "schema"],
     "type": "library",
-    "license": "GPL2",
+    "license": "GPL-2.0-or-later",
     "authors": [
         {
             "name": "Karmabunny",
