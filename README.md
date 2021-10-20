@@ -17,19 +17,6 @@ General improvements are things like:
 
 ## Install
 
-Install with composer from our private package repo.
-
-Add the repository:
-
-```json
-"repositories": [
-    {
-        "type": "composer",
-        "url": "https://packages.bunnysites.com"
-    }
-]
-```
-
 Add as a dependency:
 
 ```sh
