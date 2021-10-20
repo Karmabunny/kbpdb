@@ -4,21 +4,21 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ae33fa98e55e6992326534c0bea76777",
+    "content-hash": "89b27f4db4f15f78e0a75a47c6180d12",
     "packages": [
         {
             "name": "karmabunny/kb",
             "version": "v2.17.12",
             "source": {
                 "type": "git",
-                "url": "git@github.com:Karmabunny/kbphp.git",
+                "url": "https://github.com/Karmabunny/kbphp.git",
                 "reference": "496ed92b5476bd5691b8ca5fcbb9bfdc0442a989"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://packages.bunnysites.com/archive/karmabunny/kb/karmabunny-kb-496ed92b5476bd5691b8ca5fcbb9bfdc0442a989-zip-8648da.zip",
+                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/496ed92b5476bd5691b8ca5fcbb9bfdc0442a989",
                 "reference": "496ed92b5476bd5691b8ca5fcbb9bfdc0442a989",
-                "shasum": "f6de739b701b5ea8519ea4f9a7085a9f05cde4b0"
+                "shasum": ""
             },
             "require": {
                 "symfony/polyfill-php73": "*"
@@ -34,44 +34,14 @@
                     "karmabunny\\kb\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Test\\": "test/Test"
-                }
-            },
-            "scripts": {
-                "register-phpcs": [
-                    "phpcs --config-set installed_paths vendor/phpcompatibility/php-compatibility"
-                ],
-                "post-install-cmd": [
-                    "@register-phpcs"
-                ],
-                "post-update-cmd": [
-                    "@register-phpcs"
-                ],
-                "tests": [
-                    "phpunit --testdox tests"
-                ],
-                "publish": [
-                    "bash scripts/publish.sh"
-                ],
-                "docs": [
-                    "bash scripts/docs.sh"
-                ],
-                "analyse": [
-                    "phpstan analyse --level 5 src"
-                ],
-                "compat": [
-                    "phpcs -p --standard=PHPCompatibility --colors --extensions=php --runtime-set testVersion 7.0 src"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
             "description": "Common KB utilities",
             "support": {
-                "source": "https://github.com/Karmabunny/kbphp/tree/v2.17.12",
-                "issues": "https://github.com/Karmabunny/kbphp/issues"
+                "issues": "https://github.com/Karmabunny/kbphp/issues",
+                "source": "https://github.com/Karmabunny/kbphp/tree/v2.17.12"
             },
             "time": "2021-07-07T23:50:34+00:00"
         },
@@ -2075,6 +2045,7 @@
                     "type": "github"
                 }
             ],
+            "abandoned": true,
             "time": "2020-09-28T06:45:17+00:00"
         },
         {

@@ -2,8 +2,15 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "karmabunny/pdb",
     "description": "PDO wrapper",
+    "keywords": ["pdo", "pdb", "mysql", "database", "sqlite", "pgsql", "postgres", "dbsync", "schema"],
     "type": "library",
     "license": "GPL2",
+    "authors": [
+        {
+            "name": "Karmabunny",
+            "email": "info@karmabunny.com.au"
+        }
+    ],
     "require": {
         "php": "^7",
         "ext-dom": "*",
@@ -40,12 +47,5 @@
         "publish": "bash scripts/publish.sh",
         "analyse": "phpstan analyse --level 5 src",
         "compat": "phpcs -p --standard=PHPCompatibility --colors --extensions=php --runtime-set testVersion 7.1 src"
-    },
-    "repositories": [
-        {
-            "type": "composer",
-            "url": "https://packages.bunnysites.com/",
-            "canonical": true
-        }
-    ]
+    }
 }
