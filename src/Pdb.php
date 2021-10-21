@@ -1263,6 +1263,8 @@ abstract class Pdb implements Loggable
      */
     public static function formatRs(PDOStatement $rs, string $type)
     {
+        $nullable = false;
+
         switch ($type) {
         case 'null':
             return null;
@@ -1282,16 +1284,20 @@ abstract class Pdb implements Loggable
         case 'arr-num':
             return $rs->fetchAll(PDO::FETCH_NUM);
 
-        case 'row':
         case 'row?':
-            $nullable = $type === 'row?';
+            $nullable = true;
+            // fall-through.
+
+        case 'row':
             $row = $rs->fetch(PDO::FETCH_ASSOC);
             if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row;
 
-        case 'row-num':
         case 'row-num?':
-            $nullable = $type === 'row-num?';
+            $nullable = true;
+            // fall-through.
+
+        case 'row-num':
             $row = $rs->fetch(PDO::FETCH_NUM);
             if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row;
@@ -1314,9 +1320,11 @@ abstract class Pdb implements Loggable
             }
             return $map;
 
-        case 'val':
         case 'val?':
-            $nullable = $type === 'val?';
+            $nullable = true;
+            // fall-through.
+
+        case 'val':
             $row = $rs->fetch(PDO::FETCH_NUM);
             if (!$row and !$nullable) throw new RowMissingException('Expected a row');
             return $row[0];
