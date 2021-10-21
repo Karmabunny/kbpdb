@@ -235,7 +235,7 @@ abstract class Pdb implements Loggable
     public function getConnection()
     {
         if (!isset($this->connection)) {
-            $this->connection = self::connect($this->config);
+            $this->connection = static::connect($this->config);
         }
 
         return $this->connection;
