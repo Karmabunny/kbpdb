@@ -113,7 +113,7 @@ abstract class StaticPdb
         $config = static::getConfig($name);
         $pdb = Pdb::create($config);
 
-        $connections[$name] = $pdb;
+        static::$connections[$name] = $pdb;
         return $pdb;
     }
 
