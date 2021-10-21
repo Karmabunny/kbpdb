@@ -327,6 +327,7 @@ class PdbCondition
                 if (!$this->bind_type) {
                     $values[] = $low;
                     $values[] = $high;
+                    $high = $low = '?';
                 }
                 else {
                     $low = $pdb->quoteValue($low);
