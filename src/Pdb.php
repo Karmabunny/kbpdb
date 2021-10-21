@@ -104,6 +104,9 @@ abstract class Pdb implements Loggable
     /** @var int|null */
     protected $last_insert_id = null;
 
+    /** @var callable (query, params, result|exception) */
+    protected $debugger;
+
     /** @var string */
     private $_prefix_pattern;
 
@@ -142,10 +145,10 @@ abstract class Pdb implements Loggable
         }
 
         switch ($config->type) {
-            case 'mysql':
+            case PdbConfig::TYPE_MYSQL:
                 return new PdbMysql($config);
 
-            case 'sqlite':
+            case PdbConfig::TYPE_SQLITE:
                 return new PdbSqlite($config);
 
             default:
@@ -224,6 +227,51 @@ abstract class Pdb implements Loggable
         $this->config->table_prefixes[$table] = $prefix;
     }
 
+
+    /**
+     * Remove a log callback.
+     *
+     * The index is returned from addLogger().
+     *
+     * TODO This should live in the kbphp - LoggerTrait.
+     *
+     * @param int $index
+     * @return void
+     */
+    public function removeLogger(int $index)
+    {
+        unset($this->loggers[$index]);
+    }
+
+
+    /**
+     * Remove all loggers.
+     *
+     * Note, this does not remove the debug logger.
+     *
+     * @return void
+     */
+    public function clearLoggers()
+    {
+        $this->loggers = [];
+    }
+
+
+    /**
+     * Attach/remove a debug logger.
+     *
+     * This receives more detail than the loggable trait.
+     *
+     * @param callable|null $debugger log method:
+     *  - string $query
+     *  - array $params
+     *  - PDOStatement|QueryException $result
+     * @return void
+     */
+    public function setDebugger($debugger)
+    {
+        $this->debugger = $debugger;
+    }
 
 
     // ===========================================================
@@ -1351,6 +1399,22 @@ abstract class Pdb implements Loggable
     /**
      * Log something.
      *
+     * Be careful when attaching a logger that uses pdb to record logs. In this
+     * case one should clone the pdb instance and remove any loggers on it
+     * before using it to record logs.
+     *
+     * Such as:
+     * ```
+     * $log = clone $pdb;
+     * $log->clearLoggers();
+     *
+     * $pdb->addLogger(function($message) use ($log) {
+     *     $log->insert('sql_log', ['message' => $message]);
+     * });
+     * ```
+     *
+     * Note, this method will still use the same connection.
+     *
      * @param string $query
      * @param array $params
      * @param PDOStatement|QueryException $result
@@ -1358,19 +1422,29 @@ abstract class Pdb implements Loggable
      */
     protected function logQuery(string $query, array $params, $result)
     {
-        // TODO
-        // The log method needs to be disabled so log functions
-        // (that use pdb to create logs) can make queries without
-        // logging themselves.
-
-        if (!empty($params)) {
-            $query .= ' with ' . json_encode($params);
-        }
-
-        $this->log($query, Log::LEVEL_DEBUG);
-
         if ($result instanceof QueryException) {
             $this->log($result, Log::LEVEL_ERROR);
+        }
+        else {
+            $message = $query;
+
+            if (!empty($params)) {
+                $message .= ' with ' . json_encode($params);
+            }
+
+            $this->log($message, Log::LEVEL_DEBUG);
+        }
+
+        // Special debugger logger.
+        // This is mostly for backwards compatibility.
+        if (is_callable($this->debugger)) {
+            $fn = $this->debugger;
+
+            // The log method needs to be disabled so log functions can
+            // make queries without logging themselves.
+            $this->debugger = null;
+            $fn($query, $params, $result);
+            $this->debugger = $fn;
         }
     }
 }

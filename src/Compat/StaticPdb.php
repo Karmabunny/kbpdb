@@ -16,21 +16,11 @@ use PDOStatement;
  *
  * This a compatibility class, all methods are static variants.
  *
- * Extend this class and implement the `getInstance()` method.
- *
- * TODOs:
- * - connect(string) compat
- * - RW/RO/override connections
- * - log handler
- * - prefix swapping
- * - compat insertPrefixes()
- * - setPrefix()
- * - rework PdbForeignKey/PdbColumn methods
+ * Extend this class and implement the `getConfig()` method.
  *
  * @method static void setFormatter(string $class_name, callable $func)
  * @method static void removeFormatter(string $class_name)
  * @method static void setTablePrefixOverride(string $table, string $prefix)
- * @method static PDO insertPrefixes(string $query)
  * @method static string getPrefix()
  * @method static array|string|int|null|PDOStatement q(string $query, array $params, string $return_type)
  * @method static array|string|int|null|PDOStatement query(string $query, array $params, string $return_type)
@@ -99,7 +89,7 @@ abstract class StaticPdb
      *
      * Note however this contains logic for the read/write/only/override connections.
      *
-     * @param string $config
+     * @param string $type
      * @return Pdb
      */
     public static function getInstance(string $type = 'RW'): Pdb
@@ -236,18 +226,20 @@ abstract class StaticPdb
     public static function prefix()
     {
         $pdb = static::getInstance();
-        return $pdb->getPrefix();
+        return $pdb->config->prefix;
     }
 
 
     /**
      * Sets the prefix to prepend to table names.
      * Only use this to override the existing prefix; e.g. in the Preview helper
+     *
      * @param string $prefix The overriding prefix
      */
     public static function setPrefix(string $prefix)
     {
-        // TODO
+        $pdb = static::getInstance();
+        $pdb->config->prefix = $prefix;
     }
 
 
@@ -264,7 +256,8 @@ abstract class StaticPdb
      */
     public static function setLogHandler(callable $func)
     {
-        // TODO
+        $pdb = static::getInstance();
+        $pdb->setDebugger($func);
     }
 
 
@@ -273,7 +266,8 @@ abstract class StaticPdb
      */
     public static function clearLogHandler()
     {
-        // TODO
+        $pdb = static::getInstance();
+        $pdb->setDebugger(null);
     }
 
 
@@ -312,6 +306,24 @@ abstract class StaticPdb
      */
     public static function clearOverrideConnection()
     {
-        static::$connections['override'] = null;
+        unset(static::$connections['override']);
+    }
+
+
+    /**
+     * Replaces tilde placeholders with table prefixes, and quotes tables
+     * according to the rules of the underlying DBMS.
+     *
+     * COMPATIBILITY NOTE: The connection is _not used_ to determine the escape
+     * characters. It will use the existing database connection/config.`
+     *
+     * @param PDO $pdo The database connection, for determining table quoting rules
+     * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
+     * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `sprout_pages` WHERE id = 1'
+     */
+    public static function insertPrefixes(PDO $pdo, string $query): string
+    {
+        $pdb = static::getInstance();
+        return $pdb->insertPrefixes($query);
     }
 }
