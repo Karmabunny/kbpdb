@@ -104,7 +104,7 @@ abstract class Pdb implements Loggable
     /** @var int|null */
     protected $last_insert_id = null;
 
-    /** @var callable (query, params, result|exception) */
+    /** @var callable|null (query, params, result|exception) */
     protected $debugger;
 
     /** @var string */

@@ -25,9 +25,9 @@ class DataQueryException extends QueryException
         $this->query = $query;
 
         // If there's a message about the failed column, there's a chance that
-        // we know the value for it if the bind parametered are keyed.
+        // we know the value for it if the bind parameters are keyed.
         $matches = [];
-        if (preg_match("/column ['\"]([^'\"]+)['\"]/", $this->message)) {
+        if (preg_match("/column ['\"]([^'\"]+)['\"]/", $this->message, $matches)) {
             $key = ':' . $matches[1];
             $value = $this->params[$key] ?? null;
         }

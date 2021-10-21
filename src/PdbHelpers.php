@@ -245,10 +245,9 @@ class PdbHelpers
     {
         if (is_array($data)) {
             $keys = [];
-            foreach ($keys as $key => $_) {
-                $key = is_numeric($key) ? $key : ':' . $key;
+            foreach ($data as $key => $_) {
+                $keys[] = is_numeric($key) ? $key : ':' . $key;
             }
-            unset($key);
         }
         else {
             $keys = array_fill(0, $data, '?');
