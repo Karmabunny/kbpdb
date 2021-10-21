@@ -350,7 +350,7 @@ abstract class Pdb implements Loggable
      */
     public function execute(PDOStatement $st, array $params, string $return_type)
     {
-        self::validateReturnType($return_type);
+        static::validateReturnType($return_type);
 
         // Format objects into strings
         foreach ($params as &$p) {
@@ -389,7 +389,7 @@ abstract class Pdb implements Loggable
         }
 
         try {
-            $ret = self::formatRs($res, $return_type);
+            $ret = static::formatRs($res, $return_type);
         } catch (RowMissingException $ex) {
             $res->closeCursor();
             $ex->setQuery($st->queryString);
@@ -496,7 +496,7 @@ abstract class Pdb implements Loggable
      */
     public function get(string $table, $id)
     {
-        self::validateIdentifier($table);
+        static::validateIdentifier($table);
 
         $q = "SELECT * FROM ~{$table} WHERE id = ?";
         return $this->query($q, [(int) $id], 'row');
@@ -515,7 +515,8 @@ abstract class Pdb implements Loggable
      */
     public function insert($table, array $data)
     {
-        self::validateIdentifier($table);
+        static::validateIdentifier($table);
+
         if (count($data) == 0) {
             $err = 'An INSERT must set at least 1 column';
             throw new InvalidArgumentException($err);
@@ -525,7 +526,7 @@ abstract class Pdb implements Loggable
         $values = [];
 
         foreach ($data as $col => $val) {
-            self::validateIdentifier($col);
+            static::validateIdentifier($col);
             $columns[] = $col;
             $values[] = $val;
         }
@@ -551,7 +552,7 @@ abstract class Pdb implements Loggable
      */
     public function update(string $table, array $data, array $conditions)
     {
-        self::validateIdentifier($table);
+        static::validateIdentifier($table);
         if (count($data) == 0) {
             $err = 'An UPDATE must apply to at least 1 column';
             throw new InvalidArgumentException($err);
@@ -565,7 +566,7 @@ abstract class Pdb implements Loggable
         $values = [];
 
         foreach ($data as $col => $val) {
-            self::validateIdentifier($col);
+            static::validateIdentifier($col);
             $cols[] = $col . ' = ?';
             $values[] = $val;
         }
@@ -590,7 +591,7 @@ abstract class Pdb implements Loggable
      */
     public function upsert(string $table, array $data, array $conditions)
     {
-        self::validateIdentifier($table);
+        static::validateIdentifier($table);
 
         try {
             $params = [];
@@ -617,7 +618,7 @@ abstract class Pdb implements Loggable
      */
     public function delete(string $table, array $conditions)
     {
-        self::validateIdentifier($table);
+        static::validateIdentifier($table);
         if (count($conditions) == 0) {
             $err = 'A DELETE requires at least 1 condition';
             throw new InvalidArgumentException($err);
