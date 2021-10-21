@@ -49,6 +49,8 @@ use PDOStatement;
  *
  * @method static array getBindSubset(string $q, array $binds)
  * @method static string prettyQueryIndentation(string $query)
+ * @method static string prettyQuery(string $query, array $values)
+ * @method static string stripStrings(string $q)
  * @method static string likeEscape(string $str)
  * @method static array convertEnumArr(string $enum_defn)
  *
@@ -161,7 +163,7 @@ abstract class StaticPdb
             return call_user_func([PdbHelpers::class, $name], ...$arguments);
         }
 
-        return null;
+        throw new BadMethodCallException("Method {$name} does not exist");
     }
 
 
