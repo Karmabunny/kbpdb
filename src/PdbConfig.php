@@ -8,6 +8,7 @@ namespace karmabunny\pdb;
 
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
+use PDO;
 
 /**
  *
@@ -60,6 +61,9 @@ class PdbConfig extends Collection
 
     /** @var string[] */
     public $hacks = [];
+
+    /** @var PDO|null */
+    public $_pdo;
 
 
     /**

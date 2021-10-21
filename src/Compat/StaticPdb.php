@@ -5,6 +5,7 @@ namespace karmabunny\pdb\Compat;
 use InvalidArgumentException;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
 use PDO;
 use PDOException;
@@ -78,13 +79,53 @@ use PDOStatement;
 abstract class StaticPdb
 {
 
+    /** @var Pdb[] */
+    protected static $connections = [];
+
+
+    /**
+     * Create a PDB configuration.
+     *
+     * @param string|null $name
+     * @return PdbConfig
+     */
+    public static abstract function getConfig(string $name = null): PdbConfig;
+
+
     /**
      * Get the pdb instance.
+     *
+     * Override this if you wish to store the instance elsewhere.
+     *
+     * Note however this contains logic for the read/write/only/override connections.
      *
      * @param string $config
      * @return Pdb
      */
-    public static abstract function getInstance(string $config = 'RW'): Pdb;
+    public static function getInstance(string $type = 'RW'): Pdb
+    {
+        if (isset(static::$connections['override'])) {
+            $name = 'override';
+        }
+        else if ($type == 'RO' or $type == 'read_only') {
+            $name = 'read_only';
+        }
+        else {
+            $name = 'default';
+        }
+
+        // A cached version.
+        if ($pdb = static::$connections[$name] ?? null) {
+            return $pdb;
+        }
+
+        // Start fresh.
+        $config = static::getConfig($name);
+        $pdb = Pdb::create($config);
+
+        $connections[$name] = $pdb;
+        return $pdb;
+    }
 
 
     /**
@@ -92,14 +133,19 @@ abstract class StaticPdb
      *
      * You probably want getConnection() or getInstance().
      *
-     * @param string $config
+     * @param string $name
      * @return PDO
      * @throws PDOException If connection fails
      */
-    public static abstract function connect(string $config): PDO;
+    public static function connect(string $name): PDO
+    {
+        $config = static::getConfig($name);
+        return Pdb::connect($config);
+    }
 
 
     /**
+     * Wrap everything.
      *
      * @param mixed $name
      * @param mixed $arguments
@@ -170,7 +216,7 @@ abstract class StaticPdb
         // TODO finish this properly.
 
         try {
-            $pdb = static::getInstance();
+            $pdb = static::getInstance($type);
             return $pdb->getConnection();
         }
         catch (ConnectionException $exception) {
@@ -245,10 +291,18 @@ abstract class StaticPdb
      * $res = Pdb::query('SELECT TOP 3 FROM [my table]', [], 'row');
      *
      * @param PDO $connection Any PDO connection.
+     * @param PdbConfig|array $config
      */
-    public static function setOverrideConnection(PDO $connection)
+    public static function setOverrideConnection(PDO $connection, $config = [])
     {
-        // TODO
+        if (!($config instanceof PdbConfig)) {
+            $config = new PdbConfig($config);
+        }
+
+        $config->_pdo = $connection;
+        $config->type = $connection->getAttribute(PDO::ATTR_DRIVER_NAME);
+
+        static::$connections['override'] = Pdb::create($config);
     }
 
 
@@ -258,6 +312,6 @@ abstract class StaticPdb
      */
     public static function clearOverrideConnection()
     {
-        // TODO
+        static::$connections['override'] = null;
     }
 }

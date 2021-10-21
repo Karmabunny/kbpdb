@@ -122,6 +122,11 @@ abstract class Pdb implements Loggable
         }
 
         $this->_prefix_pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+
+        // The config provides an override connection.
+        if ($this->config->_pdo instanceof PDO) {
+            $this->connection = $this->config->_pdo;
+        }
     }
 
 
