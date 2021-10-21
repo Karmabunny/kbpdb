@@ -12,8 +12,6 @@ class PdbSyncTest extends TestCase
 
     public function testMigrate(): void
     {
-        $this->markTestSkipped();
-
         $pdb = Database::getConnection();
         $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
 
@@ -26,8 +24,12 @@ class PdbSyncTest extends TestCase
         $sync->migrate($struct);
         $log = $sync->getMigration();
 
-        foreach ($log as $item) {
-            echo $item, PHP_EOL;
-        }
+        $this->assertNotEmpty($log);
+
+        // TODO some fine-grain assertions here.
+
+        // foreach ($log as $item) {
+        //     echo $item, PHP_EOL;
+        // }
     }
 }
