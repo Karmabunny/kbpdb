@@ -2,8 +2,10 @@
 
 namespace karmabunny\pdb\Compat;
 
+use BadMethodCallException;
 use InvalidArgumentException;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
@@ -22,8 +24,6 @@ use PDOStatement;
  * @method static void removeFormatter(string $class_name)
  * @method static void setTablePrefixOverride(string $table, string $prefix)
  * @method static string getPrefix()
- * @method static array|string|int|null|PDOStatement q(string $query, array $params, string $return_type)
- * @method static array|string|int|null|PDOStatement query(string $query, array $params, string $return_type)
  * @method static PDOStatement prepare(string $query)
  * @method static array|string|int|null|PDOStatement execute(PDOStatement $st, array $params, string $return_type)
  * @method static array|string|int|null formatRs(PDOStatement $rs, string $type)
@@ -192,6 +192,71 @@ abstract class StaticPdb
         // Because references can't be passed through variadic args.
         $pdb = static::getInstance();
         return $pdb->buildClause($conditions, $values, $combine);
+    }
+
+
+    /**
+     * Executes a PDO query
+     *
+     * For the return type 'pdo', a PDOStatement is returned. You need to close it using $res->closeCursor()
+     *     once you're finished.
+     * For the return type 'null', nothing is returned.
+     * For the return type 'count', a count of rows is returned.
+     * Additional return types are available; {@see Pdb::formatRs} for a full list.
+     *
+     * When working with datasets larger than about 50 rows, you may run out of ram when using
+     * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
+     *
+     * Return types:
+     * - PDOStatement For type 'pdo'
+     * - int For type 'count'
+     * - null For type 'null'
+     * - mixed For all other types; see {@see Pdb::formatRs}
+     *
+     * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
+     *        table prefix, e.g. ~pages will be converted to fwc_pages
+     * @param array $params Parameters to bind to the query
+     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @return array|string|int|null|PDOStatement
+     * @throws InvalidArgumentException If the return type isn't valid
+     * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
+     */
+    public static function query(string $query, array $params, string $return_type)
+    {
+        $pdb = static::getInstance();
+        $st = $pdb->prepare($query);
+
+        // This doesn't exist the new Pdb, instead use prepare().
+        // This exists only for backward compat.
+        if ($return_type == 'prep') {
+            if (count($params) !== 0) {
+                $err = 'You cannot provide parameters when preparing statements';
+                throw new InvalidArgumentException($err);
+            }
+
+            return $st;
+        }
+
+        return $pdb->execute($st, $params, $return_type);
+    }
+
+
+    /**
+     * Alias for {@see Pdb::query}
+     *
+     * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
+     *        table prefix, e.g. ~pages will be converted to fwc_pages
+     * @param array $params Parameters to bind to the query
+     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @return array|string|int|null|PDOStatement
+     * @throws InvalidArgumentException If the return type isn't valid
+     * @throws QueryException If the query execution or formatting failed
+     * @throws ConnectionException If the connection fails
+     */
+    public static function q($query, array $params, string $return_type)
+    {
+        return static::query($query, $params, $return_type);
     }
 
 
