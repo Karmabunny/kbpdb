@@ -649,7 +649,7 @@ class PdbSync
      * If the column is incorrect, it will be altered
      * If the column does not exist, it will be created
      *
-     * @param string $table_name The name of the table to check
+     * @param PdbTable $table The table to check
      * @param PdbColumn $column The column definition to check
      * @param string $prev_column The name of the previous column, for column positioning
      * @return bool
