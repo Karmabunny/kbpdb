@@ -2,9 +2,9 @@
 
 namespace karmabunny\pdb\Drivers;
 
-use DateTime;
 use Exception;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Extra\SqliteFunctions;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
@@ -21,9 +21,7 @@ class PdbSqlite extends Pdb
 {
 
     static $FUNCTIONS = [
-        'DATE_FORMAT' => static function($date, $format) {
-            return strftime($format, strtotime($date));
-        },
+        'DATE_FORMAT' => [SqliteFunctions::class, 'dateFormat'],
     ];
 
 
@@ -46,6 +44,7 @@ class PdbSqlite extends Pdb
         $fns = array_intersect_key(static::$FUNCTIONS, $fns);
 
         foreach ($fns as $name => $fn) {
+            // @phpstan-ignore-next-line: it definitely supports 4 args.
             $pdo->sqliteCreateFunction($name, $fn, -1, PDO::SQLITE_DETERMINISTIC);
         }
 
