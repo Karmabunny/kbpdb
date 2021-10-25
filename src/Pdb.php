@@ -637,25 +637,48 @@ abstract class Pdb implements Loggable
      * @param string $table
      * @param array $data
      * @param array $conditions
+     * @param null|string $update
      * @return int
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function upsert(string $table, array $data, array $conditions)
+    public function upsert(string $table, array $data, array $conditions, $update = null)
     {
         static::validateIdentifier($table);
+
+        // OK so this uses 2 queries inside a transaction. It's as good as it gets here.
+        // - Using ON DUPLICATE KEY UPDATE is incomplete without RETURNING (MariaDb 10.5, Postgres, Oracle)
+        //   because otherwise we lose the LAST_INSERT_ID.
+        // - Using OR REPLACE is also a no-go because it modifies the PK and there's
+        //   no guarantee that all FKs have correct UPDATE triggers.
+
+        // Create a transaction if one is not already active.
+        $transact = $this->inTransaction();
+        if (!$transact) $this->transact();
 
         try {
             $params = [];
             $clause = $this->buildClause($conditions, $params);
             $id = $this->query("SELECT id from {$table} WHERE {$clause}", $params, 'val');
 
-            $this->update($table, $data, ['id' => $id]);
+            // Dynamic update.
+            if ($update) {
+                $this->query("UPDATE ~{$table} WHERE id = ?", [$id], 'pdo');
+            }
+            // Regular update.
+            else {
+                $this->update($table, $data, ['id' => $id]);
+            }
+
             return $id;
         }
         catch (RowMissingException $exception) {
             return $this->insert($table, $data);
+        }
+        finally {
+            // Only commit if it's our own transaction.
+            if ($transact) $this->commit();
         }
     }
 
