@@ -4,6 +4,7 @@ namespace karmabunny\pdb\Drivers;
 
 use Exception;
 use karmabunny\pdb\Models\PdbColumn;
+use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
@@ -123,7 +124,26 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     public function getForeignKeys(string $table)
     {
-        throw new Exception('Not implemented: ' . __METHOD__);
+        $prefix_table = $this->config->prefix . $table;
+
+        $q = "SELECT * FROM pragma_foreign_key_list(?)";
+        $res = $this->query($q, [$prefix_table], 'arr');
+
+        $rows = [];
+
+        foreach ($res as $row) {
+            $rows[] = new PdbForeignKey([
+                'constraint_name' => "{$prefix_table}.{$row['from']}",
+                'from_table' => $table,
+                'from_column' => $row['from'],
+                'to_table' => $row['table'],
+                'to_column' => $row['to'],
+                'update_rule' => $row['on_update'],
+                'delete_rule' => $row['on_delete'],
+            ]);
+        }
+
+        return $rows;
     }
 
 
