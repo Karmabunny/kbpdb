@@ -235,8 +235,7 @@ class PdbHelpers
      *
      * Examples:
      * - `(int) 4 => '?, ?, ?, ?'`
-     * - `[a, b, c] => '?, ?, ?'`
-     * - `[a => b, c => d, e => f] => ':a, :c, :e'`
+     * - `[a, b, c] => ':a, :b, :c'`
      *
      * @param int|string[] $data
      * @return string
@@ -245,8 +244,8 @@ class PdbHelpers
     {
         if (is_array($data)) {
             $keys = [];
-            foreach ($data as $key => $_) {
-                $keys[] = is_numeric($key) ? $key : ':' . $key;
+            foreach ($data as $key) {
+                $keys[] = ':' . $key;
             }
         }
         else {
