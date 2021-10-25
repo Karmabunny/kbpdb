@@ -2,11 +2,14 @@
 
 namespace karmabunny\pdb\Drivers;
 
+use DateTime;
 use Exception;
+use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
 use PDO;
 
@@ -16,6 +19,39 @@ use PDO;
  */
 class PdbSqlite extends Pdb
 {
+
+    static $FUNCTIONS = [
+        'DATE_FORMAT' => static function($date, $format) {
+            return strftime($format, strtotime($date));
+        },
+    ];
+
+
+    /**
+     *
+     * @param PdbConfig|array $config
+     * @return PDO
+     * @throws ConnectionException
+     */
+    public static function connect($config)
+    {
+        if (!($config instanceof PdbConfig)) {
+            $config = new PdbConfig($config);
+        }
+
+        $pdo = parent::connect($config);
+
+        $hacks = $config->getHacks();
+        $fns = $hacks[PdbConfig::HACK_SQLITE_FUNCTIONS] ?? [];
+        $fns = array_intersect_key(static::$FUNCTIONS, $fns);
+
+        foreach ($fns as $name => $fn) {
+            $pdo->sqliteCreateFunction($name, $fn, -1, PDO::SQLITE_DETERMINISTIC);
+        }
+
+        return $pdo;
+    }
+
 
     /** @inheritdoc */
     public function getPermissions()

@@ -25,6 +25,7 @@ class PdbConfig extends Collection
 
     const HACK_NO_ENGINE_SUBSTITUTION = 'no_engine_substitution';
     const HACK_TIME_ZONE = 'time_zone';
+    const HACK_SQLITE_FUNCTIONS = 'sqlite_functions';
 
     /** @var string */
     public $type;
