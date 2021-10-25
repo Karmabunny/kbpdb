@@ -228,7 +228,7 @@ class PdbSync
                 $prev_column = '';
 
                 foreach ($table->columns as $column) {
-                    $this->checkColumnMatches($table->name, $column, $prev_column);
+                    $this->checkColumnMatches($table, $column, $prev_column);
                     $prev_column = $column->name;
                 }
             }
@@ -519,7 +519,7 @@ class PdbSync
         $defs = [];
 
         foreach ($table->columns as $column) {
-            $spec = $this->createSqlColumnSpec($column);
+            $spec = $this->createSqlColumnSpec($table, $column);
             $defs[] = $this->pdb->quote($column->name, Pdb::QUOTE_FIELD) . ' ' . $spec;
         }
 
@@ -527,22 +527,29 @@ class PdbSync
             $primary_key = implode(', ', $this->pdb->quoteAll($table->primary_key, Pdb::QUOTE_FIELD));
             $spec = "PRIMARY KEY ({$primary_key})";
 
+            // In SQLite a singular PK is a ROWID and need to be aliased when
+            // creating a table. This is done in createSqlColumnSpec().
+            // For all other cases, the PK does not autoincrement. This is also
+            // technically just a UNIQUE constraint and (NULL, NULL, etc) is valid.
             if ($this->pdb instanceof PdbSqlite) {
-                $name = $table->primary_key[0];
-                $column = $table->columns[$name] ?? null;
-
-                // if ($column and $column->auto_increment) {
-                //     $spec .= ' AUTOINCREMENT';
-                // }
+                if (count($table->primary_key) > 1) {
+                    $defs[] = $spec;
+                }
             }
-
-            $defs[] = $spec;
+            else {
+                $defs[] = $spec;
+            }
         }
 
-        foreach ($table->indexes as $index) {
-            $type = strtoupper($index->type);
-            $columns = implode(', ', $this->pdb->quoteAll($index->columns, Pdb::QUOTE_FIELD));
-            $defs[] = "{$type} ({$columns})";
+        // TODO SQLite inline indexes can only be created with the column spec.
+        // - But this means composite indexes aren't so easy.
+        // - Perhaps all indexes should be CREATE INDEX after the fact?
+        if ($this->pdb instanceof PdbMysql) {
+            foreach ($table->indexes as $index) {
+                $type = strtoupper($index->type);
+                $columns = implode(', ', $this->pdb->quoteAll($index->columns, Pdb::QUOTE_FIELD));
+                $defs[] = "{$type} ({$columns})";
+            }
         }
 
         $q = "CREATE TABLE ~{$table->name} (\n";
@@ -647,14 +654,15 @@ class PdbSync
      * @param string $prev_column The name of the previous column, for column positioning
      * @return bool
      */
-    private function checkColumnMatches(string $table_name, PdbColumn $column, string $prev_column)
+    private function checkColumnMatches(PdbTable $table, PdbColumn $column, string $prev_column)
     {
+        $table_name = $table->name;
         $columns = $this->pdb->fieldList($table_name);
         $col = $columns[$column->name] ?? null;
 
         // If not found, create it.
         if ($col === null) {
-            $spec = $this->createSqlColumnSpec($column);
+            $spec = $this->createSqlColumnSpec($table, $column);
 
             // Search previous names for a match; if found the column is renamed
             foreach ($column->previous_names as $old_name) {
@@ -728,7 +736,7 @@ class PdbSync
             $reason = implode(', ', $errors);
 
             $name = $this->pdb->quote($column->name, Pdb::QUOTE_FIELD);
-            $spec = $this->createSqlColumnSpec($column);
+            $spec = $this->createSqlColumnSpec($table, $column);
             $q = "ALTER TABLE ~{$table_name} MODIFY COLUMN {$name} {$spec}";
 
             $this->heading = "COLUMN - Table '{$table_name}', Column '{$column->name}' - {$reason}";
@@ -1099,13 +1107,23 @@ class PdbSync
     * @param PdbColumn $column
     * @return string
     **/
-    private function createSqlColumnSpec(PdbColumn $column)
+    private function createSqlColumnSpec(PdbTable $table, PdbColumn $column)
     {
         $spec = $column->type;
 
         if ($this->pdb instanceof PdbSqlite) {
             if (preg_match('/^(ENUM|SET)/', $column->type)) {
                 $spec = 'TEXT';
+            }
+
+            // Single PKs are aliased as ROWID.
+            // Composite PKs are not and also lose their AUTOINCREMENT.
+            if (count($table->primary_key) == 1 and $column->is_primary) {
+                $spec = 'INTEGER PRIMARY KEY';
+
+                if ($column->auto_increment) {
+                    $spec .= ' AUTOINCREMENT';
+                }
             }
         }
 
