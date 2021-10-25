@@ -1112,8 +1112,23 @@ class PdbSync
         $spec = $column->type;
 
         if ($this->pdb instanceof PdbSqlite) {
-            if (preg_match('/^(ENUM|SET)/', $column->type)) {
-                $spec = 'TEXT';
+            $matches = [];
+            if (preg_match('/^(ENUM|SET)/', $column->type, $matches)) {
+                $type = $matches[1];
+
+                $name = $this->pdb->quoteField($column->name);
+                $values = PdbHelpers::convertEnumArr($column->type);
+
+                if ($type === 'ENUM') {
+                    $values = $this->pdb->quoteAll($values, Pdb::QUOTE_VALUE);
+                    $values = implode(',', $values);
+                    $spec = "TEXT CHECK({$name} in ({$values}))";
+                }
+                else {
+                    $values = implode(',', $values);
+                    $values = $this->pdb->quoteValue($values);
+                    $spec = "TEXT CHECK(instr({$values}, {$name}) is not null)";
+                }
             }
 
             // Single PKs are aliased as ROWID.
