@@ -165,10 +165,28 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     public function extractEnumArr(string $table, string $column)
     {
-        // Enums kinda exist.
         // https://stackoverflow.com/a/17203007/7694753
+        $table = $this->config->prefix . $table;
 
-        throw new Exception('Not implemented: ' . __METHOD__);
+        $q = "SELECT sql
+            FROM sqlite_master
+            WHERE type = 'table'
+            AND name = ?
+        ";
+        $sql = $this->query($q, [$table], 'val');
+
+        $matches = [];
+        $ok = preg_match("/check\((?:\"{$column}\" in \(([^)]+)\)|instr\(([^,]+), \"{$column}\")\)/i", $sql, $matches);
+        if (!$ok) return [];
+
+        $arr = explode(',', $matches[1] ?: $matches[2]);
+
+        foreach ($arr as &$item) {
+            $item = trim($item, " '\t\n\r\0");
+        }
+        unset($item);
+
+        return array_combine($arr, $arr);
     }
 
 }
