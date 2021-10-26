@@ -308,8 +308,7 @@ class PdbMysql extends Pdb
                 ENGINE,
                 TABLE_COLLATION,
                 TABLE_COMMENT,
-                AUTO_INCREMENT,
-                MAX_INDEX_LENGTH
+                AUTO_INCREMENT
             FROM INFORMATION_SCHEMA.TABLES
             WHERE TABLE_SCHEMA = ?
             AND TABLE_NAME = ?
