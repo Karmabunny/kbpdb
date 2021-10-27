@@ -144,15 +144,33 @@ class PdbMysql extends Pdb
             $key = $row[0];
             $autoinc = stripos($row[5], 'auto_increment') !== false;
 
-            $default = trim($row[4], '\'');
-            if (strcasecmp($row[4], 'null') === 0) {
-                $default = null;
+            $is_nullable = $row[2] == 'YES';
+            $default = $row[4];
+
+            if ($default) {
+                // If nullable, MariaDB will return a 'null' string (un-quoted).
+                // MySQL will return an actual NULL.
+                if ($is_nullable and strcasecmp($default, 'null') === 0) {
+                    $default = null;
+                }
+
+                // Otherwise it'll be a quoted string.
+                $default = trim($row[4], '\'');
+
+                // Convert numbers.
+                if (is_numeric($default)) {
+                    if (stripos($row[1], 'int')) {
+                        $default = (int) $default;
+                    } else {
+                        $default = (float) $default;
+                    }
+                }
             }
 
             $rows[$key] = new PdbColumn([
                 'name' => $row[0],
                 'type' => $row[1],
-                'is_nullable' => $row[2] == 'YES',
+                'is_nullable' => $is_nullable,
                 'is_primary' => $row[3] == 'PRI',
                 'default' => $default,
                 'auto_increment' => $autoinc,

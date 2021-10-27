@@ -726,8 +726,7 @@ class PdbSync
         if ($column->is_nullable and $col->default !== $column->default) {
             $errors[] = 'default';
         }
-        // Otherwise non-strict because of a reason I can't remember.
-        // Either way, this is working at the moment so I'm happy.
+        // Otherwise non-strict because of floats.
         else if ($col->default != $column->default) {
             $errors[] = 'default';
         }
