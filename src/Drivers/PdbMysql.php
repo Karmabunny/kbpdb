@@ -303,10 +303,10 @@ class PdbMysql extends Pdb
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $rows[] = new PdbForeignKey([
                 'constraint_name' => $row[0],
-                'source_table' => $this->stripPrefix($row[1]),
-                'source_column' => $row[2],
-                'target_table' => $this->stripPrefix($row[3]),
-                'target_column' => $row[4],
+                'from_table' => $this->stripPrefix($row[1]),
+                'from_column' => $row[2],
+                'to_table' => $this->stripPrefix($row[3]),
+                'to_column' => $row[4],
                 'update_rule' => $row[4],
                 'delete_rule' => $row[5],
             ]);
