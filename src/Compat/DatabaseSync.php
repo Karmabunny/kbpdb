@@ -100,7 +100,7 @@ abstract class DatabaseSync
     *
     * @return string HTML
     **/
-    public function getErrorsHtml()
+    public function getLoadErrorsHtml()
     {
         $out = '';
 
@@ -114,6 +114,12 @@ abstract class DatabaseSync
         }
 
         return $out;
+    }
+
+
+    public function getErrorsHtml()
+    {
+        return $this->getLoadErrorsHtml();
     }
 
 
