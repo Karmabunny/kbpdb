@@ -620,7 +620,7 @@ abstract class Pdb implements Loggable
 
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
-            $cols[] = $col . ' = ?';
+            $cols[] = $this->quoteField($col) . ' = ?';
             $values[] = $val;
         }
 
