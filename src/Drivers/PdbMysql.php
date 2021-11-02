@@ -148,14 +148,14 @@ class PdbMysql extends Pdb
             $default = $row[4];
 
             if ($default) {
-                // If nullable, MariaDB will return a 'null' string (un-quoted).
-                // MySQL will return an actual NULL.
-                if ($is_nullable and strcasecmp($default, 'null') === 0) {
+                $default = trim($row[4], '\'');
+
+                // - MariaDB will return a 'null' string.
+                // - MySQL will return an actual NULL.
+                // So yeah - you can't set a string 'null'. But why would you?
+                if (strcasecmp($default, 'null') === 0) {
                     $default = null;
                 }
-
-                // Otherwise it'll be a quoted string.
-                $default = trim($row[4], '\'');
 
                 // Convert numbers.
                 if (is_numeric($default)) {
