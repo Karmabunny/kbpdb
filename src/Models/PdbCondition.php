@@ -55,10 +55,10 @@ class PdbCondition
     ];
 
 
-    /** @var string */
+    /** @var string|null */
     public $operator;
 
-    /** @var string */
+    /** @var string|null */
     public $column;
 
     /** @var mixed */
@@ -70,13 +70,17 @@ class PdbCondition
     /**
      * Create a condition.
      *
-     * @param string $operator
-     * @param string $column
+     * @param string|null $operator
+     * @param string|null $column
      * @param mixed $value
      */
     public function __construct($operator, $column, $value, string $bind = null)
     {
-        $this->operator = strtoupper($operator);
+        if ($operator) {
+            $operator = strtoupper($operator);
+        }
+
+        $this->operator = $operator;
         $this->column = $column;
         $this->value = $value;
         $this->bind_type = $bind;
@@ -152,24 +156,7 @@ class PdbCondition
         // - NOT to be used for unescaped values. Stick to array or key style.
         // - Doesn't support non-scalar values.
         if (is_numeric($key) and is_string($item)) {
-            $matches = [];
-            if (!preg_match('/^([a-z0-9_\.\']+)\s+([=!<>]+|IS|IS NOT)\s+(.+?)$/i', $item, $matches)) {
-                throw new InvalidArgumentException("Invalid string condition: [{$item}]");
-            }
-
-            [$_, $left, $operator, $right] = $matches;
-            $value = trim($right, '\'');
-
-            // Perform ? binding if the right field is wrapped in ''.
-            // Otherwise treat it like a column/table will be `` escaped.
-            if ($value != $right) {
-                $bind = null;
-            }
-            else {
-                $bind = Pdb::QUOTE_FIELD;
-            }
-
-            return new PdbCondition($operator, $left, $value, $bind);
+            return new PdbCondition(null, null, $item);
         }
 
         // Key-style conditions.
@@ -216,8 +203,9 @@ class PdbCondition
      */
     public function validate()
     {
+        // This is a string condition - YOU'RE ON YOUR OWN BUDDY.
         if ($this->operator === null and $this->column === null) {
-            throw new InvalidArgumentException('Invalid/empty condition.');
+            return;
         }
 
         if (!is_scalar($this->operator)) {
@@ -269,6 +257,11 @@ class PdbCondition
      */
     public function build(Pdb $pdb, array &$values): string
     {
+        // String conditions are a lawless world.
+        if ($this->operator === null) {
+            return $this->value;
+        }
+
         $column = $this->column;
 
         if (!preg_match(PdbHelpers::RE_FUNCTION, $column)) {

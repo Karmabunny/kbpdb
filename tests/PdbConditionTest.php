@@ -120,19 +120,22 @@ class PdbConditionTest extends TestCase
             'big.stuff <= little.stuff',
             'you_better_hope_you >= \'have escaped this\'',
             'what.will <> this_do',
+            '~prefix in (~voodoo.magic, ~stuff.id)',
         ]);
 
-        $this->assertCount(3, $conditions);
+        $this->assertCount(4, $conditions);
 
         $values = [];
         $clause1 = $conditions[0]->build($pdb, $values);
         $clause2 = $conditions[1]->build($pdb, $values);
         $clause3 = $conditions[2]->build($pdb, $values);
+        $clause4 = $conditions[3]->build($pdb, $values);
 
-        $this->assertEquals('`big`.`stuff` <= `little`.`stuff`', $clause1);
-        $this->assertEquals('`you_better_hope_you` >= ?', $clause2);
-        $this->assertEquals('`what`.`will` <> `this_do`', $clause3);
-        $this->assertEquals(['have escaped this'], $values);
+        $this->assertEquals('big.stuff <= little.stuff', $clause1);
+        $this->assertEquals('you_better_hope_you >= \'have escaped this\'', $clause2);
+        $this->assertEquals('what.will <> this_do', $clause3);
+        $this->assertEquals('~prefix in (~voodoo.magic, ~stuff.id)', $clause4);
+        $this->assertEquals([], $values);
 
         // TODO Test bad string
         // - 'non.scalars in (\'chaos\', \'anarchy\', mess)'
