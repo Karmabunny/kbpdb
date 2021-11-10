@@ -133,6 +133,11 @@ Tests:
 
 performance tracing
 
+PdbCondition:
+- make everything use named binds
+- some sort of magical numeric to number binds thingy
+- add addParams() to PdbQuery (after named binds)
+
 Schema stuff:
 - add 'autoinc-start' per table
 - add 'secret=1|0' per column

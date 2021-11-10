@@ -209,7 +209,7 @@ class PdbCondition
         }
 
         if (!is_scalar($this->operator)) {
-            throw new InvalidArgumentException('Operator unknown: ' . gettype($this->operator));
+            throw new InvalidArgumentException('Invalid unknown: ' . gettype($this->operator));
         }
 
         if (!in_array($this->operator, self::OPERATORS)) {
@@ -220,6 +220,7 @@ class PdbCondition
             throw new InvalidArgumentException('Column name must be scalar, not:' . gettype($this->column));
         }
 
+        // For some reason this is ok?
         if (is_numeric($this->column) and !in_array($this->column, [0, 1])) {
             throw new InvalidArgumentException('Column name cannot be numeric (except for 0 or 1)');
         }
