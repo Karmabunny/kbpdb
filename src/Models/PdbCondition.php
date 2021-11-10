@@ -236,19 +236,20 @@ class PdbCondition
             throw new InvalidArgumentException('Column name cannot be numeric (except for 0 or 1)');
         }
 
-        Pdb::validateIdentifierExtended($this->column);
+        Pdb::validateIdentifierExtended($this->column, true);
 
+        // If the value is a field type, then we should do validation there too.
         if ($this->bind_type === Pdb::QUOTE_FIELD) {
             if (is_iterable($this->value)) {
                 foreach ($this->value as $value) {
                     if (!is_scalar($value)) {
                         throw new InvalidArgumentException('Column array must be scalar');
                     }
-                    Pdb::validateIdentifierExtended((string) $value);
+                    Pdb::validateIdentifierExtended((string) $value, true);
                 }
             }
             else {
-                Pdb::validateIdentifierExtended((string) $this->value);
+                Pdb::validateIdentifierExtended((string) $this->value, true);
             }
         }
     }
@@ -268,7 +269,11 @@ class PdbCondition
      */
     public function build(Pdb $pdb, array &$values): string
     {
-        $column = $pdb->quoteField($this->column);
+        $column = $this->column;
+
+        if (!preg_match(PdbHelpers::RE_FUNCTION, $column)) {
+            $column = $pdb->quoteField($column);
+        }
 
         if ($this->bind_type and is_scalar($this->value)) {
             $bind = $pdb->quote($this->value, $this->bind_type);

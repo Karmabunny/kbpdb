@@ -91,6 +91,27 @@ class PdbConditionTest extends TestCase
     }
 
 
+    public function testExtendedLoose(): void
+    {
+        $pdb = Database::getConnection();
+
+        $conditions = PdbCondition::fromArray([
+            "date_format(date, '%y-%m-%d')" => '2021-12-12',
+            '~table.column' => '~thing',
+        ]);
+
+        $this->assertCount(2, $conditions);
+
+        $values = [];
+        $clause1 = $conditions[0]->build($pdb, $values);
+        $clause2 = $conditions[1]->build($pdb, $values);
+
+        $this->assertEquals("date_format(date, '%y-%m-%d') = ?", $clause1);
+        $this->assertEquals('~table.`column` = ?', $clause2);
+        $this->assertEquals(['2021-12-12', '~thing'], $values);
+    }
+
+
     public function testStrings(): void
     {
         $pdb = Database::getConnection();

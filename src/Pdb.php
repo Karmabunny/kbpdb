@@ -1017,6 +1017,7 @@ abstract class Pdb implements Loggable
         $parts = explode('.', $field, 2);
 
         foreach ($parts as &$part) {
+            if (strpos($part, '~') === 0) continue;
             $part = $left . trim($part, '\'"[]`') . $right;
         }
         unset($part);
@@ -1071,7 +1072,6 @@ abstract class Pdb implements Loggable
      *
      * @param string $name The identifier to check
      * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
-     *   - Use for select(), do not use for tables or joins.
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
@@ -1100,7 +1100,6 @@ abstract class Pdb implements Loggable
      *
      * @param string $name The identifier to check
      * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
-     *   - Use for select(), do not use for tables or joins.
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
