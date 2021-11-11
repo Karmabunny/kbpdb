@@ -66,11 +66,13 @@ class PdbMysql extends Pdb
             $matches = [];
             if (!preg_match('/GRANT (.+) ON/', $val, $matches)) continue;
 
-            $matches = explode(', ', strtoupper($matches[1]));
+            $matches = explode(',', strtoupper($matches[1]));
             if (!$matches) continue;
 
             array_push($perms, ...$matches);
         }
+
+        $perms = array_map('trim', $perms);
 
         if (in_array('ALL PRIVILEGES', $perms)) {
             return PdbHelpers::TYPES;
