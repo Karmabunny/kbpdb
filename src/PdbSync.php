@@ -1093,7 +1093,9 @@ class PdbSync
         if (!is_array($warnings)) {
             $warnings = [ $warnings ];
         }
-        array_push($this->warnings, ...$warnings);
+        if ($warnings) {
+            array_push($this->warnings, ...$warnings);
+        }
     }
 
 

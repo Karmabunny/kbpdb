@@ -95,11 +95,15 @@ class PdbTable extends Collection
         }
 
         foreach ($this->columns as $column) {
-            array_push($errors, ...$column->check($tables, $this));
+            $checks = $column->check($tables, $this);
+            if (!$checks) continue;
+            array_push($errors, ...$checks);
         }
 
         foreach ($this->foreign_keys as $fk) {
-            array_push($errors, ...$fk->check($tables, $this));
+            $checks = $fk->check($tables, $this);
+            if (!$checks) continue;
+            array_push($errors, ...$checks);
         }
 
         return $errors;

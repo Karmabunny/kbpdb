@@ -61,11 +61,14 @@ class PdbMysql extends Pdb
         $res = $this->query($q, [], 'col');
 
         $perms = [];
-        $matches = [];
 
         foreach ($res as $val) {
+            $matches = [];
             if (!preg_match('/GRANT (.+) ON/', $val, $matches)) continue;
+
             $matches = explode(', ', strtoupper($matches[1]));
+            if (!$matches) continue;
+
             array_push($perms, ...$matches);
         }
 
