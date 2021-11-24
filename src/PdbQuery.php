@@ -659,24 +659,33 @@ class PdbQuery
 
     /**
      *
-     * @param string|null $key
+     * @param array|string|null $key
      * @param string|null $value
      * @return array
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function map(string $key = null, string $value = null): array
+    public function map($key = null, $value = null): array
     {
         $query = clone $this;
 
         // Replace select with key->value.
-        if ($key and $value) {
-            $query->select($key, $value);
-        }
-        // ak. no.
-        else if ($key or $value) {
-            throw new InvalidArgumentException('map() accepts exactly 2 arguments or none.');
+        if ($key) {
+            // [ key => value ]
+            if (is_array($key)) {
+                $value = reset($key);
+                $key = key($key);
+                $query->select($key, $value);
+            }
+            // Separate arguments.
+            else if ($value) {
+                $query->select($key, $value);
+            }
+            // ak. no.
+            else {
+                throw new InvalidArgumentException('map() expects a [key => value] array, \'key, value\' arguments, or none.');
+            }
         }
 
         [$sql, $params] = $query->build();
