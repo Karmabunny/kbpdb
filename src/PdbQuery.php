@@ -454,7 +454,9 @@ class PdbQuery
             }
 
             $sql .= $type . ' ';
+            if ($type !== 'WHERE') $sql .= '(';
             $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            if ($type !== 'WHERE') $sql .= ')';
             $sql .= ' ';
         }
 
