@@ -102,6 +102,17 @@ class PdbQuery
 
 
     /**
+     * Get a copy of this query.
+     *
+     * @return static
+     */
+    public function clone()
+    {
+        return clone $this;
+    }
+
+
+    /**
      * Select a list of fields.
      *
      * Note, this will replace any previous select().
