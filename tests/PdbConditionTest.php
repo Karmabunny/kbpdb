@@ -187,4 +187,40 @@ class PdbConditionTest extends TestCase
 
         // TODO Test validate of column arrays.
     }
+
+
+    public function testNested(): void
+    {
+        $pdb = Database::getConnection();
+
+        $conditions = PdbCondition::fromArray([
+            'not.nested' => 'ok',
+
+            // wrapped.
+            ['or' => [
+                'nested' => 'things',
+                ['>=', 'neato' => 100],
+            ]],
+
+            // not wrapped.
+            'and' => [
+                'another' => 'one',
+                ['one_more', 'IS NOT', null],
+                '~table.i_lied' => 'last-one',
+            ],
+        ]);
+
+        $this->assertCount(3, $conditions);
+
+        $values = [];
+        $clause1 = $conditions[0]->build($pdb, $values);
+        $clause2 = $conditions[1]->build($pdb, $values);
+        $clause3 = $conditions[2]->build($pdb, $values);
+
+        $this->assertEquals('`not`.`nested` = ?', $clause1);
+        $this->assertEquals('`nested` = ? OR `neato` >= ?', $clause2);
+        $this->assertEquals('`another` = ? AND `one_more` IS NOT NULL AND ~table.`i_lied` = ?', $clause3);
+
+        $this->assertEquals(['ok', 'things', 100, 'one', 'last-one'], $values);
+    }
 }

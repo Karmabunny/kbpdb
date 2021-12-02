@@ -35,6 +35,12 @@ class PdbCondition
     const ENDS = 'ENDS';
     const IN_SET = 'IN SET';
 
+    const COMPOUNDS = [
+        'OR',
+        'AND',
+        'XOR',
+    ];
+
     const OPERATORS = [
         self::EQUAL,
         self::LESS_THAN_EQUAL,
@@ -113,18 +119,16 @@ class PdbCondition
         if (is_numeric($key) and is_array($item)) {
             $count = count($item);
 
-            // key-style condition.
+            // key-style conditions + nested conditions.
             // :: [COLUMN => VALUE]
+            // :: [AND|OR|XOR => CONDITION]
             if ($count == 1) {
                 $column = key($item);
                 $value = $item[$column];
 
-                $operator = PdbCondition::EQUAL;
-                if ($value === null) {
-                    $operator = PdbCondition::IS;
-                }
-
-                return new PdbCondition($operator, $column, $value);
+                // This is when someone gives us a nested condition.
+                // Like a: [['id' => 1]]
+                return self::fromShorthand($column, $value);
             }
 
             // Modified key-style condition.
@@ -159,16 +163,30 @@ class PdbCondition
             return new PdbCondition(null, null, $item);
         }
 
-        // Key-style conditions.
-        // :: OPERATOR => VALUE
+        // Key-style conditions + nested conditions.
+        // :: COLUMN => VALUE
+        // :: AND|OR|XOR => CONDITION
         if (is_string($key)) {
-            $operator = PdbCondition::EQUAL;
 
-            if ($item === null) {
-                $operator = PdbCondition::IS;
+            // Support for nested conditions.
+            if (
+                ($nested = strtoupper($key)) and
+                is_array($item) and
+                in_array($nested, ['AND', 'OR', 'XOR'])
+            ) {
+                $conditions = self::fromArray($item);
+                return new PdbCondition($nested, null, $conditions);
             }
 
-            return new PdbCondition($operator, $key, $item);
+            // Regular key-style conditions.
+            else {
+                $operator = PdbCondition::EQUAL;
+                if ($item === null) {
+                    $operator = PdbCondition::IS;
+                }
+
+                return new PdbCondition($operator, $key, $item);
+            }
         }
 
         throw new InvalidArgumentException('Invalid condition');
@@ -203,8 +221,10 @@ class PdbCondition
      */
     public function validate()
     {
-        // This is a string condition - YOU'RE ON YOUR OWN BUDDY.
-        if ($this->operator === null and $this->column === null) {
+        // This is a string or nested condition.
+        // String conditions have little-to-no validation.
+        // Nested conditions are validated deeper down.
+        if ($this->operator === null or $this->column === null) {
             return;
         }
 
@@ -212,12 +232,15 @@ class PdbCondition
             throw new InvalidArgumentException('Invalid unknown: ' . gettype($this->operator));
         }
 
-        if (!in_array($this->operator, self::OPERATORS)) {
+        if (
+            !in_array($this->operator, self::OPERATORS) and
+            !in_array($this->operator, self::COMPOUNDS)
+        ) {
             throw new InvalidArgumentException('Operator unknown: ' . $this->operator);
         }
 
         if (!is_scalar($this->column)) {
-            throw new InvalidArgumentException('Column name must be scalar, not:' . gettype($this->column));
+            throw new InvalidArgumentException('Column name must be scalar, not: ' . gettype($this->column));
         }
 
         // For some reason this is ok?
@@ -263,15 +286,32 @@ class PdbCondition
             return $this->value;
         }
 
+        // Nested conditions!
+        if (
+            $this->column === null and
+            is_array($this->value)
+        ) {
+            $sql = [];
+
+            foreach ($this->value as $condition) {
+                $sql[] = $condition->build($pdb, $values);
+            }
+
+            return implode(" {$this->operator} ", $sql);
+        }
+
         $column = $this->column;
 
+        // I'm not smart enough to auto-quote this.
         if (!preg_match(PdbHelpers::RE_FUNCTION, $column)) {
             $column = $pdb->quoteField($column);
         }
 
+        // Gonna 'bind' this one manually. Doesn't feel great.
         if ($this->bind_type and is_scalar($this->value)) {
             $bind = $pdb->quote($this->value, $this->bind_type);
         }
+        // Natural bindings. Good.
         else {
             $bind = '?';
         }
