@@ -196,6 +196,9 @@ class PdbConditionTest extends TestCase
         $conditions = PdbCondition::fromArray([
             'not.nested' => 'ok',
 
+            // Silly nested that does nothing.
+            'or' => ['single.nested' => 'also ok'],
+
             // wrapped.
             ['or' => [
                 'nested' => 'things',
@@ -210,17 +213,19 @@ class PdbConditionTest extends TestCase
             ],
         ]);
 
-        $this->assertCount(3, $conditions);
+        $this->assertCount(4, $conditions);
 
         $values = [];
         $clause1 = $conditions[0]->build($pdb, $values);
         $clause2 = $conditions[1]->build($pdb, $values);
         $clause3 = $conditions[2]->build($pdb, $values);
+        $clause4 = $conditions[3]->build($pdb, $values);
 
         $this->assertEquals('`not`.`nested` = ?', $clause1);
-        $this->assertEquals('`nested` = ? OR `neato` >= ?', $clause2);
-        $this->assertEquals('`another` = ? AND `one_more` IS NOT NULL AND ~table.`i_lied` = ?', $clause3);
+        $this->assertEquals('(`single`.`nested` = ?)', $clause2);
+        $this->assertEquals('(`nested` = ? OR `neato` >= ?)', $clause3);
+        $this->assertEquals('(`another` = ? AND `one_more` IS NOT NULL AND ~table.`i_lied` = ?)', $clause4);
 
-        $this->assertEquals(['ok', 'things', 100, 'one', 'last-one'], $values);
+        $this->assertEquals(['ok', 'also ok', 'things', 100, 'one', 'last-one'], $values);
     }
 }

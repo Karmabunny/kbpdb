@@ -44,9 +44,12 @@ class PdbQueryTest extends TestCase
                 ['start_date', 'BETWEEN', $dates],
                 ['end_date', 'BETWEEN', $dates],
             ])
-            ->orWhere([
-                ["DATE('2021-11-09')", 'BETWEEN', $dates],
-                ["DATE('2021-11-12')", 'BETWEEN', $dates],
+            ->andWhere([
+                'level1' => 'value1',
+                'and' => [
+                    'level2' => 'value2',
+                    'level3' => 'value3',
+                ],
             ], 'OR')
             ->groupBy('project_roles.id');
 

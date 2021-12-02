@@ -297,7 +297,7 @@ class PdbCondition
                 $sql[] = $condition->build($pdb, $values);
             }
 
-            return implode(" {$this->operator} ", $sql);
+            return '(' . implode(" {$this->operator} ", $sql) . ')';
         }
 
         $column = $this->column;
