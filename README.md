@@ -123,6 +123,15 @@ $other->save();
 
 More docs. More comments. More tests.
 
+Docs:
+- class map (w/ complete doc comments)
+- how to use pdb query
+- guide to conditions syntax
+- installing the compatibility layer
+- Building your own PdbModel
+- UUID building
+- how to not use SQL_CALC_FOUND_ROWS (and why)
+
 Tests:
 - utilities
 - Pdb
@@ -133,10 +142,21 @@ Tests:
 
 performance tracing
 
+remove PdbModel? (too specific, move it to Bloom I guess)
+
+Adapters:
+- rename drivers -> adapters
+- add postgres adapter
+- sqlite dependent keys
+
 PdbCondition:
 - make everything use named binds
 - some sort of magical numeric to number binds thingy
-- add addParams() to PdbQuery (after named binds)
+
+PdbQuery:
+- select should be keyed by alias
+- orderBy() and groupBy() should accept strings
+- add addParams() to (after adding enforced named binds)
 
 Schema stuff:
 - add 'autoinc-start' per table
@@ -146,23 +166,21 @@ Schema stuff:
 - put db_struct.xsd somewhere online
 - tie down boolean properties to 0|1
 
-Compat:
-- finish sprout compatibility stuff
-
 Refactor:
 - rename extended methods (fieldList, indexList)
 
 New stuff:
 - should return row keys lower-cased? via config?
+- `Pdb::savepoint()` for nested transactions
 - `Pdb::transact()` should return a transaction ID
-  - commits can only be done with this ID
+  - commit() requires this ID as an arg
   - forces the user to manage the transaction lifecycle
   - rollback prevents any commits
     - throws an error? returns bool?
+  - can do nested transaction via savepoint()
 
 Fixes:
 - Pdb::find() should respect 'date_deleted'
-- select should be keyed by alias
 - sync doesn't remove indexes when renaming a table (needs additional sync)
 
 Document UUIDs somewhere:
