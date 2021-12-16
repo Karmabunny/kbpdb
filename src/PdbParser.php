@@ -135,6 +135,17 @@ class PdbParser
             /** @var DOMElement $node */
 
             // TODO Update to use kbphp (v2.16) XML.
+
+            $is_nullable = true;
+            if ($node->hasAttribute('allownull')) {
+                $is_nullable = (bool) $node->getAttribute('allownull');
+            }
+
+            $auto_increment = false;
+            if ($node->hasAttribute('autoinc')) {
+                $auto_increment = (bool) $node->getAttribute('autoinc');
+            }
+
             $default = null;
             if ($node->hasAttribute('default')) {
                 $default = $node->getAttribute('default');
@@ -143,8 +154,8 @@ class PdbParser
             $table->addColumn(new PdbColumn([
                 'name' => $node->getAttribute('name'),
                 'type' => self::parseColumnType($node),
-                'is_nullable' => (bool) $node->getAttribute('allownull'),
-                'auto_increment' => (bool) $node->getAttribute('autoinc'),
+                'is_nullable' => $is_nullable,
+                'auto_increment' => $auto_increment,
                 'default' => $default,
                 'previous_names' => self::parseStringArray($node->getAttribute('previous-names')),
             ]));
