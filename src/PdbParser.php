@@ -134,6 +134,8 @@ class PdbParser
         foreach ($column_nodes as $node) {
             /** @var DOMElement $node */
 
+            $type = self::parseColumnType($node);
+
             // TODO Update to use kbphp (v2.16) XML.
 
             $is_nullable = true;
@@ -149,11 +151,20 @@ class PdbParser
             $default = null;
             if ($node->hasAttribute('default')) {
                 $default = $node->getAttribute('default');
+
+                // Convert numbers.
+                if (is_numeric($default)) {
+                    if (stripos($type, 'int')) {
+                        $default = (int) $default;
+                    } else {
+                        $default = (float) $default;
+                    }
+                }
             }
 
             $table->addColumn(new PdbColumn([
                 'name' => $node->getAttribute('name'),
-                'type' => self::parseColumnType($node),
+                'type' => $type,
                 'is_nullable' => $is_nullable,
                 'auto_increment' => $auto_increment,
                 'default' => $default,
