@@ -112,13 +112,27 @@ class PdbSqlite extends Pdb
 
         while ($row = $res->fetch(PDO::FETCH_NUM)) {
             $key = $row[0];
+
+            $default = $row[4];
+
+            // TODO something about null.
+
+            // Convert numbers.
+            if (is_numeric($default)) {
+                if (stripos($row[1], 'int')) {
+                    $default = (int) $default;
+                } else {
+                    $default = (float) $default;
+                }
+            }
+
             $rows[$key] = new PdbColumn([
                 'name' => $row[0],
                 'type' => $row[1],
                 'is_nullable' => ! (bool) $row[2],
                 'is_primary' => (bool) $row[3],
-                'default' => $row[4],
-                // I guess??
+                'default' => $default,
+                // I guess?? - Assuming PK implies autoinc.
                 'auto_increment' => (bool) $row[3],
                 'extra' => '',
             ]);
