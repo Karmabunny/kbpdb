@@ -722,12 +722,15 @@ class PdbSync
             $errors[] = 'autoinc';
         }
 
-        // Default comparisons are strict if the new column is nullable.
-        if ($column->is_nullable and $col->default !== $column->default) {
-            $errors[] = 'default';
-        }
-        // Otherwise non-strict because of floats.
-        else if ($col->default != $column->default) {
+        // Non-strict comparisons because floats.
+        // But also strict comparisons for nulls.
+        if (
+            $col->default != $column->default
+            or (
+                ($col->default === null or $column->default === null)
+                and ($col->default !== $column->default)
+            )
+        ) {
             $errors[] = 'default';
         }
 
