@@ -37,6 +37,7 @@ use PDO;
 use PDOException;
 use PDOStatement;
 use Serializable;
+use Throwable;
 
 /**
  * Class for doing database queries via PDO (PDO Database => Pdb)
@@ -1062,12 +1063,37 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Starts a transaction, or savepoint if nested transactions are enabled.
      *
+     * Provide a function argument to wrap it automatically. This supports
+     * nesting, so if already within a transaction (and nesting is enabled)
+     * this will create savepoints instead.
+     *
+     * @param callable|null $callback Wrap this function in a transaction.
      * @return mixed a transaction key (`string`) or the callback result.
      * @throws TransactionRecursionException if already in a transaction + nested transactions are disabled.
      * @throws ConnectionException If the connection fails
      */
-    public function transact()
+    public function transact($callback = null)
     {
+        // Wrapping a function in a transaction.
+        if ($callback and is_callable($callback)) {
+            $key = $this->transact();
+
+            try {
+                return $callback();
+            }
+            catch (Throwable $error) {
+                if ($this->transaction_key) {
+                    $this->rollback($key);
+                }
+                throw $error;
+            }
+            finally {
+                if (!isset($error) and $this->transaction_key) {
+                    $this->commit($key);
+                }
+            }
+        }
+
         $pdo = $this->getConnection();
 
         $nested = ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED);
