@@ -27,6 +27,7 @@ use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Exceptions\TransactionEmptyException;
+use karmabunny\pdb\Exceptions\TransactionNameException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -199,8 +200,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /** @var InflectorInterface|null */
     protected $inflector;
 
-    /** @var bool */
-    protected $in_transaction = false;
+    /** @var string|false */
+    protected $transaction_key = false;
 
     /** @var int|null */
     protected $last_insert_id = null;
@@ -1054,29 +1055,46 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function inTransaction()
     {
-        return $this->in_transaction;
+        return !empty($this->transaction_key);
     }
 
 
     /**
-     * Starts a transaction
-     * @return void
-     * @throws TransactionRecursionException if already in a transaction
+     * Starts a transaction, or savepoint if nested transactions are enabled.
+     *
+     * @return mixed a transaction key (`string`) or the callback result.
+     * @throws TransactionRecursionException if already in a transaction + nested transactions are disabled.
      * @throws ConnectionException If the connection fails
      */
     public function transact()
     {
-        if ($this->in_transaction) {
+        $pdo = $this->getConnection();
+
+        $nested = ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED);
+
+        // Throw recursion errors in non-nested mode.
+        if (!$nested and ($pdo->inTransaction() or $this->inTransaction())) {
             throw new TransactionRecursionException();
         }
 
-        $pdo = $this->getConnection();
-        $pdo->beginTransaction();
-        $this->in_transaction = true;
+        // Regular old transactions.
+        if (!$this->transaction_key) {
+            $pdo->beginTransaction();
+
+            $name = 'tx_' . Uuid::uuid4();
+            $name = strtr($name, '-', '_');
+
+            $this->transaction_key = $name;
+            return $name;
+        }
+        else {
+            // Magical nested magic.
+            return $this->savepoint();
+        }
     }
 
 
-     /**
+    /**
      * Create a savepoint.
      *
      * Savepoints are effectively nested transactions.
@@ -1098,7 +1116,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         // Some DBs (sqlite) will treat an out-of-transaction savepoint as a
         // BEGIN DEFERRED TRANSACTION. So we're just trying to make things
         // consistent here.
-        if (!$pdo->inTransaction() or !$this->transaction_key) {
+        if (!$pdo->inTransaction() or !$this->inTransaction()) {
+            $this->transaction_key = false;
             throw new TransactionEmptyException('No active transaction');
         }
 
@@ -1116,16 +1135,59 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
-     * Commits a transaction
+     * Commits a transaction or a savepoint.
+     *
+     * Given a savepoint key (nested transaction) the savepoint is released and
+     * the wrapping transaction remains uncommitted. If rollback() is called,
+     * the savepoint data is still lost.
+     *
+     * Committing a root transaction will release all savepoints.
+     *
+     * The transaction key is _required_ when `TX_FORCE_COMMIT_KEYS` is enabled.
+     * This forces the user to maintain the transaction key through their
+     * control flow and encourages one to properly clean up after themselves.
+     *
+     * @param string|null $name a transaction key
      * @return void
+     * @throws InvalidArgumentException An invalid transaction key
      * @throws ConnectionException If the connection fails
-     * @throws PDOException
+     * @throws TransactionEmptyException If there's no active transaction
      */
-    public function commit()
+    public function commit(string $name = null)
     {
         $pdo = $this->getConnection();
-        $pdo->commit();
-        $this->in_transaction = false;
+
+        if (!$pdo->inTransaction() or !$this->inTransaction()) {
+            $this->transaction_key = false;
+
+            // Strict mode commits require an active transaction.
+            if ($this->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT) {
+                throw new TransactionEmptyException('No active transaction');
+            }
+
+            // Skip over inactive transactions.
+            return;
+        }
+
+        if ($name === null) {
+            // Here the user _must_ pass through a name field.
+            if ($this->config->transaction_mode & PdbConfig::TX_FORCE_COMMIT_KEYS) {
+                throw new TransactionNameException('Cannot commit without an identifier');
+            }
+
+            // Otherwise it's implied to be root transaction.
+            $name = $this->transaction_key;
+        }
+
+        // Release a root transaction or a savepoint.
+        if ($name === $this->transaction_key) {
+            $pdo->commit();
+            $this->transaction_key = false;
+        }
+        else {
+            static::validateIdentifier($name, false);
+            $pdo->exec('RELEASE SAVEPOINT ' . $name);
+        }
     }
 
 
@@ -1140,14 +1202,26 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string|null $name a transaction key
      * @return void
+     * @throws InvalidArgumentException An invalid transaction key
      * @throws ConnectionException If the connection fails
-     * @throws PDOException
      */
     public function rollback(string $name = null)
     {
         $pdo = $this->getConnection();
 
-        if (!$name) {
+        if (!$pdo->inTransaction() or $this->inTransaction()) {
+            $this->transaction_key = false;
+
+            // Strict mode rollbacks require an active transaction.
+            if ($this->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK) {
+                throw new TransactionEmptyException('No active transaction');
+            }
+
+            // Skip over inactive transactions.
+            return;
+        }
+
+        if (!$name or $name === $this->transaction_key) {
             $pdo->rollBack();
             $this->transaction_key = false;
         }
