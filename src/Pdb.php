@@ -26,6 +26,7 @@ use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\PdbException;
+use karmabunny\pdb\Exceptions\TransactionEmptyException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -1075,6 +1076,45 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     }
 
 
+     /**
+     * Create a savepoint.
+     *
+     * Savepoints are effectively nested transactions.
+     *
+     * All savepoints within a transaction are 'released' upon commit of the
+     * wrapping transaction.
+     *
+     * @param string|null $name optionally specify a savepoint name
+     * @return string the savepoint name
+     * @throws InvalidArgumentException An invalid savepoint name
+     * @throws TransactionEmptyException If there's no active transaction
+     * @throws ConnectionException If the connection fails
+     */
+    public function savepoint(string $name = null)
+    {
+        $pdo = $this->getConnection();
+
+        // Someone could have started a transaction elsewhere, you know.
+        // Some DBs (sqlite) will treat an out-of-transaction savepoint as a
+        // BEGIN DEFERRED TRANSACTION. So we're just trying to make things
+        // consistent here.
+        if (!$pdo->inTransaction() or !$this->transaction_key) {
+            throw new TransactionEmptyException('No active transaction');
+        }
+
+        // Generate a name.
+        if (!$name) {
+            $name = 'save_' . Uuid::uuid4();
+            $name = strtr($name, '-', '_');
+        }
+
+        static::validateIdentifier($name, false);
+        $pdo->exec('SAVEPOINT ' . $name);
+
+        return $name;
+    }
+
+
     /**
      * Commits a transaction
      * @return void
@@ -1090,16 +1130,31 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
-     * Rolls a transaction back
+     * Rolls a transaction or savepoint back.
+     *
+     * Given a savepoint name it'll rollback to that savepoint and leave the
+     * wrapping transaction in place.
+     *
+     * Given the transaction key or empty it'll rollback to while transaction
+     * and all savepoints.
+     *
+     * @param string|null $name a transaction key
      * @return void
      * @throws ConnectionException If the connection fails
      * @throws PDOException
      */
-    public function rollback()
+    public function rollback(string $name = null)
     {
         $pdo = $this->getConnection();
-        $pdo->rollBack();
-        $this->in_transaction = false;
+
+        if (!$name) {
+            $pdo->rollBack();
+            $this->transaction_key = false;
+        }
+        else {
+            static::validateIdentifier($name, false);
+            $pdo->exec('ROLLBACK TO ' . $name);
+        }
     }
 
 
