@@ -50,24 +50,18 @@ class QueryException extends PdbException
     /**
      *
      * @param PDOException $exception
-     * @return QueryException
-     */
-    public static function create(PDOException $exception)
-    {
-        $class = self::getSubClass($exception);
-        return (new $class($exception->getMessage(), 0, $exception))
-            ->setState($exception->getCode() ?: '00000');
-    }
-
-
-    /**
-     *
-     * @param PDOException $exception
      * @return string A subclass of QueryException
      */
     protected static function getSubClass(PDOException $exception)
     {
         $state_class = substr($exception->getCode(), 0, 2);
+        [ , $driver_code ] = $exception->errorInfo ?? [0, 0];
+
+        // MySQL reports savepoints errors as a syntax 42000.
+        // TODO should probably check the adapter here too.
+        if ($state_class == 42 and $driver_code == 1305) {
+            $state_class = '3B';
+        }
 
         switch ($state_class) {
             case '22':
@@ -76,12 +70,16 @@ class QueryException extends PdbException
             case '23':
                 return ConstraintQueryException::class;
 
-            case '25':
-                return TransactionQueryException::class;
+            case '3B':
+                return TransactionNameException::class;
 
-            case '00':
-            default:
-                return QueryException::class;
+            case '25':
+                // TODO
+                // - 25001 and 25002 => TransactionRecursionException
+                // - 25005 => TransactionEmptyException
+                return TransactionQueryException::class;
         }
+
+        parent::getSubClass($exception);
     }
 }

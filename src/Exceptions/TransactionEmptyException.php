@@ -11,7 +11,8 @@ namespace karmabunny\pdb\Exceptions;
  * Exception thrown when no transaction is active.
  */
 class TransactionEmptyException
-    extends PdbException
+    extends TransactionQueryException
     implements TransactionException
 {
+    public $state = '25005';
 }
