@@ -27,6 +27,31 @@ class PdbConfig extends Collection
     const HACK_TIME_ZONE = 'time_zone';
     const HACK_SQLITE_FUNCTIONS = 'sqlite_functions';
 
+    /**
+     * Require an active transaction when calling `commit()`.
+     */
+    const TX_STRICT_COMMIT = 0x1;
+
+    /**
+     * Require an active transaction when calling `rollback()`.
+     */
+    const TX_STRICT_ROLLBACK = 0x2;
+
+    /**
+     * Enable nested transaction (via savepoints).
+     *
+     * This eliminates recursion exceptions.
+     */
+    const TX_ENABLE_NESTED = 0x4;
+
+    /**
+     * Force the user to provide a transaction key when calling `commit()`.
+     *
+     * `rollback()` can still be called at any time without a key.
+     */
+    const TX_FORCE_COMMIT_KEYS = 0x8;
+
+
     /** @var string */
     public $type;
 
@@ -63,8 +88,19 @@ class PdbConfig extends Collection
     /** @var string[] */
     public $hacks = [];
 
-    /** @var PDO|null */
+    /** @var PDO|null This is an override connection for sprout pdb. */
     public $_pdo;
+
+    /**
+     * TX enum
+     *
+     * Default: strict commit + rollback, enabled nested
+     *
+     * Ideal: strict commit, force commit keys, enabled nested
+     *
+     * @var int
+     */
+    public $transaction_mode = self::TX_STRICT_ROLLBACK | self::TX_STRICT_COMMIT | self::TX_ENABLE_NESTED;
 
 
     /**
