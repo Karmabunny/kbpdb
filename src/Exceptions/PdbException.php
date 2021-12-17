@@ -48,8 +48,19 @@ class PdbException extends Exception
      */
     public static function create(PDOException $exception)
     {
-        $class = static::class;
+        $class = static::getSubClass($exception);
         return (new $class($exception->getMessage(), 0, $exception))
             ->setState($exception->getCode() ?: '00000');
+    }
+
+
+    /**
+     *
+     * @param PDOException $exception
+     * @return string
+     */
+    protected static function getSubClass(PDOException $exception)
+    {
+        return static::class;
     }
 }

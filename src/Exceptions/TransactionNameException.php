@@ -17,7 +17,8 @@ namespace karmabunny\pdb\Exceptions;
  * without a valid id.
  */
 class TransactionNameException
-    extends PdbException
+    extends TransactionQueryException
     implements TransactionException
 {
+    public $state = '3B001';
 }
