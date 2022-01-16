@@ -189,7 +189,8 @@ class PdbCondition
             }
         }
 
-        throw new InvalidArgumentException('Invalid condition');
+        $type = gettype($item);
+        throw new InvalidArgumentException("Invalid condition: {$key} => {$type}");
     }
 
 
