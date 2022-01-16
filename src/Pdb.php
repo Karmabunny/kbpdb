@@ -1018,6 +1018,7 @@ abstract class Pdb implements Loggable
 
         foreach ($parts as &$part) {
             if (strpos($part, '~') === 0) continue;
+            if ($part == '*') continue;
             $part = $left . trim($part, '\'"[]`') . $right;
         }
         unset($part);
