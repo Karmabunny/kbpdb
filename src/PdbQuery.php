@@ -36,20 +36,24 @@ use ReflectionClass;
  * - `find($table, $conditions)`
  *
  * Terminator methods:
- * - `build(): string`
+ * - `build(): [string, array]`
  * - `value($field): string`
- * - `one($class): array|object`
- * - `all($limit): array`
+ * - `one($throw): array|object`
+ * - `all(): array`
  * - `map($key, $value): array`
  * - `keyed($key): array`
  * - `column(): array`
  * - `count(): int`
+ * - `iterator(): iterable`
+ * - `batch($size): iterable<array>`
  * - `pdo(): PDO`
  *
  * Class builders:
  * - `one(): object`
  * - `all(): object[]`
  * - `keyed(): [key => object]`
+ * - `iterator(): iterable<object>`
+ * - `batch($size): iterable<object[]>`
  *
  * @package karmabunny\pdb
  */
@@ -667,6 +671,36 @@ class PdbQuery
         }
 
         $pdo->closeCursor();
+    }
+
+
+    /**
+     *
+     * @param int $size
+     * @return Generator<array>
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function batch(int $size): Generator
+    {
+        $query = clone $this;
+
+        $cursor = 0;
+
+        while (true) {
+            $query->offset($cursor);
+            $query->limit($size);
+
+            $results = $query->all();
+
+            if (empty($results)) {
+                break;
+            }
+
+            yield $results;
+            $cursor += $size;
+        }
     }
 
 
