@@ -182,7 +182,7 @@ class PdbQuery
      * @return static
      * @throws InvalidArgumentException
      */
-    private function _join(string $type, $table, array $conditions, string $combine = 'AND')
+    protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
     {
         $table = Pdb::validateAlias($table);
         $this->_joins[] = [$type, $table, $conditions, $combine];
