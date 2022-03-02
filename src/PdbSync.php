@@ -351,7 +351,7 @@ class PdbSync
         }
 
         foreach ($this->warnings as $warning) {
-            $logs[] = [ 'message', $warning ];
+            $log[] = [ 'message', $warning ];
         }
 
         if (!empty($this->warnings)) {
