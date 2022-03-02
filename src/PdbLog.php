@@ -92,11 +92,15 @@ class PdbLog
      *
      * TODO Add (optional) colours.
      *
-     * @param array $log
+     * @param static|array $log
      * @return void echos output
      */
-    public static function print(array $log)
+    public static function print($log)
     {
+        if ($log instanceof static) {
+            $log = $log->getLog();
+        }
+
         foreach ($log as [$type, $body]) {
             switch ($type) {
                 case 'section':
@@ -120,7 +124,6 @@ class PdbLog
                     echo PHP_EOL;
             }
         }
-        echo 'Done!' . PHP_EOL;
         echo PHP_EOL;
     }
 }
