@@ -282,7 +282,8 @@ class PdbMysql extends Pdb
                 K.COLUMN_NAME,
                 K.REFERENCED_TABLE_NAME,
                 K.REFERENCED_COLUMN_NAME,
-                C.UPDATE_RULE
+                C.UPDATE_RULE,
+                C.DELETE_RULE
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K
             INNER JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS AS C
                 ON K.CONSTRAINT_NAME = C.CONSTRAINT_NAME
@@ -312,8 +313,9 @@ class PdbMysql extends Pdb
                 'from_column' => $row[2],
                 'to_table' => $this->stripPrefix($row[3]),
                 'to_column' => $row[4],
-                'update_rule' => $row[4],
-                'delete_rule' => $row[5],
+                'update_rule' => $row[5],
+                // always 'CASCADE'.
+                'delete_rule' => $row[6],
             ]);
         }
 
