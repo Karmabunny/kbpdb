@@ -14,14 +14,20 @@ namespace karmabunny\pdb;
  * - Saving (create/update)
  * - Deleting
  *
- * There are two implementations:
- * - {@see PdbModelTrait} (basic) only required an 'id' field.
- * - {@see PdbModel} (advanced) audit fields, soft deletes + uuids.
+ * {@see PdbModelTrait} for implementations of find() and save().
  *
  * @package karmabunny\pdb
  */
 interface PdbModelInterface
 {
+
+    /**
+     * The connection used queries in this model.
+     *
+     * @return Pdb
+     */
+    public static function getConnection(): Pdb;
+
 
     /**
      * The table name for this model, non-prefixed.
