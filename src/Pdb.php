@@ -16,6 +16,7 @@ use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbNoDriver;
+use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
@@ -147,6 +148,9 @@ abstract class Pdb implements Loggable
         switch ($config->type) {
             case PdbConfig::TYPE_MYSQL:
                 return new PdbMysql($config);
+
+            case PdbConfig::TYPE_PGSQL:
+                return new PdbPgsql($config);
 
             case PdbConfig::TYPE_SQLITE:
                 return new PdbSqlite($config);

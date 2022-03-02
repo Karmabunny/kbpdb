@@ -46,6 +46,9 @@ class PdbConfig extends Collection
     public $port = null;
 
     /** @var string */
+    public $schema = 'public';
+
+    /** @var string */
     public $prefix = 'bloom_';
 
     /** @var string */
