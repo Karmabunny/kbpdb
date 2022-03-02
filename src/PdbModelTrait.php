@@ -43,11 +43,8 @@ trait PdbModelTrait
      */
     public static function find(array $conditions = []): PdbQuery
     {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
-        return (new PdbQuery($pdb))
-            ->find($table, $conditions)
-            ->as(static::class);
+        return (new PdbModelQuery(static::class))
+            ->where($conditions);
     }
 
 
