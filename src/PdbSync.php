@@ -416,7 +416,7 @@ class PdbSync
         }
 
         // Print fixes as comments.
-        if (!empty($this->warnings)) {
+        if (!empty($this->fixes)) {
             $sql[] = '-- Fixes';
         }
 
