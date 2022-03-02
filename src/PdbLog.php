@@ -7,6 +7,34 @@
 namespace karmabunny\pdb;
 
 /**
+ * This is a array format for describing logs from the parser and sync tools.
+ *
+ * The format is simple - an array of pairs.
+ *
+ * 1. the 'handle' - section, heading, message, query
+ * 2. the contents, typically a string
+ *
+ * For example:
+ *
+ * ```
+ * [
+ *    ['section', 'Tables'],
+ *    ['heading', 'MISSING - Table ~sample'],
+ *    ['query', 'CREATE TABLE ~sample (...)'],
+ *    ['section', 'Errors'],
+ *    ['message', 'Oh it was bad'],
+ * ]
+ * ```
+ *
+ * This can be easily formatted to HTML, JSON, Markdown, CLI outputs, etc.
+ *
+ * It's also possible to pick out the 'query' parts and run them separately.
+ * For example PdbSync includes a section called 'Fixes' that includes 'query'
+ * components. An interface could highlight this and provide a option to
+ * run these.
+ *
+ * Note: PdbSync and PdbParser both compose their logs manually. That is, not
+ * using the helpers provided here.
  *
  * @package karmabunny\pdb
  */
@@ -58,6 +86,11 @@ class PdbLog
 
 
     /**
+     * Print the log to the console.
+     *
+     * This is formatted in markdown too.
+     *
+     * TODO Add (optional) colours.
      *
      * @param array $log
      * @return void echos output
