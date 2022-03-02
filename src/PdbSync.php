@@ -354,7 +354,7 @@ class PdbSync
             $log[] = [ 'message', $warning ];
         }
 
-        if (!empty($this->warnings)) {
+        if (!empty($this->fixes)) {
             $log[] = [ 'section', 'Fixes' ];
         }
 
