@@ -866,7 +866,7 @@ abstract class Pdb implements Loggable
     /**
      *
      * @param string $table non-prefixed
-     * @return PdbColumn[]
+     * @return PdbColumn[] [ name => PdbColumn ]
      */
     public abstract function fieldList(string $table);
 

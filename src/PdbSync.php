@@ -666,7 +666,7 @@ class PdbSync
 
             // Search previous names for a match; if found the column is renamed
             foreach ($column->previous_names as $old_name) {
-                if (!isset($column[$old_name])) continue;
+                if (!isset($columns[$old_name])) continue;
 
                 $old_name = $this->pdb->quote($old_name, Pdb::QUOTE_FIELD);
                 $new_name = $this->pdb->quote($column->name, Pdb::QUOTE_FIELD);
