@@ -660,6 +660,19 @@ class PdbSync
         $columns = $this->pdb->fieldList($table_name);
         $col = $columns[$column->name] ?? null;
 
+        // Check the column default matches the enum/set.
+        if (
+            $this->pdb instanceof PdbMysql
+            and $column->default
+            and preg_match('/^(ENUM|SET)/', $column->type)
+        ) {
+            $options = PdbHelpers::convertEnumArr($column->type);
+
+            if (!in_array($column->default, $options)) {
+                $this->storeWarning("Invalid default value for column '{$column->name}'");
+            }
+        }
+
         // If not found, create it.
         if ($col === null) {
             $spec = $this->createSqlColumnSpec($table, $column);
