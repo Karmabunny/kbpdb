@@ -162,13 +162,20 @@ class PdbParser
                 }
             }
 
+            $name = $node->getAttribute('name');
+            $previous_names = self::parseStringArray($node->getAttribute('previous-names'));
+
+            if (isset($table->columns[$name])) {
+                $this->errors[$table_name][] = "Duplicate column '{$name}' in table '{$table_name}'";
+            }
+
             $table->addColumn(new PdbColumn([
-                'name' => $node->getAttribute('name'),
+                'name' => $name,
                 'type' => $type,
                 'is_nullable' => $is_nullable,
                 'auto_increment' => $auto_increment,
                 'default' => $default,
-                'previous_names' => self::parseStringArray($node->getAttribute('previous-names')),
+                'previous_names' => $previous_names,
             ]));
         }
 
