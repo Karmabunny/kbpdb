@@ -130,7 +130,7 @@ class PdbHelpers
                     $digit = (int) ($parts[0] ?? 10);
                     $decimal = (int) ($parts[1] ?? 0);
 
-                    return "{$name}({$digit},{$decimal})";
+                    return "DECIMAL({$digit},{$decimal})";
             }
         }
 
