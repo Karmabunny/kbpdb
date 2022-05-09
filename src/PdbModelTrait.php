@@ -10,6 +10,33 @@ namespace karmabunny\pdb;
 /**
  * This implements basic methods for {@see PdbModelInterface}.
  *
+ * - The application is responsible for implementing `getConnection()`.
+ * - Each concrete model should implement their own `getTableName()`.
+ *
+ * For example:
+ *
+ * ```
+ * // app/Model.php
+ * abstract class Model implements PdbModelInterface
+ * {
+ *    use PdbModelTrait;
+ *
+ *    public static function getConnection(): Pdb
+ *    {
+ *       return MyApp::getPdb();
+ *    }
+ * }
+ *
+ * // app/Models/User.php
+ * class User extends Model
+ * {
+ *    public static function getTableName(): string
+ *    {
+ *       return 'users';
+ *    }
+ * }
+ * ```
+ *
  * @package karmabunny\pdb
  */
 trait PdbModelTrait
