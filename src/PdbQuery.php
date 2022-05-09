@@ -587,7 +587,7 @@ class PdbQuery
     /**
      *
      * @param bool $throw
-     * @return array|object
+     * @return array|object|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
@@ -602,6 +602,10 @@ class PdbQuery
 
         $type = $throw ? 'row' : 'row?';
         $item = $this->pdb->query($sql, $params, $type);
+
+        if (!$throw and $item === null) {
+            return null;
+        }
 
         if ($query->_as) {
             $class = $query->_as;
