@@ -306,13 +306,13 @@ class PdbConfig extends Collection
     /**
      * TX enum
      *
-     * Default: strict commit + rollback, enabled nested
+     * Default: strict commit + rollback
      *
      * Ideal: strict commit, force commit keys, enabled nested
      *
      * @var int
      */
-    public $transaction_mode = self::TX_STRICT_ROLLBACK | self::TX_STRICT_COMMIT | self::TX_ENABLE_NESTED;
+    public $transaction_mode = self::TX_STRICT_ROLLBACK | self::TX_STRICT_COMMIT;
 
 
     /** @inheritdoc */
