@@ -48,10 +48,9 @@ interface PdbModelInterface
     /**
      * Delete this model.
      *
-     * @param bool $soft 'Delete' without removing the record.
      * @return bool
      */
-    public function delete($soft = true): bool;
+    public function delete(): bool;
 
 
     /**

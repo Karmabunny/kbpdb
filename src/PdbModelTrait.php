@@ -101,13 +101,12 @@ trait PdbModelTrait
     /**
      * Delete this model.
      *
-     * @param bool $soft Ignored.
      * @return bool True if the record was deleted.
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function delete($soft = true): bool
+    public function delete(): bool
     {
         $pdb = static::getConnection();
         $table = static::getTableName();
