@@ -1373,8 +1373,13 @@ abstract class Pdb implements Loggable
 
         case 'row':
             $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row;
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'row-num?':
             $nullable = true;
@@ -1382,8 +1387,13 @@ abstract class Pdb implements Loggable
 
         case 'row-num':
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row;
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'map':
             if ($rs->columnCount() < 2) {
@@ -1409,8 +1419,13 @@ abstract class Pdb implements Loggable
 
         case 'val':
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row[0];
+            if (!empty($row)) {
+                return $row[0];
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'col':
             $arr = [];
