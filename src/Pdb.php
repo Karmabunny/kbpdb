@@ -90,6 +90,9 @@ abstract class Pdb implements Loggable
         self::RETURN_MAP_ARR,
         self::RETURN_VAL,
         self::RETURN_COL,
+        self::RETURN_TRY_VAL,
+        self::RETURN_TRY_ROW,
+        self::RETURN_TRY_ROW_NUM,
     ];
 
 
