@@ -1050,7 +1050,7 @@ abstract class Pdb implements Loggable
 
         ['database' => $database, 'prefix' => $prefix] = $this->config;
         $scheme = "{$database}.{$prefix}.{$table}.{$id}";
-        return Uuid::uuid5(self::UUID_NAMESPACE, $scheme);
+        return Uuid::uuid5($this->config->namespace, $scheme);
     }
 
 

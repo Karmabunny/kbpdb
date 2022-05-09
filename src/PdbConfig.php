@@ -54,6 +54,9 @@ class PdbConfig extends Collection
     /** @var string */
     public $character_set = 'utf8';
 
+    /** @var string */
+    public $namespace = Pdb::UUID_NAMESPACE;
+
     /** @var string[] [table => prefix] */
     public $table_prefixes = [];
 
