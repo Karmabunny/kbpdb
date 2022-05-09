@@ -18,20 +18,6 @@ class ConnectionException extends PdbException
     public $dsn;
 
 
-    /** @inheritdoc */
-    public static function create(PDOException $exception)
-    {
-        $exception = parent::create($exception);
-
-        // Special messages for mysql to make things 'clearer'.
-        strtr($exception->message, [
-            'No such file or directory' => 'Fix your database hostname ya goose',
-        ]);
-
-        return $exception;
-    }
-
-
     /**
      * @param string $dsn
      * @return static
