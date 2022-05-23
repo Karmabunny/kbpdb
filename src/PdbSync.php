@@ -618,7 +618,8 @@ class PdbSync
             }
         }
 
-        if ($key == $table->primary_key) return true;
+        $same = empty(array_diff($key, $table->primary_key));
+        if ($same) return true;
 
         $this->heading = "PRIMARY - Table '{$table->name}";
         $this->changePrimary($table);
