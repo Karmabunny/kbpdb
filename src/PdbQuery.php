@@ -542,12 +542,12 @@ class PdbQuery
      *
      * @param string|null $field
      * @param bool $throw
-     * @return string
+     * @return string|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function value(string $field = null, bool $throw = true): string
+    public function value(string $field = null, bool $throw = true): ?string
     {
         if ($field) {
             $this->select($field);
