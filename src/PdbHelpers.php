@@ -215,7 +215,7 @@ class PdbHelpers
 
         // SQL escapes ' characters with ''
         // So split on all ',' which aren't followed by a ' character
-        $vals = preg_split("/','(?!')/", $enum_defn);
+        $vals = preg_split("/',\s*'(?!')/", $enum_defn);
 
         // Then convert any '' characters back into ' characters
         foreach ($vals as &$v) {

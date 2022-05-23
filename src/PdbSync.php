@@ -670,7 +670,7 @@ class PdbSync
             $options = PdbHelpers::convertEnumArr($column->type);
 
             if (!in_array($column->default, $options)) {
-                $this->storeWarning("Invalid default value for column '{$column->name}'");
+                $this->storeWarning("Invalid default value for column '{$table->name}.{$column->name}'");
             }
         }
 
