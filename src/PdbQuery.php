@@ -44,6 +44,7 @@ use ReflectionClass;
  * - `keyed($key): array`
  * - `column(): array`
  * - `count(): int`
+ * - `exists(): bool`
  * - `iterator(): iterable`
  * - `batch($size): iterable<array>`
  * - `pdo(): PDO`
@@ -824,6 +825,19 @@ class PdbQuery
 
         [$sql, $params] = $query->build();
         return $this->pdb->query($sql, $params, 'count');
+    }
+
+
+    /**
+     *
+     * @return bool
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function exists(): bool
+    {
+        return $this->count() > 0;
     }
 
 
