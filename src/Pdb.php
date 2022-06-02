@@ -297,9 +297,16 @@ abstract class Pdb implements Loggable
     }
 
 
-    public function getPrefix(): string
+    /**
+     * Get the prefix for table, or global
+     *
+     * @param string $table
+     * @return string
+     */
+    public function getPrefix(string $table = '*'): string
     {
-        return $this->config->prefix;
+        $prefixes = $this->config->getPrefixes();
+        return $prefixes[$table] ?? $this->config->prefix;
     }
 
 
@@ -1260,7 +1267,7 @@ abstract class Pdb implements Loggable
         [$lquote, $rquote] = $this->config->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
-            $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
+            $prefix = $this->getPrefix($matches[1]);
             return $lquote . $prefix . $matches[1] . $rquote;
         };
 

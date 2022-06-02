@@ -144,4 +144,27 @@ class PdbConfig extends Collection
         return [$lquote, $rquote];
     }
 
+
+    /**
+     * Get prefixing rules.
+     *
+     * The wildcard '*' is used to match all tables.
+     *
+     * If this array is empty, no prefixing is active.
+     *
+     * Keys are un-prefixed, i.e. `['users' => 'sprout_']`
+     *
+     * @return string[] [ table => prefix ]
+     */
+    public function getPrefixes(): array
+    {
+        $prefixes = [];
+
+        if ($this->prefix) {
+            $prefixes['*'] = $this->prefix;
+        }
+
+        return array_merge($prefixes, $this->table_prefixes);
+    }
+
 }
