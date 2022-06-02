@@ -408,19 +408,19 @@ class PdbCondition
                 return "{$column} {$this->operator} ({$binds})";
 
             case self::CONTAINS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT('%', {$bind}, '%')";
 
             case self::BEGINS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT({$bind}, '%')";
 
             case self::ENDS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT('%', {$bind})";
 
             case self::IN_SET:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "FIND_IN_SET({$bind}, {$column}) > 0";
 
             default:
@@ -430,7 +430,7 @@ class PdbCondition
     }
 
 
-    private function likeEscape(Pdb $pdb, array &$values)
+    private function quoteLike(Pdb $pdb, array &$values)
     {
         if (!$this->bind_type) {
             $values[] = PdbHelpers::likeEscape($this->value);
