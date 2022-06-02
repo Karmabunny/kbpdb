@@ -210,28 +210,44 @@ class PdbHelpers
 
 
     /**
+     * Convert SQL types into PHP types.
      *
-     * @param string $type
-     * @param bool $strict
-     * @return string|null
+     * This does approximate conversions, e.g.
+     * ```
+     * 'VARCHAR' => 'string'
+     * 'DATE' => 'datetime'
+     * 'SET' => 'array'
+     * ```
+     *
+     * In 'strict' mode this will only return the real types that are returned
+     * from the database, one of `string|int|float`.
+     *
+     * Consider 'non-strict' mode as more of a 'hint' about how to use the value.
+     * Such as;
+     * - 'datetime' can be jammed into `strtotime()`
+     * - 'array' can be exploded into an array
+     *
+     * @param string $type the SQL type
+     * @param bool $strict only return real types
+     * @return string|null the PHP type, null if unknown
      */
     public static function convertDataType(string $type, $strict = false)
     {
         $matches = [];
 
-        if (!preg_match('/(?:
+        if (preg_match('/(?:
             (char|text|binary|blob|^enum|^bit$)|
             (int|year)|
             (float|dec|real|double|fixed)|
             (date|time)|
-            (^set)
-        )/ix', $type, $matches)) return null;
-
-        if ($matches[1]) return 'string';
-        if ($matches[2]) return 'int';
-        if ($matches[3]) return 'float';
-        if ($matches[4]) return $strict ? 'string' : 'datetime';
-        if ($matches[5]) return $strict ? 'string' : 'array';
+            (^set|^json)
+        )/ix', $type, $matches)) {
+            if ($matches[1]) return 'string';
+            if ($matches[2]) return 'int';
+            if ($matches[3]) return 'float';
+            if ($matches[4]) return $strict ? 'string' : 'datetime';
+            if ($matches[5]) return $strict ? 'string' : 'array';
+        }
 
         return null;
     }
