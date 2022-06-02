@@ -158,12 +158,34 @@ class PdbHelpers
     /**
      * Escapes the special characters % and _ for use in a LIKE clause.
      *
+     * SQL permits one to set the escape character, so the second parameter
+     * here should match that of the query.
+     *
+     * `WHERE x LIKE '^%foo' ESCAPE '^'`
+     *
+     * Use this like:
+     *
+     * ```php
+     * // Be aware this example is not safely quoted for brevity.
+     * // Use prepared queries or `Pdb::quoteValue()`.
+     *
+     * $esc = '^';
+     * $like = likeEscape('%foo', $esc);
+     * $q = "WHERE x LIKE '{$like}' ESCAPE '{$esc}'";
+     * ```
+     *
+     * This defaults to backslash, which is the default for most (all?) databases.
+     *
      * @param string $str
+     * @param string $escape default backslash `\`
      * @return string
      */
-    public static function likeEscape(string $str)
+    public static function likeEscape(string $str, string $escape = '\\'): string
     {
-        return str_replace(['_', '%'], ['\\_', '\\%'], $str);
+        return strtr($str, [
+            '%' => $escape . '%',
+            '_' => $escape . '_',
+        ]);
     }
 
 
