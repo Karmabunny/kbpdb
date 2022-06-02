@@ -1026,9 +1026,17 @@ abstract class Pdb implements Loggable
         $parts = explode('.', $field, 2);
 
         foreach ($parts as &$part) {
+            // Prefer `."field"` over `""."field"`
+            if (strlen($part) === 0) continue;
+
+            // Can't do prefixing here, skip it.
             if (strpos($part, '~') === 0) continue;
+
+            // Don't wrap/escape wildcards.
             if ($part == '*') continue;
-            $part = $left . trim($part, '\'"[]`') . $right;
+
+            $part = PdbHelpers::fieldEscape($field, $quotes);
+            $part = $left . $part . $right;
         }
         unset($part);
 

@@ -168,7 +168,26 @@ class PdbHelpers
 
 
     /**
+     * Escape quoted fields.
      *
+     * Such as; `"abc"def" => "abc""def"`
+     *
+     * @param string $field
+     * @param array $quotes [ left, right ]
+     * @return string quoted field
+     */
+    public static function fieldEscape(string $field, array $quotes): string
+    {
+        [$left, $right] = $quotes;
+
+        return strtr($field, [
+            $left => $left . $left,
+            $right => $right . $right,
+        ]);
+    }
+
+
+    /**
      *
      * @param string $type
      * @param bool $strict
