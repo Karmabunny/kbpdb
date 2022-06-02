@@ -111,9 +111,6 @@ abstract class Pdb implements Loggable
     /** @var callable|null (query, params, result|exception) */
     protected $debugger;
 
-    /** @var string */
-    private $_prefix_pattern;
-
 
     /**
      *
@@ -127,8 +124,6 @@ abstract class Pdb implements Loggable
         else {
             $this->config = clone $config;
         }
-
-        $this->_prefix_pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
 
         // The config provides an override connection.
         if ($this->config->_pdo instanceof PDO) {
@@ -1274,13 +1269,26 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Remove prefixes from a table name.
+     *
+     * This strips both the global `prefix` config and `table_prefixes`.
+     *
+     * This does not remove the `~` placeholder.
      *
      * @param string $value
      * @return string
      */
     protected function stripPrefix(string $value)
     {
-        return preg_replace($this->_prefix_pattern, '', $value) ?? '';
+        foreach ($this->config->table_prefixes as $table => $prefix) {
+            if ($value === $prefix . $table) {
+                return $table;
+            }
+        }
+
+        // Global prefix just needs to strip the beginning of the table.
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+        return preg_replace($pattern, '', $value) ?? '';
     }
 
 
