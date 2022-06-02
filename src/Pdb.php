@@ -175,6 +175,21 @@ abstract class Pdb implements Loggable
         try {
             $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // Set session variables.
+            // These can be overridden by the HACKS fields.
+            // Dunno what kind of outcome that has. Just be aware I guess.
+            foreach ($config->session as $key => $value) {
+                // We're not escaping the keys here because we're not quoting
+                // them either. For example, although MySQL has `time_zone`
+                // Postgres has instead `TIME ZONE`.
+                if (preg_match('/[^a-z \-_]/i', $key)) {
+                    throw new ConnectionException("Invalid session key: '{$key}'");
+                }
+
+                $value = $pdo->quote($value, PDO::PARAM_STR);
+                $pdo->query("SET SESSION {$key} = {$value}");
+            }
         }
         catch (PDOException $exception) {
             throw ConnectionException::create($exception)

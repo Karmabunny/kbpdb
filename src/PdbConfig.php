@@ -23,8 +23,13 @@ class PdbConfig extends Collection
     const TYPE_MSSQL  = 'mssql';
     const TYPE_ORACLE = 'oracle';
 
+    /** @deprecated use session: `['sql_mode' => 'NO_ENGINE_SUBSTITUTION']` */
     const HACK_NO_ENGINE_SUBSTITUTION = 'no_engine_substitution';
+
+    /** @deprecated use session: `['time_zone' => 'Country/Region']` */
     const HACK_TIME_ZONE = 'time_zone';
+
+    /** Insert some custom functions. */
     const HACK_SQLITE_FUNCTIONS = 'sqlite_functions';
 
     /** @var string */
@@ -65,6 +70,9 @@ class PdbConfig extends Collection
 
     /** @var string|null */
     public $dsn;
+
+    /** @var array [ varname => value ] */
+    public $session = [];
 
     /** @var string[] */
     public $hacks = [];
