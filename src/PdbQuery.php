@@ -14,6 +14,7 @@ use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
@@ -650,18 +651,7 @@ class PdbQuery implements Arrayable, JsonSerializable
         $query->limit(1);
 
         $type = $throw ? 'row' : 'row?';
-        $item = $query->execute($type);
-
-        if (!$throw and $item === null) {
-            return null;
-        }
-
-        if ($query->_as) {
-            $class = $query->_as;
-            $item = new $class($item);
-        }
-
-        return $item;
+        return $query->execute($type);
     }
 
 
@@ -675,18 +665,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function all(): array
     {
         $query = clone $this;
-        $items = $query->execute('arr');
-
-        if ($query->_as) {
-            $class = $query->_as;
-
-            foreach ($items as &$item) {
-                $item = new $class($item);
-            }
-            unset($item);
-        }
-
-        return $items;
+        return $query->execute('arr');
     }
 
 
@@ -700,9 +679,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function iterator(): Generator
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
+        $pdo = $query->execute('pdo');
 
         if ($query->_as) {
             $class = $query->_as;
@@ -799,27 +776,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function keyed(string $key): array
     {
         $query = clone $this;
-        $rows = $query->execute('arr');
-
-        $map = [];
-
-        // Convert into objects.
-        if ($query->_as) {
-            $class = $query->_as;
-
-            while ($row = array_shift($rows)) {
-                $id = $row[$key];
-                $map[$id] = new $class($row);
-            }
-        }
-        else {
-            while ($row = array_shift($rows)) {
-                $id = $row[$key];
-                $map[$id] = $row;
-            }
-        }
-
-        return $map;
+        return $query->execute('map-arr:' . $key);
     }
 
 
@@ -902,6 +859,12 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function execute(string $return_type)
     {
         [$sql, $params] = $this->build();
-        return $this->pdb->query($sql, $params, $return_type);
+
+        $config = PdbReturn::parse([
+            'type' => $return_type,
+            'class' => $this->_as,
+        ]);
+
+        return $this->pdb->query($sql, $params, $config);
     }
 }
