@@ -1348,39 +1348,64 @@ abstract class Pdb implements Loggable
     /**
      * Converts a PDO result set to a common data format:
      *
-     * arr      An array of rows, where each row is an associative array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
+     * - `null`     just a null
      *
-     * arr-num  An array of rows, where each row is a numeric array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
+     * - `count`    the number of rows returned, or if the query is a
+     *              `SELECT COUNT()` this will behave like 'val'
      *
-     * row      A single row, as an associative array
+     * - `arr`      An array of rows, where each row is an associative array.
+     *              Use only for very small result sets, e.g. <= 20 rows.
      *
-     * row-num  A single row, as a numeric array
+     * - `arr-num`  An array of rows, where each row is a numeric array.
+     *              Use only for very small result sets, e.g. <= 20 rows.
      *
-     * map      An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value is the second
+     * - `row`      A single row, as an associative array
+     *              Given an argument 'row:null' or the shorthand 'row?' this
+     *              will return 'null' if the row is empty.
+     *              Otherwise this will throw an RowMissingException.
      *
-     * map-arr  An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value an associative array of name => value pairs
-     *          (if there are multiple subsequent columns)
+     * - `row-num`  A single row, as a numeric array
      *
-     * val      A single value (i.e. the value of the first column of the
-     *          first row)
+     * - `map`      An array of identifier => value pairs, where the
+     *              identifier is the first column in the result set, and the
+     *              value is the second
      *
-     * col      All values from the first column, as a numeric array.
-     *          DO NOT USE with boolean columns; see note at
-     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
+     * - `map-arr`  An array of identifier => value pairs, where the
+     *              identifier is the first column in the result set, and the
+     *              value an associative array of name => value pairs
+     *              (if there are multiple subsequent columns)
+     *              Optionally, one can provide an 'column' argument with the
+     *              type string in the form: 'map-arr:column'.
      *
-     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * - `val`      A single value (i.e. the value of the first column of the
+     *              first row)
+     *              Given an argument 'val:null' or the shorthand 'val?' this
+     *              will return 'null' if the result is empty.
+     *              Otherwise this will throw an RowMissingException.
+     *
+     * - `col`      All values from the first column, as a numeric array.
+     *              DO NOT USE with boolean columns; see note at
+     *              http://php.net/manual/en/pdostatement.fetchcolumn.php
+     *
+     * Arguments:
+     *
+     * Some types permit arguments in the type string, such as:
+     *  - `row:null`
+     *  - `val:null`
+     *  - `map-arr:{column}`
+     *
+     * This also supports the shorthand `row?` and `val?` forms.
+     *
+     * @param string $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
      * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
      */
     public static function formatRs(PDOStatement $rs, string $type)
     {
-        $nullable = false;
+        $args = explode(':', $type, 2);
+        $type = array_shift($args);
+
+        $nullable = ($args[0] ?? '' === 'null');
 
         switch ($type) {
         case 'null':
@@ -1442,7 +1467,7 @@ abstract class Pdb implements Loggable
         case 'map-arr':
             $map = array();
             while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = reset($row);
+                $id = $args[0] ?? reset($row);
                 $map[$id] = $row;
             }
             return $map;
