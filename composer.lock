@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5bb57289c0676d9d6e906323dd02686f",
+    "content-hash": "633b002229f70758224f600311c537fb",
     "packages": [
         {
             "name": "karmabunny/kb",
-            "version": "v2.17.12",
+            "version": "v2.25.14",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbphp.git",
-                "reference": "496ed92b5476bd5691b8ca5fcbb9bfdc0442a989"
+                "reference": "fd1d2549828c0447f360086068aa395ed0545069"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/496ed92b5476bd5691b8ca5fcbb9bfdc0442a989",
-                "reference": "496ed92b5476bd5691b8ca5fcbb9bfdc0442a989",
+                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/fd1d2549828c0447f360086068aa395ed0545069",
+                "reference": "fd1d2549828c0447f360086068aa395ed0545069",
                 "shasum": ""
             },
             "require": {
@@ -38,12 +38,24 @@
             "license": [
                 "MIT"
             ],
+            "authors": [
+                {
+                    "name": "Karmabunny",
+                    "email": "info@karmabunny.com.au"
+                }
+            ],
             "description": "Common KB utilities",
+            "keywords": [
+                "collections",
+                "karmabunny",
+                "kb",
+                "utilities"
+            ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbphp/issues",
-                "source": "https://github.com/Karmabunny/kbphp/tree/v2.17.12"
+                "source": "https://github.com/Karmabunny/kbphp/tree/v2.25.14"
             },
-            "time": "2021-07-07T23:50:34+00:00"
+            "time": "2022-05-14T14:59:49+00:00"
         },
         {
             "name": "symfony/polyfill-php73",
@@ -2412,5 +2424,5 @@
         "ext-pdo": "*"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.0.0"
+    "plugin-api-version": "2.3.0"
 }
