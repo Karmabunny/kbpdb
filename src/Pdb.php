@@ -19,6 +19,7 @@ use karmabunny\pdb\Drivers\PdbNoDriver;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -346,25 +347,17 @@ abstract class Pdb implements Loggable
     /**
      * Executes a PDO query
      *
-     * For the return type 'pdo', a PDOStatement is returned. You need to close it using $res->closeCursor()
-     *     once you're finished.
-     * For the return type 'null', nothing is returned.
-     * For the return type 'count', a count of rows is returned.
+     * For the return type 'pdo', a PDOStatement is returned. You need to close
+     * it using $res->closeCursor() once you're finished.
      * Additional return types are available; {@see Pdb::formatRs} for a full list.
      *
      * When working with datasets larger than about 50 rows, you may run out of ram when using
      * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
      *
-     * Return types:
-     * - PDOStatement For type 'pdo'
-     * - int For type 'count'
-     * - null For type 'null'
-     * - mixed For all other types; see {@see Pdb::formatRs}
-     *
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string $return_type 'pdo' or a format type {@see Pdb::formatRs}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -386,7 +379,8 @@ abstract class Pdb implements Loggable
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function prepare(string $query) {
+    public function prepare(string $query)
+    {
         $pdo = $this->getConnection();
         $query = $this->insertPrefixes($query);
 
@@ -402,24 +396,16 @@ abstract class Pdb implements Loggable
     /**
      * Executes a prepared statement
      *
-     * For the return type 'pdo', a PDOStatement is returned. You need to close it using $res->closeCursor()
-     *     once you're finished.
-     * For the return type 'null', nothing is returned.
-     * For the return type 'count', a count of rows is returned.
+     * For the return type 'pdo', a PDOStatement is returned. You need to close
+     * it using $res->closeCursor() once you're finished.
      * Additional return types are available; {@see Pdb::formatRs} for a full list.
      *
      * When working with datasets larger than about 50 rows, you may run out of ram when using
      * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
      *
-     * Return types:
-     * - PDOStatement For type 'pdo'
-     * - int For type 'count'
-     * - null For type 'null'
-     * - mixed For all other types; see {@see Pdb::formatRs}
-     *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string $return_type 'pdo' or a format type {@see Pdb::formatRs}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -435,7 +421,6 @@ abstract class Pdb implements Loggable
         }
         unset($p);
 
-        $ex = null;
         try {
             static::bindParams($st, $params);
             $st->execute();
@@ -467,14 +452,16 @@ abstract class Pdb implements Loggable
 
         try {
             $ret = static::formatRs($res, $return_type);
-        } catch (RowMissingException $ex) {
-            $res->closeCursor();
+        catch (RowMissingException $ex) {
             $ex->setQuery($st->queryString);
             $ex->setParams($params);
             throw $ex;
         }
-        $res->closeCursor();
-        $res = null;
+        finally {
+            $res->closeCursor();
+            $res = null;
+        }
+
         return $ret;
     }
 
@@ -956,8 +943,7 @@ abstract class Pdb implements Loggable
     /**
      * Return the value from the autoincement of the most recent INSERT query
      *
-     * @return int The record id
-     * @return null If there hasn't been an insert yet
+     * @return int|null The record id, or null if there hasn't been an insert
      */
     public function getLastInsertId()
     {
@@ -971,6 +957,7 @@ abstract class Pdb implements Loggable
      * @param string $type Pdb::QUOTE
      * @return string
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quote(string $field, string $type): string
     {
@@ -988,6 +975,7 @@ abstract class Pdb implements Loggable
      * @param string $type Pdb::QUOTE
      * @return string[]
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quoteAll($fields, string $type): array
     {
@@ -1004,6 +992,7 @@ abstract class Pdb implements Loggable
      * @param mixed $value
      * @return string
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quoteValue($value): string
     {
@@ -1019,7 +1008,14 @@ abstract class Pdb implements Loggable
             if ($result !== false) return $result;
         }
 
-        return $pdo->quote($value, PDO::PARAM_STR);
+        $result = $pdo->quote($value, PDO::PARAM_STR);
+
+        // This would be unfortunate.
+        if ($result === false) {
+            throw new PdbException('Driver doesn\'t support quoting');
+        }
+
+        return $result;
     }
 
 
@@ -1496,7 +1492,13 @@ abstract class Pdb implements Loggable
      * });
      * ```
      *
-     * Note, this method will still use the same connection.
+     * Note, this method will still use the same connection. But the separation
+     * of Pdb instances prevents a logging loop.
+     *
+     * The 'debugger' logger will swap itself out while logging.
+     * Theoretically this should prevent any self-logging within the same instance.
+     *
+     * TODO It's possible we could detect loops? Maybe with debug_backtrace()?
      *
      * @param string $query
      * @param array $params
