@@ -22,6 +22,31 @@ class PdbStaticCache extends PdbCache
     static $timeouts = [];
 
 
+    /**
+     * Enable expiry of keys as advised by the TTL.
+     * @var bool
+     */
+    public $enable_ttl = false;
+
+
+    /**
+     * Config:
+     * - enable_ttl: false
+     *
+     * This is a static cache. As such, it's lifetime is only that of the request.
+     * So for 90% of user-cases a TTL expiry is not useful.
+     *
+     * Perhaps for CLI contexts.
+     *
+     * @param array $config
+     * @return void
+     */
+    public function __construct(array $config = [])
+    {
+        $this->enable_ttl = $config['enable_ttl'] ?? false;
+    }
+
+
     /** @inheritdoc */
     public function store(string $key, $result, int $ttl)
     {
@@ -65,12 +90,15 @@ class PdbStaticCache extends PdbCache
 
 
     /**
+     * Remove timeouts, if TTLs are enabled.
      *
      * @param string $key
      * @return void
      */
     protected function _clean(string $key)
     {
+        if (!$this->enabled_ttl) return;
+
         $now = microtime(true);
         $ts = static::$timeouts[$key] ?? 0;
 
