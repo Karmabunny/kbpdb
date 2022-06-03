@@ -8,6 +8,8 @@ namespace karmabunny\pdb;
 
 use Generator;
 use InvalidArgumentException;
+use JsonSerializable;
+use karmabunny\kb\Arrayable;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
@@ -58,8 +60,9 @@ use ReflectionClass;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery
+class PdbQuery implements Arrayable, JsonSerializable
 {
+
     /** @var Pdb|null */
     protected $pdb;
 
@@ -94,8 +97,9 @@ class PdbQuery
     /**
      *
      * @param Pdb|PdbConfig|array $pdb
+     * @param array $config
      */
-    public function __construct($pdb)
+    public function __construct($pdb, array $config = [])
     {
         if ($pdb instanceof Pdb) {
             $this->pdb = $pdb;
@@ -103,6 +107,46 @@ class PdbQuery
         else {
             $this->pdb = Pdb::create($pdb);
         }
+
+        $this->update($config);
+    }
+
+
+    /**
+     *
+     * @param array $config
+     * @return void
+     */
+    public function update(array $config)
+    {
+        foreach ($config as $key => $item) {
+            if ($key === 'pdb') continue;
+            $this->$key = $item;
+        }
+    }
+
+
+    /**
+     *
+     * @return array
+     */
+    public function toArray(): array
+    {
+        $array = [];
+        foreach ($this as $key => $item) {
+            if ($key === 'pdb') continue;
+
+            $array[$key] = $item;
+        }
+
+        return $array;
+    }
+
+
+    /** @inheritdoc */
+    public function jsonSerialize()
+    {
+        return $this->toArray();
     }
 
 
