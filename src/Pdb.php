@@ -832,7 +832,7 @@ abstract class Pdb implements Loggable
     /**
      * Check to see that at least one record exists for certain conditions.
      *
-     * This wrap `PdbQuery::find()->count()`
+     * This wrap `PdbQuery::find()->exists()`
      *
      * @param string $table The table name, not prefixed
      * @param array $conditions Conditions for the WHERE clause, formatted as per {@see Pdb::buildClause}
@@ -844,7 +844,7 @@ abstract class Pdb implements Loggable
      */
     public function recordExists(string $table, array $conditions)
     {
-        return (bool) $this->find($table, $conditions)->count();
+        return $this->find($table, $conditions)->exists();
     }
 
 
