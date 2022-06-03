@@ -14,7 +14,7 @@ use PDOStatement;
  *
  * - `type`      (string)      - 'pdo' or a format type {@see Pdb::formatRs}
  * - `class`     (string)      - a class name to wrap results (for 'row', 'arr', 'map-arr')
- * - `cache_ttl` (int|null)    - cache expiry in seconds, provide 'null' disable
+ * - `cache_ttl` (int|bool)    - cache expiry in seconds, true to use global config, false to disable
  * - `cache_key` (string)      - an override cache key, providing a user with invalidation powers
  * - `map_key`   (string|null) - a column for 'map-arr' or `null` for the first column
  * - `throw`     (bool)        - throw an exception if the row is missing (default true)
@@ -32,14 +32,14 @@ class PdbReturn extends DataObject
     /** @var string|null */
     public $class;
 
-    /** @var int|bool|null */
-    public $cache_ttl;
+    /** @var int */
+    public $cache_ttl = 0;
 
     /** @var string|null */
     public $cache_key;
 
     /** @var string|null */
-    public $map_key;
+    public $map_key = null;
 
     /** @var bool */
     public $throw = true;
@@ -67,7 +67,8 @@ class PdbReturn extends DataObject
         }
 
         if ($type = $config['type'] ?? null) {
-            $config = array_merge($config, self::parseType($type));
+            $type = self::parseType($type);
+            $config = array_merge($config, $type);
         }
 
         Pdb::validateReturnType($config['type'] ?? '(empty)');
@@ -132,13 +133,13 @@ class PdbReturn extends DataObject
         }
 
         // Use whatever default.
-        if ($this->cache_ttl === true and $config->ttl) {
-            return (int) $config->ttl;
+        if ($this->cache_ttl === true and $config->ttl > 0) {
+            return $config->ttl;
         }
 
         // Then this.
-        if ($this->cache_ttl) {
-            return (int) $this->cache_ttl;
+        if (is_numeric($this->cache_ttl) and $this->cache_ttl > 0) {
+            return $this->cache_ttl;
         }
 
         // There's no infinite TTL.

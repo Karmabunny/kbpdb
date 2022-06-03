@@ -11,6 +11,7 @@ use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\Uuid;
+use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -104,6 +105,9 @@ abstract class Pdb implements Loggable
     /** @var PDO|null */
     protected $connection;
 
+    /** @var PdbCache */
+    protected $cache;
+
     /** @var bool */
     protected $in_transaction = false;
 
@@ -131,6 +135,22 @@ abstract class Pdb implements Loggable
         if ($this->config->_pdo instanceof PDO) {
             $this->connection = $this->config->_pdo;
         }
+
+        // This is a thing now.
+        $cache = $this->config->cache;
+
+        if (is_string($cache)) {
+            $this->cache = new $cache();
+        }
+        else if (is_object($cache)) {
+            $this->cache = $cache;
+        }
+        else {
+            throw new InvalidArgumentException('Well done, you broke it.');
+        }
+
+        // TODO kbphp 2.27.
+        // $this->cache = Configure::configure($this->config->cache, PdbCache::class);
     }
 
 
@@ -368,6 +388,17 @@ abstract class Pdb implements Loggable
     {
         $config = clone PdbReturn::parse($config);
 
+        // Build a key but also store on the config so we don't serialize the
+        // query twice (here and in 'execute').
+        $key = $this->getCacheKey($query, $params, $config);
+        $config->cache_key = $key;
+
+        // This happens again in 'execute' but perhaps we can save some
+        // time and effort (the prepare) by checking it here first.
+        if ($key and $this->cache->has($key)) {
+            return $this->cache->get($key);
+        }
+
         $st = $this->prepare($query);
         return $this->execute($st, $params, $config);
     }
@@ -418,6 +449,11 @@ abstract class Pdb implements Loggable
     {
         $config = PdbReturn::parse($config);
 
+        // Get a cached result, if available.
+        $key = $this->getCacheKey($st->queryString, $params, $config);
+        if ($key and $this->cache->has($key)) {
+            return $this->cache->get($key);
+        }
 
         // Format objects into strings
         foreach ($params as &$p) {
@@ -456,6 +492,15 @@ abstract class Pdb implements Loggable
 
         try {
             $ret = $config->format($res);
+
+            // Store this result for later.
+            // The TTL should always be non-null at this point, but whatever.
+            if (
+                $key !== null and
+                ($ttl = $config->getCacheTtl($this->config))
+            ) {
+                $this->cache->store($key, $ret, $ttl);
+            }
 
             // Have a crack at creating classes.
             if ($objects = $config->buildClass($ret)) {
@@ -1326,6 +1371,38 @@ abstract class Pdb implements Loggable
         // Global prefix just needs to strip the beginning of the table.
         $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
         return preg_replace($pattern, '', $value) ?? '';
+    }
+
+
+    /**
+     * Produce a key appropriate to represent a query and it's parameters.
+     *
+     * @param string $sql
+     * @param array $params
+     * @param PdbReturn $config
+     * @return string|null the key or null if the cache is disabled
+     */
+    protected function getCacheKey(string $sql, array $params, PdbReturn $config): ?string
+    {
+        // Prevent caching if the TTL is empty.
+        // More importantly - do it here because otherwise we're serializing
+        // the query when we don't need to.
+        if (!$config->getCacheTtl($this->config)) {
+            return null;
+        }
+
+        // Optionally permit the user to invalidate their own cache.
+        // This is also used to cache the key across queue-prepare-execute.
+        if ($config->cache_key) {
+            return $config->cache_key;
+        }
+
+        // Each key begins with the return type.
+        // This is unique to the query.
+        $key = rtrim($config->type, '?');
+        $key .= ':' . sha1(json_encode([$sql, $params]));
+
+        return $key;
     }
 
 

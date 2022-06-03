@@ -8,6 +8,7 @@ namespace karmabunny\pdb;
 
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
+use karmabunny\pdb\Cache\PdbStaticCache;
 use PDO;
 
 /**
@@ -76,6 +77,12 @@ class PdbConfig extends Collection
 
     /** @var string[] */
     public $hacks = [];
+
+    /** @var string|array A caching class extending PdbCache */
+    public $cache = PdbStaticCache::class;
+
+    /** @var int default caching TTL, in seconds */
+    public $ttl = 10;
 
     /** @var PDO|null */
     public $_pdo;

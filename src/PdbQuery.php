@@ -38,6 +38,10 @@ use ReflectionClass;
  * Shorthands:
  * - `find($table, $conditions)`
  *
+ * Modifiers:
+ * - `as($class)`
+ * - `cache($ttl)`
+ *
  * Terminator methods:
  * - `build(): [string, array]`
  * - `value($field): string`
@@ -67,6 +71,22 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /** @var Pdb */
     protected $pdb;
+
+    /**
+     * - true: use `pdb.config.ttl`
+     * - false: no cache (default)
+     * - int: cache for this many seconds
+     *
+     * @var int|bool
+     */
+    protected $cache_ttl = false;
+
+    /**
+     * Override the cache key.
+     *
+     * @var string|null
+     */
+    protected $cache_key = null;
 
     /** @var array list [type, conditions, combine] */
     private $_where = [];
@@ -469,6 +489,33 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param string|null $key
+     * @param int|bool $ttl seconds
+     * @return static
+     */
+    public function cache(string $key = null, $ttl = true)
+    {
+        $this->cache_key = $key;
+
+        // Enable cache, this uses the global TTL.
+        if ($ttl === true) {
+            $this->cache_ttl = true;
+        }
+        // Custom TTL value.
+        else if ($ttl) {
+            $this->cache_ttl = $ttl;
+        }
+        // Disable cache, false/null/0.
+        else {
+            $this->cache_ttl = false;
+        }
+
+        return $this;
+    }
+
+
+    /**
+     *
      * @return array [ sql, params ]
      * @throws InvalidArgumentException
      */
@@ -863,6 +910,8 @@ class PdbQuery implements Arrayable, JsonSerializable
         $config = PdbReturn::parse([
             'type' => $return_type,
             'class' => $this->_as,
+            'cache_ttl' => $this->cache_ttl,
+            'cache_key' => $this->cache_key,
         ]);
 
         return $this->pdb->query($sql, $params, $config);
