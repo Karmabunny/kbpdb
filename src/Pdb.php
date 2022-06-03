@@ -1557,7 +1557,7 @@ abstract class Pdb implements Loggable
         case 'map-arr':
             $map = array();
             while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = $config->map_key ?? reset($row);
+                $id = $row[$config->map_key] ?? reset($row);
                 $map[$id] = $row;
             }
             return $map;
