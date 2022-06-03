@@ -1036,13 +1036,12 @@ abstract class Pdb implements Loggable
             return $field;
         }
 
-        $quotes = $this->config->getFieldQuotes();
-        [$left, $right] = $quotes;
-
-        $field = str_replace($quotes, '', $field);
+        [$left, $right] = $this->config->getFieldQuotes();
         $parts = explode('.', $field, 2);
 
         foreach ($parts as &$part) {
+            $part = trim($part, '\'"`[]{}');
+
             // Prefer `."field"` over `""."field"`
             if (strlen($part) === 0) continue;
 
@@ -1052,7 +1051,7 @@ abstract class Pdb implements Loggable
             // Don't wrap/escape wildcards.
             if ($part == '*') continue;
 
-            $part = PdbHelpers::fieldEscape($field, $quotes);
+            $part = PdbHelpers::fieldEscape($part, [$left, $right]);
             $part = $left . $part . $right;
         }
         unset($part);
