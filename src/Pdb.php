@@ -813,7 +813,7 @@ abstract class Pdb implements Loggable
     /**
      * Fetches a mapping of id => value values from a table, using the 'name' values by default
      *
-     * @deprecated Use PdbQuery::map()
+     * This wraps `PdbQuery::find()->orderBy()->map()`
      *
      * @param string $table The table name, without prefix
      * @param array $conditions Optional where clause {@see Pdb::buildClause}
@@ -831,6 +831,8 @@ abstract class Pdb implements Loggable
 
     /**
      * Check to see that at least one record exists for certain conditions.
+     *
+     * This wrap `PdbQuery::find()->count()`
      *
      * @param string $table The table name, not prefixed
      * @param array $conditions Conditions for the WHERE clause, formatted as per {@see Pdb::buildClause}
@@ -1378,8 +1380,7 @@ abstract class Pdb implements Loggable
      *          http://php.net/manual/en/pdostatement.fetchcolumn.php
      *
      * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
-     * @return array For most types
-     * @return string|int|null|array For 'val'
+     * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
      */
     public static function formatRs(PDOStatement $rs, string $type)
