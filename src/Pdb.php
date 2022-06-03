@@ -1099,6 +1099,11 @@ abstract class Pdb implements Loggable
             // Can't do prefixing here, skip it.
             if (strpos($part, '~') === 0) continue;
 
+            // TODO well actually...
+            // if (strpos($part, '~') === 0) {
+            //     $part = $this->getPrefix($part) . substr($part, 1);
+            // }
+
             // Don't wrap/escape wildcards.
             if ($part == '*') continue;
 
