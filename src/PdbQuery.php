@@ -50,6 +50,7 @@ use ReflectionClass;
  * - `iterator(): iterable`
  * - `batch($size): iterable<array>`
  * - `pdo(): PDO`
+ * - `execute(): mixed`
  *
  * Class builders:
  * - `one(): object`
@@ -63,7 +64,7 @@ use ReflectionClass;
 class PdbQuery implements Arrayable, JsonSerializable
 {
 
-    /** @var Pdb|null */
+    /** @var Pdb */
     protected $pdb;
 
     /** @var array list [type, conditions, combine] */
@@ -87,10 +88,13 @@ class PdbQuery implements Arrayable, JsonSerializable
     /** @var string[] */
     private $_group = [];
 
+    /** @var int */
     private $_limit = 0;
 
+    /** @var int */
     private $_offset = 0;
 
+    /** @var string|null */
     private $_as = null;
 
 
@@ -593,13 +597,14 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function value(string $field = null, bool $throw = true): ?string
     {
+        $query = clone $this;
+
         if ($field) {
-            $this->select($field);
+            $query->select($field);
         }
 
-        [$sql, $params] = $this->build();
         $type = $throw ? 'val' : 'val?';
-        return $this->pdb->query($sql, $params, $type);
+        return $query->execute($type);
     }
 
 
@@ -643,10 +648,8 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         $query->limit(1);
 
-        [$sql, $params] = $query->build();
-
         $type = $throw ? 'row' : 'row?';
-        $item = $this->pdb->query($sql, $params, $type);
+        $item = $query->execute($type);
 
         if (!$throw and $item === null) {
             return null;
@@ -671,23 +674,17 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function all(): array
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
+        $items = $query->execute('arr');
 
         if ($query->_as) {
             $class = $query->_as;
 
-            $items = [];
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                $items[] = new $class($row);
+            foreach ($items as &$item) {
+                $item = new $class($item);
             }
-        }
-        else {
-            $items = $pdo->fetchAll(PDO::FETCH_ASSOC);
+            unset($item);
         }
 
-        $pdo->closeCursor();
         return $items;
     }
 
@@ -784,8 +781,7 @@ class PdbQuery implements Arrayable, JsonSerializable
             }
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'map');
+        return $query->execute('map');
     }
 
 
@@ -794,7 +790,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      * This ends a query.
      *
      * @param string $key
-     * @return array
+     * @return array [ $key => item ]
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
@@ -802,9 +798,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function keyed(string $key): array
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
+        $rows = $query->execute('arr');
 
         $map = [];
 
@@ -812,19 +806,18 @@ class PdbQuery implements Arrayable, JsonSerializable
         if ($query->_as) {
             $class = $query->_as;
 
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+            while ($row = array_shift($rows)) {
                 $id = $row[$key];
                 $map[$id] = new $class($row);
             }
         }
         else {
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+            while ($row = array_shift($rows)) {
                 $id = $row[$key];
                 $map[$id] = $row;
             }
         }
 
-        $pdo->closeCursor();
         return $map;
     }
 
@@ -846,8 +839,7 @@ class PdbQuery implements Arrayable, JsonSerializable
             $query->select($field);
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'col');
+        return $query->execute('col');
     }
 
 
@@ -867,8 +859,7 @@ class PdbQuery implements Arrayable, JsonSerializable
             $query->select('count(1)');
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'count');
+        return $query->execute('count');
     }
 
 
@@ -895,8 +886,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function pdo(): PDOStatement
     {
         $query = clone $this;
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'pdo');
+        return $query->execute('pdo');
     }
 
 
