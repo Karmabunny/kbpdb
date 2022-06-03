@@ -24,6 +24,7 @@ use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbReturn;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -332,15 +333,15 @@ abstract class Pdb implements Loggable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function q($query, array $params, string $return_type)
+    public function q($query, array $params, string $config)
     {
-        return $this->query($query, $params, $return_type);
+        return $this->query($query, $params, $config);
     }
 
 
@@ -357,16 +358,18 @@ abstract class Pdb implements Loggable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo' or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function query(string $query, array $params, string $return_type)
+    public function query(string $query, array $params, $config)
     {
+        $config = clone PdbReturn::parse($config);
+
         $st = $this->prepare($query);
-        return $this->execute($st, $params, $return_type);
+        return $this->execute($st, $params, $config);
     }
 
 
@@ -405,15 +408,16 @@ abstract class Pdb implements Loggable
      *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo' or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function execute(PDOStatement $st, array $params, string $return_type)
+    public function execute(PDOStatement $st, array $params, $config)
     {
-        static::validateReturnType($return_type);
+        $config = PdbReturn::parse($config);
+
 
         // Format objects into strings
         foreach ($params as &$p) {
@@ -445,13 +449,19 @@ abstract class Pdb implements Loggable
         }
 
         // PDO returns must not prematurely close the cursor.
-        if ($return_type == self::RETURN_PDO) {
+        if ($config->type == self::RETURN_PDO) {
             $res->setFetchMode(PDO::FETCH_ASSOC);
             return $res;
         }
 
         try {
-            $ret = static::formatRs($res, $return_type);
+            $ret = $config->format($res);
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($ret)) {
+                return $objects;
+            }
+        }
         catch (RowMissingException $ex) {
             $ex->setQuery($st->queryString);
             $ex->setParams($params);
@@ -1396,18 +1406,16 @@ abstract class Pdb implements Loggable
      *
      * This also supports the shorthand `row?` and `val?` forms.
      *
-     * @param string $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @param string|array|PdbReturn $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
      * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
      */
-    public static function formatRs(PDOStatement $rs, string $type)
+    public static function formatRs(PDOStatement $rs, $type)
     {
-        $args = explode(':', $type, 2);
-        $type = array_shift($args);
+        $config = PdbReturn::parse($type);
+        $nullable = !$config->throw;
 
-        $nullable = ($args[0] ?? '' === 'null');
-
-        switch ($type) {
+        switch ($config->type) {
         case 'null':
             return null;
 
@@ -1467,7 +1475,7 @@ abstract class Pdb implements Loggable
         case 'map-arr':
             $map = array();
             while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = $args[0] ?? reset($row);
+                $id = $config->map_key ?? reset($row);
                 $map[$id] = $row;
             }
             return $map;
@@ -1494,7 +1502,7 @@ abstract class Pdb implements Loggable
             return $arr;
 
         default:
-            $err = "Unknown return type: {$type}";
+            $err = 'Unknown return type: ' . $config->type;
             throw new InvalidArgumentException($err);
         }
     }
