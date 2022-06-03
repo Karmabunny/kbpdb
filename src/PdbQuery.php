@@ -79,14 +79,14 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @var int|bool
      */
-    protected $cache_ttl = false;
+    private $_cache_ttl = false;
 
     /**
      * Override the cache key.
      *
      * @var string|null
      */
-    protected $cache_key = null;
+    private $_cache_key = null;
 
     /** @var array list [type, conditions, combine] */
     private $_where = [];
@@ -495,19 +495,19 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function cache(string $key = null, $ttl = true)
     {
-        $this->cache_key = $key;
+        $this->_cache_key = $key;
 
         // Enable cache, this uses the global TTL.
         if ($ttl === true) {
-            $this->cache_ttl = true;
+            $this->_cache_ttl = true;
         }
         // Custom TTL value.
         else if ($ttl) {
-            $this->cache_ttl = $ttl;
+            $this->_cache_ttl = $ttl;
         }
         // Disable cache, false/null/0.
         else {
-            $this->cache_ttl = false;
+            $this->_cache_ttl = false;
         }
 
         return $this;
@@ -910,8 +910,8 @@ class PdbQuery implements Arrayable, JsonSerializable
         $config = PdbReturn::parse([
             'type' => $return_type,
             'class' => $this->_as,
-            'cache_ttl' => $this->cache_ttl,
-            'cache_key' => $this->cache_key,
+            'cache_ttl' => $this->_cache_ttl,
+            'cache_key' => $this->_cache_key,
         ]);
 
         return $this->pdb->query($sql, $params, $config);
