@@ -441,6 +441,33 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param string|null $class
+     * @return static
+     * @throws InvalidArgumentException
+     */
+    public function as(?string $class)
+    {
+        if (!$class) {
+            $this->_as = null;
+            return $this;
+        }
+
+        if (!class_exists($class)) {
+            throw new InvalidArgumentException("as({$class}) class does not exist");
+        }
+
+        $reflect = new ReflectionClass($class);
+        if (!$reflect->isInstantiable()) {
+            throw new InvalidArgumentException("as({$class}) is not a concrete class");
+        }
+
+        $this->_as = $class;
+        return $this;
+    }
+
+
+    /**
+     *
      * @return array [ sql, params ]
      * @throws InvalidArgumentException
      */
@@ -605,32 +632,6 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         $type = $throw ? 'val' : 'val?';
         return $query->execute($type);
-    }
-
-
-    /**
-     *
-     * @param string|null $class
-     * @return static
-     */
-    public function as(?string $class)
-    {
-        if (!$class) {
-            $this->_as = null;
-            return $this;
-        }
-
-        if (!class_exists($class)) {
-            throw new InvalidArgumentException("as({$class}) class does not exist");
-        }
-
-        $reflect = new ReflectionClass($class);
-        if (!$reflect->isInstantiable()) {
-            throw new InvalidArgumentException("as({$class}) is not a concrete class");
-        }
-
-        $this->_as = $class;
-        return $this;
     }
 
 
