@@ -1400,15 +1400,25 @@ abstract class Pdb implements Loggable
             return null;
         }
 
+        // Each key begins with the 'connection key' and return type. This is
+        // important to provide permissions separation between connections.
+        $key = sha1($this->config->getDsn());
+        $key .= ':' . rtrim($config->type, '?');
+
         // Optionally permit the user to invalidate their own cache.
-        // This is also used to cache the key across queue-prepare-execute.
         if ($config->cache_key) {
-            return $config->cache_key;
+
+            // This is also used to cache the key across queue-prepare-execute.
+            // Don't re-add the prefix.
+            if (strpos($config->cache_key, $key) === 0) {
+                return $config->cache_key;
+            }
+
+            // This is just the user's custom key.
+            return $key . ':' . $config->cache_key;
         }
 
-        // Each key begins with the return type.
-        // This is unique to the query.
-        $key = rtrim($config->type, '?');
+        // This is always unique to the query.
         $key .= ':' . sha1(json_encode([$sql, $params]));
 
         return $key;
