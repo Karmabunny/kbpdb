@@ -195,6 +195,13 @@ class PdbConfig extends Collection
     public $cache = PdbStaticCache::class;
 
     /**
+     * An inflector config for pluralisation and such.
+     *
+     * @var array|null
+     */
+    public $inflector;
+
+    /**
      * An identity key for this connection.
      *
      * Used for distinguishing between connections within a cache.

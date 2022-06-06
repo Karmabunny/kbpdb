@@ -7,6 +7,7 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
+use karmabunny\kb\Inflector;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
@@ -108,6 +109,9 @@ abstract class Pdb implements Loggable
 
     /** @var PdbCache */
     protected $cache;
+
+    /** @var Inflector */
+    protected $inflector;
 
     /** @var bool */
     protected $in_transaction = false;
@@ -314,6 +318,25 @@ abstract class Pdb implements Loggable
     public function setDebugger($debugger)
     {
         $this->debugger = $debugger;
+    }
+
+
+    /**
+     * An inflector for flecting.
+     *
+     * _Do not_ use this for user interfaces.
+     *
+     * TODO this should return an InflectorInterface. Requires newer kbphp.
+     *
+     * @return Inflector
+     */
+    public function getInflector(): Inflector
+    {
+        if (!$this->inflector) {
+            $this->inflector = new Inflector($this->config->inflector);
+        }
+
+        return $this->inflector;
     }
 
 
