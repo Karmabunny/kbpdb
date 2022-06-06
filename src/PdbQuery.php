@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use ArrayIterator;
 use Generator;
 use InvalidArgumentException;
 use JsonSerializable;
@@ -157,8 +158,11 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function toArray(): array
     {
+        // @phpstan-ignore-next-line : not true.
+        $iterate = new ArrayIterator($this);
         $array = [];
-        foreach ($this as $key => $item) {
+
+        foreach ($iterate as $key => $item) {
             if ($key === 'pdb') continue;
 
             $array[$key] = $item;

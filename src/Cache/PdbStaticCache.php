@@ -102,7 +102,7 @@ class PdbStaticCache extends PdbCache
      */
     protected function _clean(string $key)
     {
-        if (!$this->enabled_ttl) return;
+        if (!$this->enable_ttl) return;
 
         $now = microtime(true);
         $ts = static::$timeouts[$key] ?? 0;

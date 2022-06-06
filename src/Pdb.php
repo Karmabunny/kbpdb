@@ -363,7 +363,7 @@ abstract class Pdb implements Loggable
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function q($query, array $params, string $config)
+    public function q($query, array $params, $config)
     {
         return $this->query($query, $params, $config);
     }
@@ -1067,7 +1067,8 @@ abstract class Pdb implements Loggable
             if ($result !== false) return $result;
         }
 
-        $result = $pdo->quote($value, PDO::PARAM_STR);
+        /** @var string|false $result */
+        $result = @$pdo->quote($value, PDO::PARAM_STR);
 
         // This would be unfortunate.
         if ($result === false) {

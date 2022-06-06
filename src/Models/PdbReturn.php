@@ -128,6 +128,7 @@ class PdbReturn extends DataObject
 
         Pdb::validateReturnType($config['type'] ?? '(empty)');
 
+        // @phpstan-ignore-next-line
         $instance = new static();
         $instance->update($config);
         return $instance;

@@ -44,7 +44,7 @@ class PdbRedisCache extends PdbCache
     /** @inheritdoc */
     public function has(string $key): bool
     {
-        return $this->rdb->exists($key);
+        return (bool) $this->rdb->exists($key);
     }
 
 
