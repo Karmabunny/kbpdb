@@ -16,10 +16,10 @@ class PdbStaticCache extends PdbCache
 {
 
     /** @var array [ key => result ] */
-    static $cache = [];
+    protected static $cache = [];
 
     /** @var array [ key => seconds ] */
-    static $timeouts = [];
+    protected static $timeouts = [];
 
 
     /**
