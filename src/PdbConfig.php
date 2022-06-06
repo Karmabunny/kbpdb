@@ -48,7 +48,7 @@ class PdbConfig extends Collection
     /** @var string */
     public $database;
 
-    /** @var string */
+    /** @var string|null */
     public $port = null;
 
     /** @var string */
