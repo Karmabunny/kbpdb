@@ -12,6 +12,7 @@ use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
+use karmabunny\pdb\Cache\PdbDumbCache;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -146,7 +147,10 @@ abstract class Pdb implements Loggable
             $this->cache = $cache;
         }
         else {
-            throw new InvalidArgumentException('Well done, you broke it.');
+            // No caching for you.
+            // TODO we could throw an invalid arg exception here. But at the
+            // same time, we're not validating anything else either.
+            $this->cache = new PdbDumbCache();
         }
 
         // TODO kbphp 2.27.
