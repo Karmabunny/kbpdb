@@ -81,6 +81,9 @@ class PdbConfig extends Collection
     /** @var string|array A caching class extending PdbCache */
     public $cache = PdbStaticCache::class;
 
+    /** @var string|null */
+    public $identity;
+
     /** @var int default caching TTL, in seconds */
     public $ttl = 10;
 
@@ -116,6 +119,29 @@ class PdbConfig extends Collection
 
             return $this->type . ':' . implode(';', $parts);
         }
+    }
+
+
+    /**
+     * The identity key for this config.
+     *
+     * By default this is a shasum of the DSN string. Or customize it with the
+     * 'identity' property.
+     *
+     * This is used to provide cache keys.
+     *
+     * @return string
+     */
+    public function getIdentity(): string
+    {
+        if (!empty($this->identity)) {
+            return $this->identity;
+        }
+
+        // TODO would a random string be better?
+        // Then we get per-instance separation of cache keys.
+
+        return sha1($this->getDsn());
     }
 
 

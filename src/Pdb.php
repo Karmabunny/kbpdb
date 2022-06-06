@@ -1400,9 +1400,10 @@ abstract class Pdb implements Loggable
             return null;
         }
 
-        // Each key begins with the 'connection key' and return type. This is
-        // important to provide permissions separation between connections.
-        $key = sha1($this->config->getDsn());
+        // Each key begins with the 'identity key' and return type. This is
+        // important to prevent data leaking between connections that may not
+        // have the same permissions, access, or even data.
+        $key = $this->config->getIdentity();
         $key .= ':' . rtrim($config->type, '?');
 
         // Optionally permit the user to invalidate their own cache.
