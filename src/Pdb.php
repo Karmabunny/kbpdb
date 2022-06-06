@@ -1250,39 +1250,44 @@ abstract class Pdb implements Loggable
     /**
      * Validate an alias.
      *
+     * TODO This is pretty rubbish. Sure it validates but it's also a parser.
+     * Barely though. Gah. Do we move this elsewhere? rename it?
      *
-     * @param string|string[] $field
+     * @param string|string[] $alias
      * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
      *   - Use for select(), do not use for tables or joins.
-     * @return array [field, alias]
-     *   - The second item is null if no alias present.
+     * @return array [field, alias1, alias2, ...]
      *
      * @throws InvalidArgumentException
      */
-    public static function validateAlias($field, $loose = false): array
+    public static function validateAlias($alias, $loose = false): array
     {
-        if (is_string($field)) {
+        if (is_string($alias)) {
+            $field = $alias;
             // [$field, $alias] = PdbHelpers::alias($field);
-            $alias = null;
+            $alias = [];
+
+            // TODO Parsing: 'field (AS) alias1, alias2'.
         }
         else {
-            if (count($field) != 2) {
-                throw new InvalidArgumentException('Alias must have two elements: [name, alias]');
-            }
-
-            [$field, $alias] = $field;
+            $field = array_shift($alias);
         }
 
         // Only permit integer fields if there is no alias.
+        // TODO why and is this still relevant?
         // Pdb::validateIdentifierExtended($field, !$alias and $loose);
 
         Pdb::validateIdentifierExtended($field, $loose);
 
         if ($alias) {
-            Pdb::validateIdentifier($alias);
+            $alias = array_values($alias);
+            foreach ($alias as $item) {
+                Pdb::validateIdentifier($item);
+            }
         }
 
-        return [$field, $alias];
+        array_unshift($alias, $field);
+        return $alias;
     }
 
 

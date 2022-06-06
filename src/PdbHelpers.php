@@ -61,26 +61,6 @@ class PdbHelpers
 
 
     /**
-     * Split an aliased field into a string pair.
-     *
-     * The second item is null if no alias present.
-     *
-     * @param string $value
-     * @return array [field, alias]
-     */
-    public static function alias(string $value): array
-    {
-        $match = [];
-        if (!preg_match('/^\s*(.+)\s+(?:AS\s+)?([^\s]+)/i', $value, $match)) {
-            return [ trim($value), null ];
-        }
-
-        // TODO also trim quotes.
-        return [ trim($match[1]), trim($match[2]) ];
-    }
-
-
-    /**
      * Normalise a column type to something a bit more consistent.
      *
      * @param string $type
@@ -206,6 +186,49 @@ class PdbHelpers
             $left => $left . $left,
             $right => $right . $right,
         ]);
+    }
+
+
+    /**
+     * Parse an alias array or field.
+     *
+     * The second item is null if no alias present.
+     *
+     * This converts:
+     * - `[column => alias]` (array)
+     * - `'column as alias'` (string, full syntax)
+     * - `'column alias'` (string, shorthand)
+     *
+     * @param string|string[] $field
+     * @return array [ field, alias ] second param is null if no alias is present.
+     */
+    public static function parseAlias($field): array
+    {
+        if (is_array($field)) {
+            // Pass-through.
+            if (count($field) > 1) {
+                return array_values($field);
+            }
+
+            $value = reset($field);
+            $key = key($field);
+
+            // Flatten it.
+            if (is_numeric($key)) {
+                return [$value, null];
+            }
+
+            // Convert [ column => alias ] to [ column, alias ]
+            return [ $key, $value ];
+        }
+
+        // Convert 'column as alias' to [ column, alias ]
+        if (is_string($field)) {
+            $field = trim($field);
+            $field = preg_split('/\s+AS\s+|\s+/i', $field, 2);
+        }
+
+        return $field + [ null, null ];
     }
 
 

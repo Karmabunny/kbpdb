@@ -221,13 +221,10 @@ class PdbQuery implements Arrayable, JsonSerializable
         $fields = Arrays::flatten($fields, true);
 
         foreach ($fields as $key => $value) {
-            $field = preg_split('/[, ]+/', $value);
-
-            if (!is_numeric($key)) {
-                array_unshift($field, $key);
-            }
-
+            $field = PdbHelpers::parseAlias([$key => $value]);
             Pdb::validateAlias($field, true);
+
+            $this->_select[] = $field;
         }
 
         return $this;
@@ -242,11 +239,9 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function from($table)
     {
-        if (is_string($table)) {
-            $table = preg_split('/[, ]+/', $table);
-        }
-
+        $table = PdbHelpers::parseAlias($table);
         Pdb::validateAlias($table);
+
         $this->_from = $table;
         return $this;
     }
@@ -263,11 +258,9 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
     {
-        if (is_string($table)) {
-            $table = preg_split('/[, ]+/', $table);
-        }
-
+        $table = PdbHelpers::parseAlias($table);
         Pdb::validateAlias($table);
+
         $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
     }
@@ -560,7 +553,8 @@ class PdbQuery implements Arrayable, JsonSerializable
         if ($this->_select) {
             $fields = [];
 
-            foreach ($this->_select as [$field, $alias]) {
+            foreach ($this->_select as $item) {
+                [$field, $alias] = $item + [null, null];
 
                 if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
                     $field = $this->pdb->quoteField($field);
@@ -580,8 +574,15 @@ class PdbQuery implements Arrayable, JsonSerializable
         }
         // No select? Build a wildcard.
         else {
-            [$from, $alias] = $this->_from;
-            if ($from) {
+            [$from, $alias] = $this->_from + [null, null];
+
+            // Prefer the first alias, then use the table name.
+            // Fallback to just a wildcard and cross your fingers.
+            if ($alias) {
+                $alias = $this->pdb->quoteField($alias);
+                $sql .= "SELECT {$alias}.* ";
+            }
+            else if ($from) {
                 $sql .= "SELECT ~{$from}.* ";
             }
             else {
@@ -591,7 +592,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         // Build 'from'.
         if ($this->_from) {
-            [$from, $alias] = $this->_from;
+            [$from, $alias] = $this->_from + [null, null];
 
             $sql .= "FROM ~{$from} ";
             if ($alias) {
@@ -603,7 +604,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         // Build joiners.
         foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
-            [$table, $alias] = $table;
+            [$table, $alias] = $table + [null, null];
 
             $sql .= "{$type} JOIN ~{$table} ";
             if ($alias) {
