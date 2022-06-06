@@ -10,6 +10,11 @@ namespace karmabunny\pdb\Cache;
 /**
  * Static cache.
  *
+ * Lifetime of data in this cache is only that of the request.
+ *
+ * As such, be careful if you've built your queries with this assumption in
+ * mind and then switch to a persistent/cross-request cache.
+ *
  * @package karmabunny\pdb
  */
 class PdbStaticCache extends PdbCache

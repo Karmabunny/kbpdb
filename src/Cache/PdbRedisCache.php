@@ -10,7 +10,9 @@ use karmabunny\kb\Json;
 use karmabunny\rdb\Rdb;
 
 /**
+ * A cache backed by redis.
  *
+ * The connection config is provided by {@see PdbConfig}.
  *
  * @package karmabunny\pdb
  */

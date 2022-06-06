@@ -26,22 +26,77 @@ use PDOStatement;
  */
 class PdbReturn extends DataObject
 {
-    /** @var string */
+    /**
+     * A return type is one support by the `format()` method of this class.
+     *
+     * The default set of return types are specified in the `Pdb::RETURN` enum.
+     *
+     * This class can be extended and thus support _more_ return types.
+     *
+     * @var string
+     */
     public $type;
 
-    /** @var string|null */
+    /**
+     * A class name.
+     *
+     * Wrap results in a class instance, passing the object into the constructor.
+     *
+     * Supported types:
+     * - row
+     * - arr
+     * - map-arr
+     *
+     * @var string|null
+     */
     public $class;
 
-    /** @var int */
-    public $cache_ttl = 0;
+    /**
+     * A Time-to-live for the caching layer.
+     *
+     * This enables query caching with the configured caching adapter.
+     *
+     * If set to `true` this uses the Pdb `ttl` config.
+     *
+     * @see PdbCache
+     * @var int|bool seconds
+     */
+    public $cache_ttl = false;
 
-    /** @var string|null */
+    /**
+     * The key for a query is generated as a shasum of the query + parameters.
+     *
+     * However, one is able to override this if they wish to manually invalidate
+     * the cache _before_ the TTL expires.
+     *
+     * @var string|null
+     */
     public $cache_key;
 
-    /** @var string|null */
+    /**
+     * Used for the return type: `map-arr`.
+     *
+     * This specifies the column to use as the key for the map.
+     *
+     * If null, it uses the first column returned in the query.
+     *
+     * @var string|null
+     */
     public $map_key = null;
 
-    /** @var bool */
+    /**
+     * Whether RowMissingException should be thrown if the row is missing.
+     *
+     * This only applies for the following return types:
+     * - val
+     * - row
+     * - row-num
+     *
+     * This is also inferred by the shorthand `val?` style return-types when
+     * using the `parse()` helper.
+     *
+     * @var bool
+     */
     public $throw = true;
 
 
