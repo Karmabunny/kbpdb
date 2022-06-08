@@ -1250,50 +1250,36 @@ abstract class Pdb implements Loggable
     /**
      * Validate an alias.
      *
-     * TODO This is pretty rubbish. Sure it validates but it's also a parser.
-     * Barely though. Gah. Do we move this elsewhere? rename it?
+     * An 'alias' in pdb is represented as an array pair: field, alias.
      *
-     * @param string|string[] $alias
-     * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
-     *   - Use for select(), do not use for tables or joins.
-     * @return array [field, alias1, alias2, ...]
-     *
+     * @param string|string[] $field
+     * @param bool $loose Permit integers/functions, e.g. SELECT 1, COUNT(*), etc
+     * @return void
      * @throws InvalidArgumentException
      */
-    public static function validateAlias($alias, $loose = false): array
+    public static function validateAlias($field, $loose = false)
     {
-        if (is_string($alias)) {
-            $field = $alias;
-            // [$field, $alias] = PdbHelpers::alias($field);
-            $alias = [];
-
-            // TODO Parsing: 'field (AS) alias1, alias2'.
+        if (is_string($field)) {
+            $alias = null;
         }
         else {
-            $field = array_shift($alias);
+            [$field, $alias] = $field + [null, null];
         }
-
-        // Only permit integer fields if there is no alias.
-        // TODO why and is this still relevant?
-        // Pdb::validateIdentifierExtended($field, !$alias and $loose);
 
         Pdb::validateIdentifierExtended($field, $loose);
 
         if ($alias) {
-            $alias = array_values($alias);
-            foreach ($alias as $item) {
-                Pdb::validateIdentifier($item);
-            }
+            Pdb::validateIdentifier($alias);
         }
-
-        array_unshift($alias, $field);
-        return $alias;
     }
 
 
     /**
      * Validates a value meant for an ENUM field, e.g.
-     * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
+     *
+     * `$valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');`
+     *
+     * This doesn't emit exceptions but instead returns a boolean.
      *
      * @param string $val The value to find in the ENUM
      * @param array $field [0] Table name [1] Column name
