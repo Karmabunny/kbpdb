@@ -411,7 +411,16 @@ abstract class Pdb implements Loggable
         // This happens again in 'execute' but perhaps we can save some
         // time and effort (the prepare) by checking it here first.
         if ($key and $this->cache->has($key)) {
-            return $this->cache->get($key);
+            $result = $this->cache->get($key);
+
+            if ($result === null) {
+                return null;
+            }
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($result)) {
+                return $objects;
+            }
         }
 
         $st = $this->prepare($query);
@@ -466,8 +475,18 @@ abstract class Pdb implements Loggable
 
         // Get a cached result, if available.
         $key = $this->getCacheKey($st->queryString, $params, $config);
+
         if ($key and $this->cache->has($key)) {
-            return $this->cache->get($key);
+            $result = $this->cache->get($key);
+
+            if ($result === null) {
+                return null;
+            }
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($result)) {
+                return $objects;
+            }
         }
 
         // Format objects into strings
@@ -515,6 +534,10 @@ abstract class Pdb implements Loggable
                 ($ttl = $config->getCacheTtl($this->config))
             ) {
                 $this->cache->store($key, $ret, $ttl);
+            }
+
+            if ($ret === null) {
+                return null;
             }
 
             // Have a crack at creating classes.
