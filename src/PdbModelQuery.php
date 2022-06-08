@@ -82,7 +82,7 @@ class PdbModelQuery extends PdbQuery
         foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
             if (count($table) == 1) {
                 $table = reset($table);
-                $table = $this->_inflect($from);
+                $table = $this->_inflect($table);
             }
 
             $query->_join($type, $table, $conditions, $combine);
