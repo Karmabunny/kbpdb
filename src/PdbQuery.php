@@ -80,44 +80,44 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @var int|bool
      */
-    private $_cache_ttl = false;
+    protected $_cache_ttl = false;
 
     /**
      * Override the cache key.
      *
      * @var string|null
      */
-    private $_cache_key = null;
+    protected $_cache_key = null;
 
     /** @var array list [type, conditions, combine] */
-    private $_where = [];
+    protected $_where = [];
 
     /** @var array list [field, alias] */
-    private $_select = [];
+    protected $_select = [];
 
     /** @var array single [field, alias] */
-    private $_from = [];
+    protected $_from = [];
 
     /** @var array list [type, [table, alias], conditions, combine] */
-    private $_joins = [];
+    protected $_joins = [];
 
     /** @var array list [type, conditions, combine] */
-    private $_having = [];
+    protected $_having = [];
 
     /** @var array list [field, order] */
-    private $_order = [];
+    protected $_order = [];
 
     /** @var string[] */
-    private $_group = [];
+    protected $_group = [];
 
     /** @var int */
-    private $_limit = 0;
+    protected $_limit = 0;
 
     /** @var int */
-    private $_offset = 0;
+    protected $_offset = 0;
 
     /** @var string|null */
-    private $_as = null;
+    protected $_as = null;
 
 
     /**
