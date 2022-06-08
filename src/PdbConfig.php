@@ -8,6 +8,9 @@ namespace karmabunny\pdb;
 
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
+use karmabunny\kb\Inflector;
+use karmabunny\kb\InflectorInterface;
+use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Cache\PdbStaticCache;
 use PDO;
 
@@ -190,16 +193,16 @@ class PdbConfig extends Collection
      * ];
      * ```
      *
-     * @var string|array|object
+     * @var PdbCache|string|array
      */
     public $cache = PdbStaticCache::class;
 
     /**
      * An inflector config for pluralisation and such.
      *
-     * @var array|null
+     * @var InflectorInterface|string|array
      */
-    public $inflector;
+    public $inflector = Inflector::class;
 
     /**
      * An identity key for this connection.

@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb\Cache;
 
+use karmabunny\kb\ConfigurableInit;
 use karmabunny\kb\Json;
 use karmabunny\rdb\Rdb;
 
@@ -16,20 +17,55 @@ use karmabunny\rdb\Rdb;
  *
  * @package karmabunny\pdb
  */
-class PdbRedisCache extends PdbCache
+class PdbRedisCache extends PdbCache implements ConfigurableInit
 {
 
     /** @var Rdb */
     public $rdb;
 
+    /** @var array */
+    public $config = [];
+
+    /** @var bool */
+    protected $_init = true;
+
 
     /**
-     * @param array $config
+     * Create this cache.
+     *
+     * @param array $config array config for rdb {@see RdbConfig}
      * @return void
      */
-    public function __construct($config)
+    public function __construct(array $config = [])
     {
-        $this->rdb = Rdb::create($config);
+        $this->update($config);
+
+        if ($config) {
+            $this->init();
+        }
+    }
+
+
+    /** @inheritdoc */
+    public function update($config)
+    {
+        if (!is_array($config)) {
+            $config = iterator_to_array($config);
+        }
+
+        $this->config = $config;
+        $this->_init = true;
+    }
+
+
+    /**
+     * @return void
+     */
+    public function init()
+    {
+        if (!$this->_init) return;
+        $this->_init = false;
+        $this->rdb = Rdb::create($this->config);
     }
 
 

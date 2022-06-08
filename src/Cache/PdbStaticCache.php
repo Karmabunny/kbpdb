@@ -6,6 +6,8 @@
 
 namespace karmabunny\pdb\Cache;
 
+use karmabunny\kb\Configurable;
+use karmabunny\kb\UpdateTrait;
 
 /**
  * Static cache.
@@ -15,10 +17,17 @@ namespace karmabunny\pdb\Cache;
  * As such, be careful if you've built your queries with this assumption in
  * mind and then switch to a persistent/cross-request cache.
  *
+ * By default TTL expiration is not enabled for this cache. It can be enabled
+ * with the `enable_ttl` config but for 90% of user cases it's not necessary as
+ * this cache doesn't live beyond the current request. The exception being
+ * long-running CLI tasks.
+ *
  * @package karmabunny\pdb
  */
-class PdbStaticCache extends PdbCache
+class PdbStaticCache extends PdbCache implements Configurable
 {
+    use UpdateTrait;
+
 
     /** @var array [ key => result ] */
     protected static $cache = [];
@@ -32,24 +41,6 @@ class PdbStaticCache extends PdbCache
      * @var bool
      */
     public $enable_ttl = false;
-
-
-    /**
-     * Config:
-     * - enable_ttl: false
-     *
-     * This is a static cache. As such, it's lifetime is only that of the request.
-     * So for 90% of user-cases a TTL expiry is not useful.
-     *
-     * Perhaps for CLI contexts.
-     *
-     * @param array $config
-     * @return void
-     */
-    public function __construct(array $config = [])
-    {
-        $this->enable_ttl = $config['enable_ttl'] ?? false;
-    }
 
 
     /** @inheritdoc */

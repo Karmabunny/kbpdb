@@ -7,13 +7,13 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
-use karmabunny\kb\Inflector;
+use karmabunny\kb\Configure;
+use karmabunny\kb\InflectorInterface;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
-use karmabunny\pdb\Cache\PdbDumbCache;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -110,7 +110,7 @@ abstract class Pdb implements Loggable
     /** @var PdbCache */
     protected $cache;
 
-    /** @var Inflector */
+    /** @var InflectorInterface */
     protected $inflector;
 
     /** @var bool */
@@ -141,24 +141,9 @@ abstract class Pdb implements Loggable
             $this->connection = $this->config->_pdo;
         }
 
-        // This is a thing now.
-        $cache = $this->config->cache;
-
-        if (is_string($cache)) {
-            $this->cache = new $cache();
-        }
-        else if (is_object($cache)) {
-            $this->cache = $cache;
-        }
-        else {
-            // No caching for you.
-            // TODO we could throw an invalid arg exception here. But at the
-            // same time, we're not validating anything else either.
-            $this->cache = new PdbDumbCache();
-        }
-
-        // TODO kbphp 2.27.
-        // $this->cache = Configure::configure($this->config->cache, PdbCache::class);
+        // Create a cache instance.
+        // die(print_r($this->config->cache, true));
+        $this->cache = Configure::configure($this->config->cache, PdbCache::class);
     }
 
 
@@ -328,12 +313,15 @@ abstract class Pdb implements Loggable
      *
      * TODO this should return an InflectorInterface. Requires newer kbphp.
      *
-     * @return Inflector
+     * @return InflectorInterface
      */
-    public function getInflector(): Inflector
+    public function getInflector(): InflectorInterface
     {
         if (!$this->inflector) {
-            $this->inflector = new Inflector($this->config->inflector);
+            $this->inflector = Configure::configure(
+                $this->config->inflector,
+                InflectorInterface::class
+            );
         }
 
         return $this->inflector;
