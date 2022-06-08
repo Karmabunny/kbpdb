@@ -26,7 +26,7 @@ class PdbModelQuery extends PdbQuery
      * @param string $model
      * @throws InvalidArgumentException
      */
-    public function __construct(string $model)
+    public function __construct(string $model, array $config = [])
     {
         if (!is_subclass_of($model, PdbModelInterface::class)) {
             throw new InvalidArgumentException("{$model} must implement PdbModelInterface");
@@ -36,7 +36,7 @@ class PdbModelQuery extends PdbQuery
         $pdb = $model::getConnection();
         $table = $model::getTableName();
 
-        parent::__construct($pdb);
+        parent::__construct($pdb, $config);
         $this->from($table);
         $this->as($model);
     }
