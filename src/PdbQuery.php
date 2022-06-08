@@ -195,7 +195,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * Note, this will replace any previous select().
      *
-     * @param string|string[] $fields field => alias
+     * @param string|string[] $fields column => alias
      * @return static
      * @throws InvalidArgumentException
      */
@@ -212,7 +212,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * This does _not_ replace previous select(), only adds.
      *
-     * @param string ...$fields
+     * @param string|string[] $fields column => alias
      * @return static
      * @throws InvalidArgumentException
      */
@@ -221,13 +221,13 @@ class PdbQuery implements Arrayable, JsonSerializable
         $fields = Arrays::flatten($fields, true);
 
         foreach ($fields as $key => $value) {
-            if (is_numeric($key)) {
-                $this->_select[] = Pdb::validateAlias($value, true);
+            $field = preg_split('/[, ]+/', $value);
+
+            if (!is_numeric($key)) {
+                array_unshift($field, $key);
             }
-            else {
-                Pdb::validateIdentifierExtended($key, true);
-                $this->_select[] = [$key, $value];
-            }
+
+            Pdb::validateAlias($field, true);
         }
 
         return $this;
@@ -242,7 +242,12 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function from($table)
     {
-        $this->_from = Pdb::validateAlias($table);
+        if (is_string($table)) {
+            $table = preg_split('/[, ]+/', $table);
+        }
+
+        Pdb::validateAlias($table);
+        $this->_from = $table;
         return $this;
     }
 
@@ -258,7 +263,11 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
     {
-        $table = Pdb::validateAlias($table);
+        if (is_string($table)) {
+            $table = preg_split('/[, ]+/', $table);
+        }
+
+        Pdb::validateAlias($table);
         $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
     }
@@ -376,7 +385,12 @@ class PdbQuery implements Arrayable, JsonSerializable
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields);
-        $this->_group = $fields;
+
+        foreach ($fields as $field) {
+            $field = preg_split('/[, ]+/', $field);
+            array_push($$this->_group, ...$field);
+        }
+
         return $this;
     }
 
@@ -390,11 +404,23 @@ class PdbQuery implements Arrayable, JsonSerializable
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields, true);
-        $fields = Arrays::normalizeOptions($fields, 'ASC');
 
         $this->_order = [];
 
         foreach ($fields as $field => $order) {
+
+            if (is_numeric($field)) {
+                $field = explode(' ', $order, 2);
+
+                if (count($field) == 2) {
+                    [$field, $order] = $field;
+                }
+                else {
+                    $field = $field[0];
+                    $order = 'ASC';
+                }
+            }
+
             Pdb::validateIdentifierExtended($field);
             Pdb::validateDirection($order);
             $this->_order[$field] = $order;
@@ -408,6 +434,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @param string|string[] $fields
      * @return static
+     * @deprecated use orderBy
      */
     public function order(...$fields)
     {
@@ -419,6 +446,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @param string|string[] $fields
      * @return static
+     * @deprecated use groupBy
      */
     public function group(...$fields)
     {
