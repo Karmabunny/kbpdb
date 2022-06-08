@@ -110,7 +110,7 @@ abstract class Pdb implements Loggable
     /** @var PdbCache */
     protected $cache;
 
-    /** @var InflectorInterface */
+    /** @var InflectorInterface|null */
     protected $inflector;
 
     /** @var bool */
