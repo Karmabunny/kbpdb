@@ -381,7 +381,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         foreach ($fields as $field) {
             $field = preg_split('/[, ]+/', $field);
-            array_push($$this->_group, ...$field);
+            array_push($this->_group, ...$field);
         }
 
         return $this;
