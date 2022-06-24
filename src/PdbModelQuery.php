@@ -46,12 +46,21 @@ class PdbModelQuery extends PdbQuery
      * Enable table name inflection.
      *
      * This will automatically alias table names for FROM and JOIN statements.
+     * But only if the table name is not already aliased.
      *
      * Example:
      * ```sprout_sites => site```
      *
+     * Note, this will also strip prefixes from tables, inflected or not.
+     * Meaning table names that are already singular remain singular but lose
+     * their prefix.
+     *
+     * Example:
+     * ```sprout_file_join => file_join```
+     *
      * @param bool $inflect
      * @return static
+     * @since v0.18
      */
     public function inflect(bool $inflect = true)
     {
