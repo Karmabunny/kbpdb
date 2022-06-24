@@ -414,7 +414,7 @@ class PdbQuery implements Arrayable, JsonSerializable
                 }
             }
 
-            Pdb::validateIdentifierExtended($field);
+            Pdb::validateIdentifierExtended($field, true);
             Pdb::validateDirection($order);
             $this->_order[$field] = $order;
         }
