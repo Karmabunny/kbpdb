@@ -66,9 +66,9 @@ trait PdbModelTrait
      * Create a query for this model.
      *
      * @param array $conditions
-     * @return PdbQuery
+     * @return PdbModelQuery
      */
-    public static function find(array $conditions = []): PdbQuery
+    public static function find(array $conditions = []): PdbModelQuery
     {
         return (new PdbModelQuery(static::class))
             ->where($conditions);
