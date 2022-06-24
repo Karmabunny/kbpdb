@@ -814,11 +814,11 @@ abstract class Pdb implements Loggable
     /**
      * Shorthand for creating a new PdbQuery.
      *
-     * @param string $table
+     * @param string|string[] $table
      * @param array $conditions
      * @return PdbQuery
      */
-    public function find(string $table, array $conditions = [])
+    public function find($table, array $conditions = [])
     {
         return (new PdbQuery($this))->find($table, $conditions);
     }

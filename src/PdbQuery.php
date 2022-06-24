@@ -473,11 +473,11 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param string $table
+     * @param string|string[] $table
      * @param array $conditions
      * @return static
      */
-    public function find(string $table, $conditions = [])
+    public function find($table, $conditions = [])
     {
         $this->from($table);
         $this->where($conditions);
