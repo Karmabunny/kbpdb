@@ -32,7 +32,11 @@ Usage is documented in the `docs/` folder.
 
 More docs. More comments. More tests.
 
+- Merge in nested transactions
+- Support for query profiling
+
 Docs:
+- Write caching docs
 - class map (w/ complete doc comments)
 - how to use pdb query
 - guide to conditions syntax
@@ -44,10 +48,13 @@ Docs:
 Tests:
 - utilities
 - Pdb
+- PdbHelpers
 - PdbQuery
   - SQL building
   - executors
 - PdbSync
+- PdbCache
+- Nested transactions
 
 performance tracing
 
@@ -77,6 +84,7 @@ Schema stuff:
 
 Refactor:
 - rename extended methods (fieldList, indexList)
+- somehow abstract out driver specific stuff for PdbSync
 
 New stuff:
 - should return row keys lower-cased? via config?
