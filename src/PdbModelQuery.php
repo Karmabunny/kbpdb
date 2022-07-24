@@ -16,9 +16,14 @@ use InvalidArgumentException;
 class PdbModelQuery extends PdbQuery
 {
 
-
     /** @var bool */
+    private $_dirty = false;
+
+    /** @var bool|string */
     public $_inflect = false;
+
+    /** @var bool|null */
+    public $_deleted = null;
 
 
     /**
@@ -65,6 +70,20 @@ class PdbModelQuery extends PdbQuery
     public function inflect(bool $inflect = true)
     {
         $this->_inflect = $inflect;
+        $this->_dirty = true;
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param bool|null $deleted
+     * @return static
+     */
+    public function deleted(?bool $deleted)
+    {
+        $this->_deleted = $deleted;
+        $this->_dirty = true;
         return $this;
     }
 
@@ -72,21 +91,36 @@ class PdbModelQuery extends PdbQuery
     /** @inheritdoc */
     public function build(): array
     {
-        if (!$this->_inflect) {
+        if (!$this->_dirty) {
             return parent::build();
         }
 
         $query = clone $this;
-        $query->inflect(false);
 
-        $query->_from = [];
+        if ($this->_inflect) {
+            $query->_from = [];
 
-        if (count($this->_from) == 1) {
-            $from = reset($this->_from);
-            $from = $this->_inflect($from);
-            $query->from($from);
+            if (count($this->_from) == 1) {
+                $from = reset($this->_from);
+                $from = $this->_inflect($from);
+                $query->from($from);
+            }
         }
 
+        if ($this->_deleted !== null) {
+            if ($this->_deleted) {
+                $query->andWhere([
+                    'NOT' => ['date_deleted' => null],
+                ]);
+            }
+            else {
+                $query->andWhere([
+                    ['date_deleted' => null],
+                ]);
+            }
+        }
+
+        $query->_dirty = false;
         return $query->build();
     }
 
