@@ -352,14 +352,30 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                if (!$this->bind_type) $values[] = $this->value;
+                if (!$this->bind_type) {
+                    $values[] = $this->value;
+                }
+
                 return "{$column} {$this->operator} {$bind}";
 
             case self::IS:
                 $value = $this->value;
-                if ($value === null) $value = 'NULL';
 
-                if (!in_array($value, ['NULL', 'NOT NULL'])) {
+                if (is_string($value)) {
+                    $value = strtoupper($value);
+
+                    if (!in_array(strtoupper($value), ['NULL', 'NOT NULL'])) {
+                        $value = false;
+                    }
+                }
+                else if ($value === null) {
+                    $value = 'NULL';
+                }
+                else {
+                    $value = false;
+                }
+
+                if ($value === false) {
                     $err = "Operator IS value must be NULL or NOT NULL";
                     throw new InvalidArgumentException($err);
                 }
@@ -367,10 +383,27 @@ class PdbCondition
                 return "{$column} {$this->operator} {$value}";
 
             case self::IS_NOT:
-                if ($this->value !== null) {
+                $value = $this->value;
+
+                if (is_string($value)) {
+                    $value = strtoupper($value);
+
+                    if ($value !== 'NULL') {
+                        $value = false;
+                    }
+                }
+                else if ($value === null) {
+                    $value = 'NULL';
+                }
+                else {
+                    $value = false;
+                }
+
+                if ($value === false) {
                     $err = "Operator IS NOT value must be NULL";
                     throw new InvalidArgumentException($err);
                 }
+
                 return "{$column} {$this->operator} NULL";
 
             case self::BETWEEN:
