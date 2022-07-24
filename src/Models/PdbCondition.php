@@ -36,6 +36,7 @@ class PdbCondition
     const IN_SET = 'IN SET';
 
     const COMPOUNDS = [
+        'NOT',
         'OR',
         'AND',
         'XOR',
@@ -165,17 +166,17 @@ class PdbCondition
 
         // Key-style conditions + nested conditions.
         // :: COLUMN => VALUE
-        // :: AND|OR|XOR => CONDITION
+        // :: AND|OR|XOR|NOT => CONDITION
         if (is_string($key)) {
+            $modifier = strtoupper($key);
 
             // Support for nested conditions.
             if (
-                ($nested = strtoupper($key)) and
-                is_array($item) and
-                in_array($nested, ['AND', 'OR', 'XOR'])
+                is_array($item)
+                and in_array($modifier, self::COMPOUNDS)
             ) {
                 $conditions = self::fromArray($item);
-                return new PdbCondition($nested, null, $conditions);
+                return new PdbCondition($modifier, null, $conditions);
             }
 
             // Regular key-style conditions.
@@ -222,23 +223,28 @@ class PdbCondition
      */
     public function validate()
     {
-        // This is a string or nested condition.
         // String conditions have little-to-no validation.
-        // Nested conditions are validated deeper down.
-        if ($this->operator === null or $this->column === null) {
+        if ($this->operator === null) {
             return;
         }
 
         if (!is_scalar($this->operator)) {
-            throw new InvalidArgumentException('Invalid unknown: ' . gettype($this->operator));
+            throw new InvalidArgumentException('Invalid operator: ' . gettype($this->operator));
         }
 
-        if (
-            !in_array($this->operator, self::OPERATORS) and
-            !in_array($this->operator, self::COMPOUNDS)
-        ) {
-            throw new InvalidArgumentException('Operator unknown: ' . $this->operator);
+        if ($this->column !== null) {
+            if (!in_array($this->operator, self::OPERATORS)) {
+                throw new InvalidArgumentException('Unknown operator: ' . $this->operator);
+            }
         }
+        else {
+            if (!in_array($this->operator, self::COMPOUNDS)) {
+                throw new InvalidArgumentException('Unknown compound operator: ' . $this->operator);
+            }
+        }
+
+        // Skip the rest for a nested condition.
+        if ($this->column === null) return;
 
         if (!is_scalar($this->column)) {
             throw new InvalidArgumentException('Column name must be scalar, not: ' . gettype($this->column));
@@ -292,13 +298,29 @@ class PdbCondition
             $this->column === null and
             is_array($this->value)
         ) {
-            $sql = [];
+            $operator = $this->operator;
+            $compound = '';
 
-            foreach ($this->value as $condition) {
-                $sql[] = $condition->build($pdb, $values);
+            // Special 'not' operator will perform a nested 'and'.
+            if ($operator === 'NOT') {
+                $operator = 'AND';
+                $compound .= 'NOT ';
             }
 
-            return '(' . implode(" {$this->operator} ", $sql) . ')';
+            $compound .= '(';
+            $first = true;
+
+            foreach ($this->value as $condition) {
+                if (!$first) {
+                    $compound .= " {$operator} ";
+                }
+
+                $compound .= $condition->build($pdb, $values);
+                $first = false;
+            }
+
+            $compound .= ')';
+            return $compound;
         }
 
         $column = $this->column;
