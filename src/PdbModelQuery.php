@@ -45,7 +45,7 @@ class PdbModelQuery extends PdbQuery
     /**
      * Enable table name inflection.
      *
-     * This will automatically alias table names for FROM and JOIN statements.
+     * This will automatically alias table names for FROM statements.
      * But only if the table name is not already aliased.
      *
      * Example:
@@ -80,21 +80,11 @@ class PdbModelQuery extends PdbQuery
         $query->inflect(false);
 
         $query->_from = [];
-        $query->_joins = [];
 
         if (count($this->_from) == 1) {
             $from = reset($this->_from);
             $from = $this->_inflect($from);
             $query->from($from);
-        }
-
-        foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
-            if (!isset($table[1])) {
-                $table = reset($table);
-                $table = $this->_inflect($table);
-            }
-
-            $query->_join($type, $table, $conditions, $combine);
         }
 
         return $query->build();
