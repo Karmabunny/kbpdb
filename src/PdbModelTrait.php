@@ -83,6 +83,7 @@ trait PdbModelTrait
      */
     public static function findOne(array $conditions)
     {
+        /** @var static */
         return static::find($conditions)->one();
     }
 
