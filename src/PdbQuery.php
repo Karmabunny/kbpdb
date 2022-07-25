@@ -759,9 +759,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function iterator(): Generator
     {
         $query = clone $this;
+        echo 'what';
         $pdo = $query->execute('pdo');
 
         if ($query->_as) {
+            echo 'what';
             $class = $query->_as;
 
             while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {

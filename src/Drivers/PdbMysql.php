@@ -13,19 +13,14 @@ use karmabunny\pdb\PdbHelpers;
 use PDO;
 
 /**
+ * The PDO MySQL driver.
  *
  * @package karmabunny\pdb
  */
 class PdbMysql extends Pdb
 {
 
-    /**
-     *
-     * @param PdbConfig|array $config
-     * @return PDO
-     * @throws ConnectionException
-     * @throws InvalidArgumentException
-     */
+    /** @inheritdoc */
     public static function connect($config)
     {
         if (!($config instanceof PdbConfig)) {

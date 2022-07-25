@@ -6,6 +6,9 @@
 
 namespace karmabunny\pdb\Exceptions;
 
+use mysqli;
+use mysqli_sql_exception;
+use PDO;
 use PDOException;
 
 /**
@@ -49,25 +52,29 @@ class QueryException extends PdbException
 
     /**
      *
-     * @param PDOException $exception
+     * @param PDOException|mysqli_sql_exception $exception
+     * @param PDO|mysqli $db
      * @return QueryException
      */
-    public static function create(PDOException $exception)
+    public static function create($exception, $db = null)
     {
-        $class = self::getSubClass($exception);
+        // This CANNOT call parent::create() because it uses a static
+        // class builder.
+        $state = self::getState($exception, $db);
+        $class = self::getSubClass($state);
         return (new $class($exception->getMessage(), 0, $exception))
-            ->setState($exception->getCode() ?: '00000');
+            ->setState($state);
     }
 
 
     /**
      *
-     * @param PDOException $exception
+     * @param string $state
      * @return string A subclass of QueryException
      */
-    protected static function getSubClass(PDOException $exception)
+    protected static function getSubClass(string $state)
     {
-        $state_class = substr($exception->getCode(), 0, 2);
+        $state_class = substr($state, 0, 2);
 
         switch ($state_class) {
             case '22':

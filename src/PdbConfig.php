@@ -12,6 +12,7 @@ use karmabunny\kb\Inflector;
 use karmabunny\kb\InflectorInterface;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Cache\PdbStaticCache;
+use mysqli;
 use PDO;
 
 /**
@@ -25,6 +26,7 @@ class PdbConfig extends Collection
 {
 
     const TYPE_MYSQL  = 'mysql';
+    const TYPE_MYSQLI = 'mysqli';
     const TYPE_SQLITE = 'sqlite';
     const TYPE_PGSQL  = 'pgsql';
     const TYPE_MSSQL  = 'mssql';
@@ -228,15 +230,18 @@ class PdbConfig extends Collection
     public $ttl = 10;
 
     /**
-     * This is used in the Sprout compatibility layer.
+     * This is used for compatibility layers (Sprout).
      *
-     * Don't use this.
+     * Avoid using this unless you _really_ have to. Also be sure to assign the
+     * the appropriate 'type' with this connection.
      *
-     * Unless maybe you're REALLY sure about it.
+     * The advantage here is to re-use the same connection as legacy
+     * applications. Which is important for data consistency, transactions,
+     * performance, etc, etc.
      *
-     * @var PDO|null
+     * @var PDO|mysqli|null
      */
-    public $_pdo;
+    public $_override;
 
 
     /**
@@ -315,6 +320,7 @@ class PdbConfig extends Collection
     {
         switch ($this->type) {
             case PdbConfig::TYPE_MYSQL:
+            case PdbConfig::TYPE_MYSQLI:
                 $lquote = $rquote = '`';
                 break;
 

@@ -209,11 +209,11 @@ class PdbReturn extends DataObject
      *
      * {@see Pdb::formatRs}
      *
-     * @param PDOStatement $rs
+     * @param PDOStatement|PdbStatement $rs
      * @return string|int|null|array
      * @throws RowMissingException
      */
-    public function format(PDOStatement $rs)
+    public function format($rs)
     {
         return Pdb::formatRs($rs, $this);
     }

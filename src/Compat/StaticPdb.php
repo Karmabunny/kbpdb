@@ -363,7 +363,7 @@ abstract class StaticPdb
             $config = new PdbConfig($config);
         }
 
-        $config->_pdo = $connection;
+        $config->_override = $connection;
         $config->type = $connection->getAttribute(PDO::ATTR_DRIVER_NAME);
 
         static::$connections['override'] = Pdb::create($config);

@@ -7,6 +7,9 @@
 namespace karmabunny\pdb\Exceptions;
 
 use Exception;
+use mysqli;
+use mysqli_sql_exception;
+use PDO;
 use PDOException;
 
 /**
@@ -43,13 +46,38 @@ class PdbException extends Exception
 
     /**
      *
-     * @param PDOException $exception
+     * @param PDOException|mysqli_sql_exception $exception
+     * @param PDO|mysqli $db
      * @return static
      */
-    public static function create(PDOException $exception)
+    public static function create($exception, $db = null)
     {
         $class = static::class;
+        $state = self::getState($exception, $db);
         return (new $class($exception->getMessage(), 0, $exception))
-            ->setState($exception->getCode() ?: '00000');
+            ->setState($state);
+    }
+
+
+    /**
+     *
+     * @param PDOException|mysqli_sql_exception $exception
+     * @param PDO|mysqli $db
+     * @return string
+     */
+    protected static function getState($exception, $db = null): string
+    {
+        if ($exception instanceof PDOException) {
+            return $exception->getCode() ?: '00000';
+        }
+
+        if ($exception instanceof mysqli_sql_exception) {
+            return $db->sqlstate;
+        }
+
+        // Yes it always returns but we have no runtime guarantees to prevent
+        // unknown types entering this function.
+        // @phpstan-ignore-next-line
+        return '00000';
     }
 }
