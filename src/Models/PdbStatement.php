@@ -29,6 +29,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     *  Set the default fetch mode for this statement.
      *
      * @param int $mode
      * @return void
@@ -40,6 +41,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Binds a value to a parameter.
      *
      * @param string|int $param
      * @param mixed $var
@@ -50,6 +52,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Executes a prepared statement.
      *
      * @param array $params
      * @return bool
@@ -58,6 +61,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Fetches the next row from a result set.
      *
      * @param int $mode
      * @return mixed
@@ -66,6 +70,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Fetches the remaining rows from a result set.
      *
      * @param int $mode
      * @return array
@@ -74,6 +79,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Returns the number of columns in the result set.
      *
      * @return int
      */
@@ -81,6 +87,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Returns the number of rows affected by the last SQL statement.
      *
      * @return int
      */
@@ -88,6 +95,7 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Closes the cursor, enabling the statement to be executed again.
      *
      * @return void
      */
