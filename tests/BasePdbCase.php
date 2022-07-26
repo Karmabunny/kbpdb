@@ -54,11 +54,9 @@ abstract class BasePdbCase extends TestCase
      */
     public function testTables()
     {
-        $tables = $this->pdb->listTables();
-        $this->assertNotEmpty($tables);
-
+        $actual = $this->pdb->listTables();
         $expected = array_keys($this->struct->tables);
-        $this->assertEquals($expected, $tables);
+        $this->assertEquals($expected, $actual);
     }
 
 

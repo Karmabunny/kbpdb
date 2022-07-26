@@ -642,7 +642,7 @@ class StaticPdbTest extends TestCase
 
         $q = "SHOW COLUMNS IN typeof";
         $defn = Pdb::query($q, [], 'row');
-        $this->assertMatchesRegularExpression('/^int/i', $defn['Type']);
+        $this->assertMatchesRegularExpression('/^(big)?int/i', $defn['Type']);
 
         $q = "DROP TABLE typeof";
         Pdb::query($q, [], 'null');
@@ -657,7 +657,7 @@ class StaticPdbTest extends TestCase
 
         $q = "SHOW COLUMNS IN typeof";
         $defn = Pdb::query($q, [], 'row');
-        $this->assertMatchesRegularExpression('/^int/i', $defn['Type']);
+        $this->assertMatchesRegularExpression('/^(big)?int/i', $defn['Type']);
 
         $q = "DROP TABLE typeof";
         Pdb::query($q, [], 'null');
