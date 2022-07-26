@@ -191,6 +191,15 @@ class MysqliStatement extends PdbStatement
 
 
     /** @inheritdoc */
+    public function fetchColumn(int $column = 0)
+    {
+        $result = $this->openCursor();
+        $row = $result->fetch_array(MYSQLI_NUM);
+        return $row[$column] ?? false;
+    }
+
+
+    /** @inheritdoc */
     public function columnCount(): int
     {
         return $this->stmt->field_count;

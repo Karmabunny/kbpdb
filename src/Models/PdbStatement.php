@@ -79,6 +79,15 @@ abstract class PdbStatement implements IteratorAggregate
 
 
     /**
+     * Returns a single column from the next row of a result set.
+     *
+     * @param int $column
+     * @return mixed
+     */
+    public abstract function fetchColumn(int $column = 0);
+
+
+    /**
      * Returns the number of columns in the result set.
      *
      * @return int
