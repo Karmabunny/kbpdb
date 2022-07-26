@@ -38,7 +38,7 @@ class PdbMysqli extends PdbMysql
             $db->set_charset($config->character_set);
         }
         catch (mysqli_sql_exception $exception) {
-            throw ConnectionException::create($exception)
+            throw ConnectionException::create($exception, $db ?? null)
                 ->setDsn($config->getDsn());
         }
 
@@ -70,7 +70,7 @@ class PdbMysqli extends PdbMysql
             return new MysqliStatement($db, $result, $query);
         }
         catch (mysqli_sql_exception $ex) {
-            throw QueryException::create($ex)
+            throw QueryException::create($ex, $db)
                 ->setQuery($query);
         }
     }

@@ -71,7 +71,7 @@ class PdbException extends Exception
             return $exception->getCode() ?: '00000';
         }
 
-        if ($exception instanceof mysqli_sql_exception) {
+        if ($db and $exception instanceof mysqli_sql_exception) {
             return $db->sqlstate;
         }
 
