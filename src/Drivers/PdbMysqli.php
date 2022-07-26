@@ -79,8 +79,20 @@ class PdbMysqli extends PdbMysql
     /** @inheritdoc */
     public function quoteValue($value): string
     {
-        $db = $this->getConnection();
-        return $db->escape_string($value);
-    }
+        if ($value === null) {
+            return 'NULL';
+        }
+        if (is_bool($value)) {
+            return (int) $value;
+        }
+        if (is_int($value)) {
+            return $value;
+        }
+        if (is_float($value)) {
+            return $value;
+        }
 
+        $db = $this->getConnection();
+        return "'" . $db->escape_string($value) . "'";
+    }
 }
