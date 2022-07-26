@@ -200,7 +200,7 @@ class MysqliStatement extends PdbStatement
     /** @inheritdoc */
     public function rowCount(): int
     {
-        return $this->stmt->num_rows;
+        return $this->stmt->num_rows ?: $this->stmt->affected_rows;
     }
 
 
