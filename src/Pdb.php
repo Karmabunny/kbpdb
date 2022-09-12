@@ -1734,9 +1734,11 @@ abstract class Pdb implements Loggable
      */
     public function prettyQuery(string $query, array $values)
     {
+        $query = $this->insertPrefixes($query);
+
         $i = 0;
         return preg_replace_callback('/\?|:(\w+)/', function($m) use ($values, &$i) {
-            $key = $m[1] ? $m[1] : $i++;
+            $key = isset($m[1]) ? $m[1] : $i++;
             $item = $values[$key];
 
             if (is_scalar($item)) {
