@@ -122,6 +122,9 @@ abstract class Pdb implements Loggable
     /** @var callable|null (query, params, result|exception) */
     protected $debugger;
 
+    /** @var callable|null (position, token) */
+    protected $profiler;
+
 
     /**
      *
@@ -303,6 +306,20 @@ abstract class Pdb implements Loggable
     public function setDebugger($debugger)
     {
         $this->debugger = $debugger;
+    }
+
+
+    /**
+     * Attach/remove a profiler logger.
+     *
+     * @param callable|null $profiler log method:
+     *  - string $position
+     *  - string $token
+     * @return void
+     */
+    public function setProfiler($profiler)
+    {
+        $this->profiler = $profiler;
     }
 
 
@@ -496,6 +513,13 @@ abstract class Pdb implements Loggable
         unset($p);
 
         try {
+            $profiler = $this->profiler;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('begin', $token);
+            }
+
             static::bindParams($st, $params);
             $st->execute();
             $res = $st;
@@ -553,6 +577,11 @@ abstract class Pdb implements Loggable
         finally {
             $res->closeCursor();
             $res = null;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('end', $token);
+            }
         }
 
         return $ret;
