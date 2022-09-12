@@ -1688,4 +1688,41 @@ abstract class Pdb implements Loggable
             $this->debugger = $fn;
         }
     }
+
+
+    /**
+     * Return a query with the values substituted into their respective
+     * binding positions.
+     *
+     * __DO NOT EXECUTE THIS STRING.__
+     *
+     * - These values are _not_ properly escaped.
+     * - This is purely for logging.
+     *
+     * @param string $query
+     * @param array $values
+     * @return string
+     */
+    public function prettyQuery(string $query, array $values)
+    {
+        $i = 0;
+        return preg_replace_callback('/\?|:(\w+)/', function($m) use ($values, &$i) {
+            $key = $m[1] ? $m[1] : $i++;
+            $item = $values[$key];
+
+            if (is_scalar($item)) {
+                return $this->quoteValue($item);
+            }
+
+            if (is_object($item)) {
+                return '[object]';
+            }
+
+            if (is_array($item)) {
+                return '[array]';
+            }
+
+            return '[?]';
+        }, $query);
+    }
 }

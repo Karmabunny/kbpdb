@@ -440,27 +440,4 @@ class PdbHelpers
         return implode("\n", $lines);
     }
 
-
-    /**
-     * Return a query with the values substituted into their respective
-     * binding positions.
-     *
-     * __DO NOT EXECUTE THIS STRING.__
-     *
-     * These values are _not_ properly escaped.
-     * This is purefuly for logging.
-     *
-     * Note, only works for ? bindings, not :name types.
-     *
-     * @param string $query
-     * @param array $values
-     * @return string
-     */
-    public static function prettyQuery(string $query, array $values)
-    {
-        $i = 0;
-        return preg_replace_callback('/\?/', function() use ($values, &$i) {
-            return preg_replace('/\'/', '\\\'', $values[$i++]);
-        }, $query);
-    }
 }
