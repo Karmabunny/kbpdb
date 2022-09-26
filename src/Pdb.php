@@ -421,6 +421,8 @@ abstract class Pdb implements Loggable
             if ($objects = $config->buildClass($result)) {
                 return $objects;
             }
+
+            return $result;
         }
 
         $st = $this->prepare($query);
@@ -487,6 +489,8 @@ abstract class Pdb implements Loggable
             if ($objects = $config->buildClass($result)) {
                 return $objects;
             }
+
+            return $result;
         }
 
         // Format objects into strings
