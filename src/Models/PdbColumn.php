@@ -74,4 +74,74 @@ class PdbColumn extends Collection
 
         return $errors;
     }
+
+
+    /**
+     * Gets the first key value pair of an iterable
+     *
+     * @param iterable $iter An array or Traversable
+     * @return array|null An array of [key, value] or null if the iterable is empty
+     * @example
+     *          list ($key, $value) = Sprout::iterableFirst(['an' => 'array']);
+     */
+    public static function iterableFirst($iter)
+    {
+        foreach ($iter as $k => $v) {
+            return [$k, $v];
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Get the PHP var type of column based on the column data type
+     *
+     * @return string
+     */
+    public function getPhpType()
+    {
+        $col_def_parts = preg_split('/\s+/', $this->type);
+        $type = strtoupper(self::iterableFirst($col_def_parts)[1]);
+        $type = explode('(', $type)[0];
+
+        switch ($type) {
+
+        case 'INT':
+        case 'MEDIUMINT':
+        case 'TINYINT':
+        case 'BIGINT':
+        case 'TIMESTAMP':
+        case 'NUMERIC':
+            $type = $this->is_nullable ? 'int|null' : 'int';
+            break;
+
+        case 'DECIMAL':
+        case 'DOUBLE':
+        case 'FLOAT':
+        case 'REAL':
+            $type = $this->is_nullable ? 'float|null' : 'int';
+            break;
+
+        case 'BOOL':
+            $type = $this->is_nullable ? 'bool|null' : 'int';
+            break;
+
+        case 'DATETIME':
+        case 'DATE':
+        case 'YEAR':
+        case 'VARBINARY':
+        case 'VARCHAR':
+        case 'BINARY':
+        case 'TEXT':
+        case 'BLOB':
+        case 'JSON':
+        case 'ENUM':
+        case 'SET':
+
+        default:
+            $type = $this->is_nullable ? 'string|null' : 'string';
+        }
+        return $type;
+    }
 }
