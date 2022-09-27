@@ -656,9 +656,14 @@ abstract class Pdb implements Loggable
         // - Using OR REPLACE is also a no-go because it modifies the PK and there's
         //   no guarantee that all FKs have correct UPDATE triggers.
 
-        // Create a transaction if one is not already active.
-        $transact = $this->inTransaction();
-        if (!$transact) $this->transact();
+        // Create a transaction if one is not already active OR if we have
+        // nested transactions enabled.
+        if (
+            ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED)
+            or $this->inTransaction()
+        ) {
+            $transaction = $this->transact();
+        }
 
         try {
             $params = [];
@@ -680,8 +685,16 @@ abstract class Pdb implements Loggable
             return $this->insert($table, $data);
         }
         finally {
-            // Only commit if it's our own transaction.
-            if ($transact) $this->commit();
+            if (isset($transaction)) {
+                // Rollback on error.
+                if (isset($exception)) {
+                    $transaction->rollback();
+                }
+                // Commit on success.
+                else {
+                    $transaction->commit();
+                }
+            }
         }
     }
 
