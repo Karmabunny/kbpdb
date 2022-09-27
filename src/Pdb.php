@@ -986,25 +986,39 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         // - Using OR REPLACE is also a no-go because it modifies the PK and there's
         //   no guarantee that all FKs have correct UPDATE triggers.
 
-        // Create a transaction if one is not already active.
-        $extant_transaction = $this->inTransaction();
-        if (!$extant_transaction) $this->transact();
+        // Create a transaction if one is not already active OR if we have
+        // nested transactions enabled.
+        if (
+            ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED)
+            or $this->inTransaction()
+        ) {
+            $transaction = $this->transact();
+        }
 
         try {
             $params = [];
             $clause = $this->buildClause($conditions, $params);
-            $id = $this->query("SELECT id from ~{$table} WHERE {$clause}", $params, 'val');
+            $id = $this->query("SELECT id from ~{$table} WHERE {$clause}", $params, 'val?');
 
-            $this->update($table, $data, ['id' => $id]);
+            if ($id === null) {
+                $id = $this->insert($table, $data);
+            }
+            else {
+                $this->update($table, $data, ['id' => $id]);
+            }
+
+            if (isset($transaction)) {
+                $transaction->commit();
+            }
+
             return $id;
         }
-        catch (RowMissingException $exception) {
-            $id = $this->insert($table, $data);
-            return $id;
-        }
-        finally {
-            // Only commit if it's our own transaction.
-            if (!$extant_transaction) $this->commit();
+        catch (QueryException $exception) {
+            if (isset($transaction)) {
+                $transaction->rollback();
+            }
+
+            throw $exception;
         }
     }
 
