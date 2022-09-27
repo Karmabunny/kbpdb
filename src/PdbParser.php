@@ -346,6 +346,52 @@ class PdbParser
 
 
     /**
+     * Get a list of parsed tables.
+     *
+     * @return PdbTable[] [ name => table ]
+     */
+    public function getTables(): array
+    {
+        return $this->tables;
+    }
+
+
+    /**
+     * Get a table by it's (non-prefixed) name.
+     *
+     * @param string $name
+     * @return null|PdbTable
+     */
+    public function getTable(string $name): ?PdbTable
+    {
+        return $this->tables[$name] ?? null;
+    }
+
+
+    /**
+     * Get a list of parsed views.
+     *
+     * @return string[] [ name => sql ]
+     */
+    public function getViews(): array
+    {
+        return $this->views;
+    }
+
+
+    /**
+     * Get a view by it's (non-prefixed) name.
+     *
+     * @param string $name
+     * @return null|string
+     */
+    public function getView(string $name): ?string
+    {
+        return $this->views[$name] ?? null;
+    }
+
+
+    /**
      * Extract a list of strings from a string.
      *
      * The results are all lowercase + trimmed.
