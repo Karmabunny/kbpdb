@@ -3,6 +3,7 @@
 namespace karmabunny\pdb\Models;
 
 use karmabunny\kb\Collection;
+use karmabunny\pdb\PdbHelpers;
 
 /**
  *
@@ -73,5 +74,22 @@ class PdbColumn extends Collection
         }
 
         return $errors;
+    }
+
+
+    /**
+     * Get the PHP var type of column based on the column data type
+     *
+     * @return string
+     */
+    public function getPhpType(): string
+    {
+        $type = PdbHelpers::convertDataType($this->type, true);
+
+        if ($this->is_nullable) {
+            $type .= '|null';
+        }
+
+        return $type;
     }
 }
