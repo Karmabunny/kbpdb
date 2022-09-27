@@ -33,6 +33,7 @@ use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbReturn;
+use karmabunny\pdb\Models\PdbTransaction;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -1078,7 +1079,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Starts a transaction, or savepoint if nested transactions are enabled.
      *
-     * @return string a transaction key
+     * @return PdbTransaction
      * @throws TransactionRecursionException if already in a transaction + nested transactions are disabled.
      * @throws ConnectionException If the connection fails
      */
@@ -1097,16 +1098,20 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         if (!$this->transaction_key) {
             $pdo->beginTransaction();
 
-            $name = 'tx_' . Uuid::uuid4();
-            $name = strtr($name, '-', '_');
+            $key = 'tx_' . Uuid::uuid4();
+            $key = strtr($key, '-', '_');
 
-            $this->transaction_key = $name;
-            return $name;
+            $this->transaction_key = $key;
         }
         else {
             // Magical nested magic.
-            return $this->savepoint();
+            $key = $this->savepoint();
         }
+
+        return new PdbTransaction([
+            'pdb' => $this,
+            'key' => $key,
+        ]);
     }
 
 
@@ -1124,20 +1129,18 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function withTransaction(callable $callback)
     {
-        $key = $this->transact();
+        $transaction = $this->transact();
 
         try {
             return $callback();
         }
         catch (Throwable $error) {
-            if ($this->transaction_key) {
-                $this->rollback($key);
-            }
+            $transaction->rollback();
             throw $error;
         }
         finally {
-            if (!isset($error) and $this->transaction_key) {
-                $this->commit($key);
+            if (!isset($error)) {
+                $transaction->commit();
             }
         }
     }
