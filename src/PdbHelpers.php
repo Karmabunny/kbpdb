@@ -257,16 +257,18 @@ class PdbHelpers
 
         if (preg_match('/(?:
             (char|text|binary|blob|^enum|^bit$)|
-            (int|year)|
-            (float|dec|real|double|fixed)|
+            (int|year|timestamp)|
+            (float|dec|real|double|fixed|numeric)|
             (date|time)|
-            (^set|^json)
+            (^set|^json)|
+            (bool)
         )/ix', $type, $matches)) {
             if ($matches[1]) return 'string';
             if ($matches[2]) return 'int';
             if ($matches[3]) return 'float';
             if ($matches[4]) return $strict ? 'string' : 'datetime';
             if ($matches[5]) return $strict ? 'string' : 'array';
+            if ($matches[6]) return 'bool';
         }
 
         return null;
