@@ -733,7 +733,22 @@ abstract class Pdb implements Loggable
      */
     public function inTransaction()
     {
-        return !empty($this->transaction_key);
+        $pdo = $this->getConnection();
+
+        if (!empty($this->transaction_key)) {
+            $active = true;
+
+            // Double check.
+            if (!$pdo->inTransaction()) {
+                $this->transaction_key = false;
+                $active = false;
+            }
+        }
+        else {
+            $active = $pdo->inTransaction();
+        }
+
+        return $active;
     }
 
 
@@ -751,7 +766,7 @@ abstract class Pdb implements Loggable
         $nested = ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED);
 
         // Throw recursion errors in non-nested mode.
-        if (!$nested and ($pdo->inTransaction() or $this->inTransaction())) {
+        if (!$nested and $this->inTransaction()) {
             throw new TransactionRecursionException();
         }
 
@@ -821,13 +836,11 @@ abstract class Pdb implements Loggable
      */
     public function savepoint(string $name = null)
     {
-        $pdo = $this->getConnection();
-
         // Someone could have started a transaction elsewhere, you know.
         // Some DBs (sqlite) will treat an out-of-transaction savepoint as a
         // BEGIN DEFERRED TRANSACTION. So we're just trying to make things
         // consistent here.
-        if (!$pdo->inTransaction() or !$this->inTransaction()) {
+        if (!$this->inTransaction()) {
             $this->transaction_key = false;
             throw new TransactionEmptyException('No active transaction');
         }
@@ -839,6 +852,8 @@ abstract class Pdb implements Loggable
         }
 
         static::validateIdentifier($name, false);
+
+        $pdo = $this->getConnection();
         $pdo->exec('SAVEPOINT ' . $name);
 
         return $name;
@@ -868,7 +883,7 @@ abstract class Pdb implements Loggable
     {
         $pdo = $this->getConnection();
 
-        if (!$pdo->inTransaction() or !$this->inTransaction()) {
+        if (!$this->inTransaction()) {
             $this->transaction_key = false;
 
             // Strict mode commits require an active transaction.
@@ -920,7 +935,7 @@ abstract class Pdb implements Loggable
     {
         $pdo = $this->getConnection();
 
-        if (!$pdo->inTransaction() or $this->inTransaction()) {
+        if ($this->inTransaction()) {
             $this->transaction_key = false;
 
             // Strict mode rollbacks require an active transaction.
