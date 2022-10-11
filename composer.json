@@ -49,14 +49,11 @@
         }
     },
     "scripts": {
-        "register-phpcs": "phpcs --config-set installed_paths vendor/phpcompatibility/php-compatibility",
-        "post-install-cmd": "@register-phpcs",
-        "post-update-cmd": "@register-phpcs",
-        "tests": "phpunit --testdox tests",
+        "tests": "phpunit --testdox --configuration phpunit.xml tests",
         "create-db": "bash scripts/create_db.sh",
         "publish": "bash scripts/publish.sh",
         "patch-locals": "@php scripts/patch_locals.php",
-        "analyse": "phpstan analyse --level 5 src",
-        "compat": "phpcs -p --standard=PHPCompatibility --colors --extensions=php --runtime-set testVersion 7.1 src"
+        "analyse": "phpstan analyse -c phpstan.neon",
+        "compat": "phpcs -p --standard=phpcs.xml --colors --extensions=php"
     }
 }
