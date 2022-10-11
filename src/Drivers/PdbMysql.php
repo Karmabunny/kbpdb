@@ -67,6 +67,7 @@ class PdbMysql extends Pdb
             if (!preg_match('/GRANT (.+) ON/', $val, $matches)) continue;
 
             $matches = explode(',', strtoupper($matches[1]));
+            $matches = array_filter($matches);
             if (empty($matches)) continue;
 
             array_push($perms, ...$matches);
