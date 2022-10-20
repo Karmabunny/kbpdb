@@ -1741,9 +1741,9 @@ abstract class Pdb implements Loggable
         $query = $this->insertPrefixes($query);
 
         $i = 0;
-        return preg_replace_callback('/\?|:(\w+)/', function($m) use ($values, &$i) {
+        return preg_replace_callback('/\?|:([a-z]\w*)/i', function($m) use ($values, &$i) {
             $key = isset($m[1]) ? $m[1] : $i++;
-            $item = $values[$key];
+            $item = $values[$key] ?? null;
 
             if (is_scalar($item)) {
                 return $this->quoteValue($item);
