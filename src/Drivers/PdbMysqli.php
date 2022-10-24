@@ -90,13 +90,13 @@ class PdbMysqli extends PdbMysql
             return 'NULL';
         }
         if (is_bool($value)) {
-            return (int) $value;
+            return sprintf('%d', (int) $value);
         }
         if (is_int($value)) {
-            return $value;
+            return (string) $value;
         }
         if (is_float($value)) {
-            return $value;
+            return (string) $value;
         }
 
         $db = $this->getConnection();

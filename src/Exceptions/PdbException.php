@@ -75,9 +75,6 @@ class PdbException extends Exception
             return $db->sqlstate;
         }
 
-        // Yes it always returns but we have no runtime guarantees to prevent
-        // unknown types entering this function.
-        // @phpstan-ignore-next-line
         return '00000';
     }
 }
