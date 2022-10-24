@@ -219,7 +219,7 @@ abstract class Pdb implements Loggable
             }
         }
         catch (PDOException $exception) {
-            throw ConnectionException::create($exception, $pdb ?? null)
+            throw ConnectionException::create($exception, $pdo ?? null)
                 ->setDsn($config->getDsn());
         }
         return $pdo;
