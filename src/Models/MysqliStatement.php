@@ -17,6 +17,9 @@ use Traversable;
 class MysqliStatement extends PdbStatement
 {
 
+    /**
+     * Conversion between PDO and Mysqli fetch modes.
+     */
     const FETCH = [
         PDO::FETCH_ASSOC => MYSQLI_ASSOC,
         PDO::FETCH_NUM => MYSQLI_NUM,
@@ -29,24 +32,28 @@ class MysqliStatement extends PdbStatement
     /** @var mysqli_stmt */
     public $stmt;
 
-    /** @var array */
+    /** @var array Note, order of parameters are essential. */
+    protected $named;
+
+    /** @var array [ value, PDO type ] */
     protected $params = [];
 
     /** @var mysqli_result|null */
     protected $cursor;
-
 
     /**
      *
      * @param mysqli $db
      * @param mysqli_stmt $stmt
      * @param string $query
+     * @param string[] $named
      */
-    public function __construct(mysqli $db, mysqli_stmt $stmt, string $query)
+    public function __construct(mysqli $db, mysqli_stmt $stmt, string $query, array $named = [])
     {
         $this->db = $db;
         $this->stmt = $stmt;
         $this->queryString = $query;
+        $this->named = $named;
     }
 
 
@@ -103,38 +110,77 @@ class MysqliStatement extends PdbStatement
     /**
      * Create an args array for mysqli_stmt::bind_param.
      *
-     * The params array is a pair of `value, PDO type`.
-     *
-     * Return is something like: `[ 'issi', int, string, string, int ]`
-     *
-     * @param array $params [ value, type ]
-     * @return array [ types, ...values ]
+     * @param string $types output param, like `'issi'`
+     * @return array values like `[ int, string, string, int ]`
+     * @throws InvalidArgumentException
      */
-    protected function createBinds(array $params): array
+    protected function createBinds(string &$types): array
     {
-        $binds = array_values($params);
-        $types = '';
+        $_types = [];
+        $binds = [];
 
-        foreach ($binds as &$bind) {
-            [$value, $type] = $bind;
+        $numeric = null;
 
+        foreach ($this->params as $key => [$value, $type]) {
+            // Determine if we're in numeric or keyed mode.
+            if ($numeric === null) {
+                $numeric = is_int($key);
+            }
+            // Get angry if we're mixing types.
+            else if (is_int($key) !== $numeric) {
+                throw new InvalidArgumentException('Mixed numeric and named params');
+            }
+
+            // Determine the bind type, it's just strings or ints really.
             switch ($type) {
                 case PDO::PARAM_BOOL:
                 case PDO::PARAM_INT:
-                    $types .= 'i';
+                    $type = 'i';
                     break;
 
                 case PDO::PARAM_STR:
                 default:
-                    $types .= 's';
+                    $type = 's';
                     break;
             }
 
-            $bind = $value;
-        }
-        unset($bind);
+            // Numeric binds are pretty straight-forward.
+            if ($numeric) {
+                $_types[] = $type;
+                $binds[] = $value;
+            }
+            else {
+                $found = false;
 
-        array_unshift($binds, $types);
+                // Find the (multiple) positions of the named parameter. This
+                // determines order in which to bind it. We bind more than once
+                // because although the values are only provided once, the key
+                // may be used multiple times in the query.
+                foreach ($this->named as $position => $name) {
+                    if ($name != $key) continue;
+
+                    $found = true;
+                    $_types[$position] = $type;
+                    $binds[$position] = $value;
+                }
+
+                if (!$found) {
+                    throw new InvalidArgumentException("Unknown param: {$key}");
+                }
+            }
+        }
+
+        // The binds are inserted by their position in the query. PHP naturally
+        // sorts them by insertion, so re-sort and strip the old keys to get a
+        // neat and ordered list.
+        if (!$numeric) {
+            ksort($binds);
+            ksort($_types);
+
+            $binds = array_values($binds);
+        }
+
+        $types = implode('', $_types);
         return $binds;
     }
 
@@ -150,19 +196,26 @@ class MysqliStatement extends PdbStatement
     /** @inheritdoc */
     public function execute(array $params = []): bool
     {
-        foreach ($params as &$param) {
-            $params = [$param, PDO::PARAM_STR];
+        // Override params.
+        if ($params) {
+            $copy = clone $this;
+            $copy->params = $params;
+            return $copy->execute();
         }
-        unset($param);
+        else {
+            // Bind params, but optionally.
+            $types = '';
+            $binds = $this->createBinds($types);
 
-        $params = array_merge($this->params, $params);
-        $binds = self::createBinds($params);
+            if ($types) {
+                $this->stmt->bind_param($types, ...$binds);
+            }
 
-        if (count($binds) > 1) {
-            call_user_func_array([$this->stmt, 'bind_param'], $binds);
+            // Note, we're allowed to emit mysqli exceptions from here, these
+            // are caught at the Pdb level along with PDO exceptions.
+            // These are all converted into Pdb exceptions.
+            return $this->stmt->execute();
         }
-
-        return $this->stmt->execute();
     }
 
 

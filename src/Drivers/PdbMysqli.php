@@ -53,23 +53,30 @@ class PdbMysqli extends PdbMysql
         $query = $this->insertPrefixes($query);
 
         try {
-            // TODO uh, something.
-            // $named = [];
-            // $query = preg_replace_callback("/:[^\s]+/", function ($matches) use (&$named) {
-            //     [$name] = $matches;
-            //     $named[] = $name;
-            //     return '?';
-            // }, $query);
+            $named = [];
 
-            $result = $db->prepare($query);
+            // Convert named parameters to ? and store them for later. The
+            // order of theses parameters determine the binding order - this
+            // must be preserved. Duplicates are permitted.
+            $query = preg_replace_callback('/:([a-z][^\s]*)/i', function ($matches) use (&$named) {
+                $named[] = $matches[1];
+                return '?';
+            }, $query);
 
-            if ($result === false) {
+            // The actual prepare.
+            $stmt = $db->prepare($query);
+
+            // Some additional error checking but the REPORT_ERROR mode should
+            // be doing this already.
+            if ($stmt === false) {
                 throw new mysqli_sql_exception($db->error, $db->errno);
             }
 
-            return new MysqliStatement($db, $result, $query);
+            // Our PDO-style wrapper object.
+            return new MysqliStatement($db, $stmt, $query, $named);
         }
         catch (mysqli_sql_exception $ex) {
+            // Only emit our own exceptions.
             throw QueryException::create($ex, $db)
                 ->setQuery($query);
         }
