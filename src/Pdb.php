@@ -126,6 +126,9 @@ abstract class Pdb implements Loggable
     /** @var callable|null (query, params, result|exception) */
     protected $debugger;
 
+    /** @var callable|null (position, token) */
+    protected $profiler;
+
 
     /**
      *
@@ -316,6 +319,20 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Attach/remove a profiler logger.
+     *
+     * @param callable|null $profiler log method:
+     *  - string $position
+     *  - string $token
+     * @return void
+     */
+    public function setProfiler($profiler)
+    {
+        $this->profiler = $profiler;
+    }
+
+
+    /**
      * An inflector for flecting.
      *
      * _Do not_ use this for user interfaces.
@@ -430,6 +447,8 @@ abstract class Pdb implements Loggable
             if ($objects = $config->buildClass($result)) {
                 return $objects;
             }
+
+            return $result;
         }
 
         $st = $this->prepare($query);
@@ -496,6 +515,8 @@ abstract class Pdb implements Loggable
             if ($objects = $config->buildClass($result)) {
                 return $objects;
             }
+
+            return $result;
         }
 
         // Format objects into strings
@@ -506,6 +527,12 @@ abstract class Pdb implements Loggable
 
         try {
             $db = $this->getConnection();
+            $profiler = $this->profiler;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('begin', $token);
+            }
 
             static::bindParams($st, $params);
             $st->execute();
@@ -568,6 +595,11 @@ abstract class Pdb implements Loggable
         finally {
             $res->closeCursor();
             $res = null;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('end', $token);
+            }
         }
 
         return $ret;
@@ -1710,5 +1742,44 @@ abstract class Pdb implements Loggable
             $fn($query, $params, $result);
             $this->debugger = $fn;
         }
+    }
+
+
+    /**
+     * Return a query with the values substituted into their respective
+     * binding positions.
+     *
+     * __DO NOT EXECUTE THIS STRING.__
+     *
+     * - These values are _not_ properly escaped.
+     * - This is purely for logging.
+     *
+     * @param string $query
+     * @param array $values
+     * @return string
+     */
+    public function prettyQuery(string $query, array $values)
+    {
+        $query = $this->insertPrefixes($query);
+
+        $i = 0;
+        return preg_replace_callback('/\?|:([a-z]\w*)/i', function($m) use ($values, &$i) {
+            $key = isset($m[1]) ? $m[1] : $i++;
+            $item = $values[$key] ?? null;
+
+            if (is_scalar($item)) {
+                return $this->quoteValue($item);
+            }
+
+            if (is_object($item)) {
+                return '[object]';
+            }
+
+            if (is_array($item)) {
+                return '[array]';
+            }
+
+            return '[?]';
+        }, $query);
     }
 }

@@ -58,9 +58,9 @@ interface PdbModelInterface
      *
      * @see {PdbQuery::find()}
      * @param array $conditions
-     * @return PdbQuery
+     * @return PdbModelQuery
      */
-    public static function find(array $conditions = []): PdbQuery;
+    public static function find(array $conditions = []): PdbModelQuery;
 
 
     /**

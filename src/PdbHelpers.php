@@ -257,16 +257,18 @@ class PdbHelpers
 
         if (preg_match('/(?:
             (char|text|binary|blob|^enum|^bit$)|
-            (int|year)|
-            (float|dec|real|double|fixed)|
+            (int|year|timestamp)|
+            (float|dec|real|double|fixed|numeric)|
             (date|time)|
-            (^set|^json)
+            (^set|^json)|
+            (bool)
         )/ix', $type, $matches)) {
             if ($matches[1]) return 'string';
             if ($matches[2]) return 'int';
             if ($matches[3]) return 'float';
             if ($matches[4]) return $strict ? 'string' : 'datetime';
             if ($matches[5]) return $strict ? 'string' : 'array';
+            if ($matches[6]) return 'bool';
         }
 
         return null;
@@ -440,27 +442,4 @@ class PdbHelpers
         return implode("\n", $lines);
     }
 
-
-    /**
-     * Return a query with the values substituted into their respective
-     * binding positions.
-     *
-     * __DO NOT EXECUTE THIS STRING.__
-     *
-     * These values are _not_ properly escaped.
-     * This is purefuly for logging.
-     *
-     * Note, only works for ? bindings, not :name types.
-     *
-     * @param string $query
-     * @param array $values
-     * @return string
-     */
-    public static function prettyQuery(string $query, array $values)
-    {
-        $i = 0;
-        return preg_replace_callback('/\?/', function() use ($values, &$i) {
-            return preg_replace('/\'/', '\\\'', $values[$i++]);
-        }, $query);
-    }
 }

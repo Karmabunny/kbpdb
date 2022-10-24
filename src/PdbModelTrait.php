@@ -76,6 +76,34 @@ trait PdbModelTrait
 
 
     /**
+     * Loads default values from database table schema.
+     *
+     * This will only set defaults values for properties that are null.
+     *
+     * @return static
+     */
+    public function populateDefaults()
+    {
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+
+        $columns = $pdb->fieldList($table);
+
+        foreach ($columns as $column) {
+            if (
+                property_exists($this, $column->name)
+                and $this->{$column->name} === null
+                and $column->default !== null
+            ) {
+                $this->{$column->name} = $column->default;
+            }
+        }
+
+        return $this;
+    }
+
+
+    /**
      * Find one model.
      *
      * @param array $conditions
@@ -110,6 +138,11 @@ trait PdbModelTrait
      */
     public function save(): bool
     {
+        // Only populate defaults for new models.
+        if (!$this->id) {
+            $this->populateDefaults();
+        }
+
         $pdb = static::getConnection();
         $table = static::getTableName();
         $data = iterator_to_array($this);
