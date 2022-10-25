@@ -12,6 +12,7 @@ use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
+use karmabunny\pdb\PdbQuery;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -37,6 +38,7 @@ use PDOStatement;
  * @method static string buildClause(array $conditions, array &$values, string $combine = 'AND')
  * @method static int update(string $table, array $data, array $conditions)
  * @method static int delete(string $table, array $conditions)
+ * @method static PdbQuery find(string $table, array $conditions)
  * @method static bool inTransaction()
  * @method static void transact()
  * @method static void commit()
