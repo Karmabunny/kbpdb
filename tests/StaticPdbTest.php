@@ -666,19 +666,48 @@ class StaticPdbTest extends TestCase
 
     public function testPrettyQuery()
     {
-        $expected = "SELECT * FROM `sprout_pdb_test` WHERE name = 'AAA' AND etc = '123'";
-        $actual = Pdb::prettyQuery('SELECT * FROM ~pdb_test WHERE name = ? AND etc = ?', [
-            'AAA',
-            123,
-        ]);
+        $expected = "SELECT *
+            FROM `sprout_pdb_test`
+            WHERE name = 'AAA'
+            AND etc = 123
+            AND bool = 1
+            AND float = 4.56
+            AND alt = 'AAA'
+        ";
+        $actual = Pdb::prettyQuery("SELECT *
+            FROM ~pdb_test
+            WHERE name = ?
+            AND etc = ?
+            AND bool = ?
+            AND float = ?
+            AND alt = ?
+        ",
+            [
+                'AAA',
+                123,
+                true,
+                4.56,
+                'AAA',
+            ]
+        );
 
         $this->assertEquals($expected, $actual);
 
-        $expected = "SELECT * FROM `sprout_pdb_test` WHERE name = 'AAA' AND etc = '123'";
-        $actual = Pdb::prettyQuery('SELECT * FROM ~pdb_test WHERE name = :name AND etc = :etc', [
-            'name' => 'AAA',
-            'etc' => 123,
-        ]);
+        $actual = Pdb::prettyQuery("SELECT *
+            FROM ~pdb_test
+            WHERE name = :name
+            AND etc = :etc
+            AND bool = :bool
+            AND float = :float
+            AND alt = :name
+        ",
+            [
+                'name' => 'AAA',
+                'etc' => 123,
+                'bool' => true,
+                'float' => 4.56,
+            ]
+        );
 
         $this->assertEquals($expected, $actual);
 

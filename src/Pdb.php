@@ -1115,14 +1115,19 @@ abstract class Pdb implements Loggable
     {
         $pdo = $this->getConnection();
 
-        if (is_numeric($value)) {
-            $result = $pdo->quote($value, PDO::PARAM_INT);
-            if ($result !== false) return $result;
+        if (is_bool($value)) {
+            $value = (int) $value;
+            return (string) $value;
         }
 
-        if (is_bool($value)) {
-            $result = $pdo->quote((string) $value, PDO::PARAM_BOOL);
-            if ($result !== false) return $result;
+        if (is_numeric($value)) {
+            if ((int) $value == (float) $value) {
+                $value = (int) $value;
+            } else {
+                $value = (float) $value;
+            }
+
+            return (string) $value;
         }
 
         /** @var string|false $result */
