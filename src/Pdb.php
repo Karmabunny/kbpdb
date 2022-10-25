@@ -328,8 +328,6 @@ abstract class Pdb implements Loggable
      *
      * _Do not_ use this for user interfaces.
      *
-     * TODO this should return an InflectorInterface. Requires newer kbphp.
-     *
      * @return InflectorInterface
      */
     public function getInflector(): InflectorInterface
