@@ -774,13 +774,12 @@ abstract class Pdb implements Loggable
      * @param string $table
      * @param array $data
      * @param array $conditions
-     * @param null|string $update
      * @return int
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function upsert(string $table, array $data, array $conditions, $update = null)
+    public function upsert(string $table, array $data, array $conditions)
     {
         static::validateIdentifier($table);
 
@@ -799,15 +798,7 @@ abstract class Pdb implements Loggable
             $clause = $this->buildClause($conditions, $params);
             $id = $this->query("SELECT id from {$table} WHERE {$clause}", $params, 'val');
 
-            // Dynamic update.
-            if ($update) {
-                $this->query("UPDATE ~{$table} WHERE id = ?", [$id], 'pdo');
-            }
-            // Regular update.
-            else {
-                $this->update($table, $data, ['id' => $id]);
-            }
-
+            $this->update($table, $data, ['id' => $id]);
             return $id;
         }
         catch (RowMissingException $exception) {
