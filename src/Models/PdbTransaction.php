@@ -6,6 +6,7 @@ use karmabunny\kb\DataObject;
 use karmabunny\pdb\Pdb;
 
 /**
+ * This represents a transaction or savepoint.
  *
  * @package karmabunny\pdb
  */
@@ -20,20 +21,7 @@ class PdbTransaction extends DataObject
 
 
     /**
-     *
-     * @return bool
-     */
-    public function isActive(): bool
-    {
-        if (!$this->key) {
-            return false;
-        }
-
-        return $this->pdb->inTransaction();
-    }
-
-
-    /**
+     * Commit the transaction or savepoint.
      *
      * @return void
      */
@@ -47,6 +35,7 @@ class PdbTransaction extends DataObject
 
 
     /**
+     * Rollback the transaction or savepoint.
      *
      * @return void
      */
