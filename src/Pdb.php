@@ -997,7 +997,6 @@ abstract class Pdb implements Loggable
         // BEGIN DEFERRED TRANSACTION. So we're just trying to make things
         // consistent here.
         if (!$this->inTransaction()) {
-            $this->transaction_key = false;
             throw new TransactionEmptyException('No active transaction');
         }
 
@@ -1041,8 +1040,6 @@ abstract class Pdb implements Loggable
         $pdo = $this->getConnection();
 
         if (!$this->inTransaction()) {
-            $this->transaction_key = false;
-
             // Strict mode commits require an active transaction.
             if ($this->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT) {
                 throw new TransactionEmptyException('No active transaction');
@@ -1101,9 +1098,7 @@ abstract class Pdb implements Loggable
     {
         $pdo = $this->getConnection();
 
-        if ($this->inTransaction()) {
-            $this->transaction_key = false;
-
+        if (!$this->inTransaction()) {
             // Strict mode rollbacks require an active transaction.
             if ($this->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK) {
                 throw new TransactionEmptyException('No active transaction');
