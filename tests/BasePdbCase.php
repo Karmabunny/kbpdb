@@ -47,7 +47,7 @@ abstract class BasePdbCase extends TestCase
         $sync->migrate($this->struct);
 
         // Not sure why this is broken.
-        // $this->assertFalse($sync->hasQueries());
+        $this->assertFalse($sync->hasQueries());
     }
 
 
@@ -56,11 +56,15 @@ abstract class BasePdbCase extends TestCase
      */
     public function testTables()
     {
-        $tables = $this->pdb->listTables();
-        $this->assertNotEmpty($tables);
-
         $expected = array_keys($this->struct->tables);
-        $this->assertEquals($expected, $tables);
+
+        $actual = $this->pdb->listTables();
+        $this->assertNotEmpty($actual);
+
+        sort($expected);
+        sort($actual);
+
+        $this->assertEquals($expected, $actual);
     }
 
 
