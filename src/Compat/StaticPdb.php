@@ -9,6 +9,7 @@ use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbTransaction;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
@@ -38,7 +39,8 @@ use PDOStatement;
  * @method static int update(string $table, array $data, array $conditions)
  * @method static int delete(string $table, array $conditions)
  * @method static bool inTransaction()
- * @method static mixed transact(callable $callback = null)
+ * @method static PdbTransaction transact()
+ * @method static mixed withTransaction(callable $callback)
  * @method static string savepoint(string $name = null)
  * @method static void commit(string $name = null)
  * @method static void rollback(string $name = null)
