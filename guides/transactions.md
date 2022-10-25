@@ -1,13 +1,16 @@
 
-Support for nested transactions using savepoints.
+# Transactions
 
+PDB supports both traditional (recursion-free) transactions as well as nested transactions through the use of savepoints. Along with a few other options to make life easier (or harder).
 
-## Features and things:
+Transaction modes can be configured using the `transaction_mode` config:
 
-- new `savepoint()` method
-- `commit()/rollback()` accept a savepoint or transaction 'key'
-- transaction modes: strict commit | strict rollback | commit keys | enabled nested
-- new (descriptive) exceptions
+| Mode                 | Description                               | Note                                              |
+|----------------------|-------------------------------------------|---------------------------------------------------|
+| TX_STRICT_COMMIT     | Require active TX on commit               | def: true                                         |
+| TX_STRICT_ROLLBACK   | Require active TX on rollback             | def: true                                         |
+| TX_ENABLE_NESTED     | Permit nested transactions via savepoints | def: false. This eliminates recursion exceptions  |
+| TX_FORCE_COMMIT_KEYS | Require a TX key on commit()              | def: false. This may break existing (Sprout) code |
 
 
 #### Strict commit / rollback
