@@ -380,6 +380,8 @@ abstract class Pdb implements Loggable
     /**
      * Alias for {@see Pdb::query}
      *
+     * @deprecated because just don't be lazy.
+     *
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
