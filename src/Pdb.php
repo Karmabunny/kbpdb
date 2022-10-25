@@ -1217,6 +1217,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @return void
      * @throws InvalidArgumentException An invalid transaction key
      * @throws ConnectionException If the connection fails
+     * @throws TransactionNameException The transaction/savepoint doesn't exist
      * @throws TransactionEmptyException If there's no active transaction
      */
     public function commit(string $name = null)
@@ -1251,8 +1252,15 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             $this->transaction_key = false;
         }
         else {
-            static::validateIdentifier($name, false);
-            $pdo->exec('RELEASE SAVEPOINT ' . $name);
+            try {
+                static::validateIdentifier($name, false);
+                $pdo->exec('RELEASE SAVEPOINT ' . $name);
+            }
+            catch (TransactionNameException $exception) {
+                if ($this->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT) {
+                    throw $exception;
+                }
+            }
         }
     }
 
@@ -1269,6 +1277,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string|null $name a transaction key
      * @return void
      * @throws InvalidArgumentException An invalid transaction key
+     * @throws TransactionNameException The transaction/savepoint doesn't exist
+     * @throws TransactionEmptyException No active transaction
      * @throws ConnectionException If the connection fails
      */
     public function rollback(string $name = null)
@@ -1292,8 +1302,15 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             $this->transaction_key = false;
         }
         else {
-            static::validateIdentifier($name, false);
-            $pdo->exec('ROLLBACK TO ' . $name);
+            try {
+                static::validateIdentifier($name, false);
+                $pdo->exec('ROLLBACK TO ' . $name);
+            }
+            catch (TransactionNameException $exception) {
+                if ($this->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK) {
+                    throw $exception;
+                }
+            }
         }
     }
 
