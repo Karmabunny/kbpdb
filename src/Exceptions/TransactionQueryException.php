@@ -10,7 +10,7 @@ namespace karmabunny\pdb\Exceptions;
 /**
  * Exception thrown when a database query encounters a transaction errors.
  *
- * These errors are reported as SQLSTATE 25xxx
+ * These errors are reported as SQLSTATE 25xxx or 3Bxxx (for savepoints).
  */
 class TransactionQueryException
     extends QueryException
