@@ -80,6 +80,6 @@ class QueryException extends PdbException
                 return TransactionQueryException::class;
         }
 
-        parent::getSubClass($exception);
+        return parent::getSubClass($exception);
     }
 }
