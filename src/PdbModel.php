@@ -22,6 +22,8 @@ use PDOException;
  *
  * It includes audit fields, soft deletes and UUIDv5.
  *
+ * @deprecated Build your own. This will be removed in v1.
+ *
  * @package karmabunny\pdb
  */
 abstract class PdbModel extends Collection implements PdbModelInterface

@@ -7,24 +7,30 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
+use karmabunny\kb\Configure;
+use karmabunny\kb\InflectorInterface;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\Uuid;
+use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbNoDriver;
+use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\TransactionEmptyException;
 use karmabunny\pdb\Exceptions\TransactionNameException;
+use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbTransaction;
+use karmabunny\pdb\Models\PdbReturn;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -92,6 +98,9 @@ abstract class Pdb implements Loggable
         self::RETURN_MAP_ARR,
         self::RETURN_VAL,
         self::RETURN_COL,
+        self::RETURN_TRY_VAL,
+        self::RETURN_TRY_ROW,
+        self::RETURN_TRY_ROW_NUM,
     ];
 
 
@@ -104,14 +113,23 @@ abstract class Pdb implements Loggable
     /** @var string|false */
     protected $transaction_key = false;
 
+    /** @var PdbCache */
+    protected $cache;
+
+    /** @var InflectorInterface|null */
+    protected $inflector;
+
+    /** @var bool */
+    protected $in_transaction = false;
+
     /** @var int|null */
     protected $last_insert_id = null;
 
     /** @var callable|null (query, params, result|exception) */
     protected $debugger;
 
-    /** @var string */
-    private $_prefix_pattern;
+    /** @var callable|null (position, token) */
+    protected $profiler;
 
 
     /**
@@ -127,12 +145,14 @@ abstract class Pdb implements Loggable
             $this->config = clone $config;
         }
 
-        $this->_prefix_pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
-
         // The config provides an override connection.
         if ($this->config->_pdo instanceof PDO) {
             $this->connection = $this->config->_pdo;
         }
+
+        // Create a cache instance.
+        // die(print_r($this->config->cache, true));
+        $this->cache = Configure::configure($this->config->cache, PdbCache::class);
     }
 
 
@@ -150,6 +170,9 @@ abstract class Pdb implements Loggable
         switch ($config->type) {
             case PdbConfig::TYPE_MYSQL:
                 return new PdbMysql($config);
+
+            case PdbConfig::TYPE_PGSQL:
+                return new PdbPgsql($config);
 
             case PdbConfig::TYPE_SQLITE:
                 return new PdbSqlite($config);
@@ -176,6 +199,21 @@ abstract class Pdb implements Loggable
         try {
             $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
             $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+            // Set session variables.
+            // These can be overridden by the HACKS fields.
+            // Dunno what kind of outcome that has. Just be aware I guess.
+            foreach ($config->session as $key => $value) {
+                // We're not escaping the keys here because we're not quoting
+                // them either. For example, although MySQL has `time_zone`
+                // Postgres has instead `TIME ZONE`.
+                if (preg_match('/[^a-z \-_]/i', $key)) {
+                    throw new ConnectionException("Invalid session key: '{$key}'");
+                }
+
+                $value = $pdo->quote($value, PDO::PARAM_STR);
+                $pdo->query("SET SESSION {$key} = {$value}");
+            }
         }
         catch (PDOException $exception) {
             throw ConnectionException::create($exception)
@@ -277,6 +315,42 @@ abstract class Pdb implements Loggable
     }
 
 
+    /**
+     * Attach/remove a profiler logger.
+     *
+     * @param callable|null $profiler log method:
+     *  - string $position
+     *  - string $token
+     * @return void
+     */
+    public function setProfiler($profiler)
+    {
+        $this->profiler = $profiler;
+    }
+
+
+    /**
+     * An inflector for flecting.
+     *
+     * _Do not_ use this for user interfaces.
+     *
+     * TODO this should return an InflectorInterface. Requires newer kbphp.
+     *
+     * @return InflectorInterface
+     */
+    public function getInflector(): InflectorInterface
+    {
+        if (!$this->inflector) {
+            $this->inflector = Configure::configure(
+                $this->config->inflector,
+                InflectorInterface::class
+            );
+        }
+
+        return $this->inflector;
+    }
+
+
     // ===========================================================
     //     Query builder
     // ===========================================================
@@ -298,9 +372,16 @@ abstract class Pdb implements Loggable
     }
 
 
-    public function getPrefix(): string
+    /**
+     * Get the prefix for table, or global
+     *
+     * @param string $table
+     * @return string
+     */
+    public function getPrefix(string $table = '*'): string
     {
-        return $this->config->prefix;
+        $prefixes = $this->config->getPrefixes();
+        return $prefixes[$table] ?? $this->config->prefix;
     }
 
 
@@ -310,49 +391,65 @@ abstract class Pdb implements Loggable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function q($query, array $params, string $return_type)
+    public function q($query, array $params, $config)
     {
-        return $this->query($query, $params, $return_type);
+        return $this->query($query, $params, $config);
     }
 
 
     /**
      * Executes a PDO query
      *
-     * For the return type 'pdo', a PDOStatement is returned. You need to close it using $res->closeCursor()
-     *     once you're finished.
-     * For the return type 'null', nothing is returned.
-     * For the return type 'count', a count of rows is returned.
+     * For the return type 'pdo', a PDOStatement is returned. You need to close
+     * it using $res->closeCursor() once you're finished.
      * Additional return types are available; {@see Pdb::formatRs} for a full list.
      *
      * When working with datasets larger than about 50 rows, you may run out of ram when using
      * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
      *
-     * Return types:
-     * - PDOStatement For type 'pdo'
-     * - int For type 'count'
-     * - null For type 'null'
-     * - mixed For all other types; see {@see Pdb::formatRs}
-     *
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function query(string $query, array $params, string $return_type)
+    public function query(string $query, array $params, $config)
     {
+        $config = clone PdbReturn::parse($config);
+
+        // Build a key but also store on the config so we don't serialize the
+        // query twice (here and in 'execute').
+        $key = $this->getCacheKey($query, $params, $config);
+        $config->cache_key = $key;
+
+        // This happens again in 'execute' but perhaps we can save some
+        // time and effort (the prepare) by checking it here first.
+        if ($key and $this->cache->has($key)) {
+            $result = $this->cache->get($key);
+
+            if ($result === null) {
+                return null;
+            }
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($result)) {
+                return $objects;
+            }
+
+            return $result;
+        }
+
         $st = $this->prepare($query);
-        return $this->execute($st, $params, $return_type);
+        return $this->execute($st, $params, $config);
     }
 
 
@@ -365,7 +462,8 @@ abstract class Pdb implements Loggable
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function prepare(string $query) {
+    public function prepare(string $query)
+    {
         $pdo = $this->getConnection();
         $query = $this->insertPrefixes($query);
 
@@ -381,32 +479,42 @@ abstract class Pdb implements Loggable
     /**
      * Executes a prepared statement
      *
-     * For the return type 'pdo', a PDOStatement is returned. You need to close it using $res->closeCursor()
-     *     once you're finished.
-     * For the return type 'null', nothing is returned.
-     * For the return type 'count', a count of rows is returned.
+     * For the return type 'pdo', a PDOStatement is returned. You need to close
+     * it using $res->closeCursor() once you're finished.
      * Additional return types are available; {@see Pdb::formatRs} for a full list.
      *
      * When working with datasets larger than about 50 rows, you may run out of ram when using
      * return types other than 'pdo', 'null', 'count' or 'val' because the other types all return the values as arrays
      *
-     * Return types:
-     * - PDOStatement For type 'pdo'
-     * - int For type 'count'
-     * - null For type 'null'
-     * - mixed For all other types; see {@see Pdb::formatRs}
-     *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function execute(PDOStatement $st, array $params, string $return_type)
+    public function execute(PDOStatement $st, array $params, $config)
     {
-        static::validateReturnType($return_type);
+        $config = PdbReturn::parse($config);
+
+        // Get a cached result, if available.
+        $key = $this->getCacheKey($st->queryString, $params, $config);
+
+        if ($key and $this->cache->has($key)) {
+            $result = $this->cache->get($key);
+
+            if ($result === null) {
+                return null;
+            }
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($result)) {
+                return $objects;
+            }
+
+            return $result;
+        }
 
         // Format objects into strings
         foreach ($params as &$p) {
@@ -414,8 +522,14 @@ abstract class Pdb implements Loggable
         }
         unset($p);
 
-        $ex = null;
         try {
+            $profiler = $this->profiler;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('begin', $token);
+            }
+
             static::bindParams($st, $params);
             $st->execute();
             $res = $st;
@@ -439,21 +553,47 @@ abstract class Pdb implements Loggable
         }
 
         // PDO returns must not prematurely close the cursor.
-        if ($return_type == self::RETURN_PDO) {
+        if ($config->type == self::RETURN_PDO) {
             $res->setFetchMode(PDO::FETCH_ASSOC);
             return $res;
         }
 
         try {
-            $ret = static::formatRs($res, $return_type);
-        } catch (RowMissingException $ex) {
-            $res->closeCursor();
+            $ret = $config->format($res);
+
+            // Store this result for later.
+            // The TTL should always be non-null at this point, but whatever.
+            if (
+                $key !== null and
+                ($ttl = $config->getCacheTtl($this->config))
+            ) {
+                $this->cache->store($key, $ret, $ttl);
+            }
+
+            if ($ret === null) {
+                return null;
+            }
+
+            // Have a crack at creating classes.
+            if ($objects = $config->buildClass($ret)) {
+                return $objects;
+            }
+        }
+        catch (RowMissingException $ex) {
             $ex->setQuery($st->queryString);
             $ex->setParams($params);
             throw $ex;
         }
-        $res->closeCursor();
-        $res = null;
+        finally {
+            $res->closeCursor();
+            $res = null;
+
+            if (is_callable($profiler)) {
+                $token = $this->prettyQuery($st->queryString, $params);
+                $profiler('end', $token);
+            }
+        }
+
         return $ret;
     }
 
@@ -726,11 +866,11 @@ abstract class Pdb implements Loggable
     /**
      * Shorthand for creating a new PdbQuery.
      *
-     * @param string $table
+     * @param string|string[] $table
      * @param array $conditions
      * @return PdbQuery
      */
-    public function find(string $table, array $conditions = [])
+    public function find($table, array $conditions = [])
     {
         return (new PdbQuery($this))->find($table, $conditions);
     }
@@ -982,7 +1122,7 @@ abstract class Pdb implements Loggable
     /**
      * Fetches a mapping of id => value values from a table, using the 'name' values by default
      *
-     * @deprecated Use PdbQuery::map()
+     * This wraps `PdbQuery::find()->orderBy()->map()`
      *
      * @param string $table The table name, without prefix
      * @param array $conditions Optional where clause {@see Pdb::buildClause}
@@ -1001,6 +1141,8 @@ abstract class Pdb implements Loggable
     /**
      * Check to see that at least one record exists for certain conditions.
      *
+     * This wrap `PdbQuery::find()->exists()`
+     *
      * @param string $table The table name, not prefixed
      * @param array $conditions Conditions for the WHERE clause, formatted as per {@see Pdb::buildClause}
      * @return bool True if a matching record exists
@@ -1011,7 +1153,7 @@ abstract class Pdb implements Loggable
      */
     public function recordExists(string $table, array $conditions)
     {
-        return (bool) $this->find($table, $conditions)->count();
+        return $this->find($table, $conditions)->exists();
     }
 
 
@@ -1055,7 +1197,7 @@ abstract class Pdb implements Loggable
     /**
      *
      * @param string $table non-prefixed
-     * @return PdbColumn[]
+     * @return PdbColumn[] [ name => PdbColumn ]
      */
     public abstract function fieldList(string $table);
 
@@ -1123,8 +1265,7 @@ abstract class Pdb implements Loggable
     /**
      * Return the value from the autoincement of the most recent INSERT query
      *
-     * @return int The record id
-     * @return null If there hasn't been an insert yet
+     * @return int|null The record id, or null if there hasn't been an insert
      */
     public function getLastInsertId()
     {
@@ -1138,6 +1279,7 @@ abstract class Pdb implements Loggable
      * @param string $type Pdb::QUOTE
      * @return string
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quote(string $field, string $type): string
     {
@@ -1155,6 +1297,7 @@ abstract class Pdb implements Loggable
      * @param string $type Pdb::QUOTE
      * @return string[]
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quoteAll($fields, string $type): array
     {
@@ -1171,6 +1314,7 @@ abstract class Pdb implements Loggable
      * @param mixed $value
      * @return string
      * @throws ConnectionException
+     * @throws PdbException
      */
     public function quoteValue($value): string
     {
@@ -1186,7 +1330,15 @@ abstract class Pdb implements Loggable
             if ($result !== false) return $result;
         }
 
-        return $pdo->quote($value, PDO::PARAM_STR);
+        /** @var string|false $result */
+        $result = @$pdo->quote($value, PDO::PARAM_STR);
+
+        // This would be unfortunate.
+        if ($result === false) {
+            throw new PdbException('Driver doesn\'t support quoting');
+        }
+
+        return $result;
     }
 
 
@@ -1203,15 +1355,28 @@ abstract class Pdb implements Loggable
             return $field;
         }
 
-        $quotes = $this->config->getFieldQuotes();
-        [$left, $right] = $quotes;
-
-        $field = str_replace($quotes, '', $field);
+        [$left, $right] = $this->config->getFieldQuotes();
         $parts = explode('.', $field, 2);
 
         foreach ($parts as &$part) {
+            $part = trim($part, '\'"`[]{}');
+
+            // Prefer `."field"` over `""."field"`
+            if (strlen($part) === 0) continue;
+
+            // Can't do prefixing here, skip it.
             if (strpos($part, '~') === 0) continue;
-            $part = $left . trim($part, '\'"[]`') . $right;
+
+            // TODO well actually...
+            // if (strpos($part, '~') === 0) {
+            //     $part = $this->getPrefix($part) . substr($part, 1);
+            // }
+
+            // Don't wrap/escape wildcards.
+            if ($part == '*') continue;
+
+            $part = PdbHelpers::fieldEscape($part, [$left, $right]);
+            $part = $left . $part . $right;
         }
         unset($part);
 
@@ -1238,7 +1403,7 @@ abstract class Pdb implements Loggable
 
         ['database' => $database, 'prefix' => $prefix] = $this->config;
         $scheme = "{$database}.{$prefix}.{$table}.{$id}";
-        return Uuid::uuid5(self::UUID_NAMESPACE, $scheme);
+        return Uuid::uuid5($this->config->namespace, $scheme);
     }
 
 
@@ -1348,45 +1513,36 @@ abstract class Pdb implements Loggable
     /**
      * Validate an alias.
      *
+     * An 'alias' in pdb is represented as an array pair: field, alias.
      *
      * @param string|string[] $field
-     * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
-     *   - Use for select(), do not use for tables or joins.
-     * @return array [field, alias]
-     *   - The second item is null if no alias present.
-     *
+     * @param bool $loose Permit integers/functions, e.g. SELECT 1, COUNT(*), etc
+     * @return void
      * @throws InvalidArgumentException
      */
-    public static function validateAlias($field, $loose = false): array
+    public static function validateAlias($field, $loose = false)
     {
         if (is_string($field)) {
-            // [$field, $alias] = PdbHelpers::alias($field);
             $alias = null;
         }
         else {
-            if (count($field) != 2) {
-                throw new InvalidArgumentException('Alias must have two elements: [name, alias]');
-            }
-
-            [$field, $alias] = $field;
+            [$field, $alias] = $field + [null, null];
         }
-
-        // Only permit integer fields if there is no alias.
-        // Pdb::validateIdentifierExtended($field, !$alias and $loose);
 
         Pdb::validateIdentifierExtended($field, $loose);
 
         if ($alias) {
             Pdb::validateIdentifier($alias);
         }
-
-        return [$field, $alias];
     }
 
 
     /**
      * Validates a value meant for an ENUM field, e.g.
-     * $valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');
+     *
+     * `$valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');`
+     *
+     * This doesn't emit exceptions but instead returns a boolean.
      *
      * @param string $val The value to find in the ENUM
      * @param array $field [0] Table name [1] Column name
@@ -1450,7 +1606,7 @@ abstract class Pdb implements Loggable
         [$lquote, $rquote] = $this->config->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
-            $prefix = $this->config->table_prefixes[$matches[1]] ?? $this->config->prefix;
+            $prefix = $this->getPrefix($matches[1]);
             return $lquote . $prefix . $matches[1] . $rquote;
         };
 
@@ -1459,13 +1615,69 @@ abstract class Pdb implements Loggable
 
 
     /**
+     * Remove prefixes from a table name.
+     *
+     * This strips both the global `prefix` config and `table_prefixes`.
+     *
+     * This does not remove the `~` placeholder.
      *
      * @param string $value
      * @return string
      */
     protected function stripPrefix(string $value)
     {
-        return preg_replace($this->_prefix_pattern, '', $value) ?? '';
+        foreach ($this->config->table_prefixes as $table => $prefix) {
+            if ($value === $prefix . $table) {
+                return $table;
+            }
+        }
+
+        // Global prefix just needs to strip the beginning of the table.
+        $pattern = '/^' . preg_quote($this->config->prefix, '/') . '/';
+        return preg_replace($pattern, '', $value) ?? '';
+    }
+
+
+    /**
+     * Produce a key appropriate to represent a query and it's parameters.
+     *
+     * @param string $sql
+     * @param array $params
+     * @param PdbReturn $config
+     * @return string|null the key or null if the cache is disabled
+     */
+    protected function getCacheKey(string $sql, array $params, PdbReturn $config): ?string
+    {
+        // Prevent caching if the TTL is empty.
+        // More importantly - do it here because otherwise we're serializing
+        // the query when we don't need to.
+        if (!$config->getCacheTtl($this->config)) {
+            return null;
+        }
+
+        // Each key begins with the 'identity key' and return type. This is
+        // important to prevent data leaking between connections that may not
+        // have the same permissions, access, or even data.
+        $key = $this->config->getIdentity();
+        $key .= ':' . rtrim($config->type, '?');
+
+        // Optionally permit the user to invalidate their own cache.
+        if ($config->cache_key) {
+
+            // This is also used to cache the key across queue-prepare-execute.
+            // Don't re-add the prefix.
+            if (strpos($config->cache_key, $key) === 0) {
+                return $config->cache_key;
+            }
+
+            // This is just the user's custom key.
+            return $key . ':' . $config->cache_key;
+        }
+
+        // This is always unique to the query.
+        $key .= ':' . sha1(json_encode([$sql, $params]));
+
+        return $key;
     }
 
 
@@ -1498,42 +1710,64 @@ abstract class Pdb implements Loggable
     /**
      * Converts a PDO result set to a common data format:
      *
-     * arr      An array of rows, where each row is an associative array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
+     * - `null`     just a null
      *
-     * arr-num  An array of rows, where each row is a numeric array.
-     *          Use only for very small result sets, e.g. <= 20 rows.
+     * - `count`    the number of rows returned, or if the query is a
+     *              `SELECT COUNT()` this will behave like 'val'
      *
-     * row      A single row, as an associative array
+     * - `arr`      An array of rows, where each row is an associative array.
+     *              Use only for very small result sets, e.g. <= 20 rows.
      *
-     * row-num  A single row, as a numeric array
+     * - `arr-num`  An array of rows, where each row is a numeric array.
+     *              Use only for very small result sets, e.g. <= 20 rows.
      *
-     * map      An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value is the second
+     * - `row`      A single row, as an associative array
+     *              Given an argument 'row:null' or the shorthand 'row?' this
+     *              will return 'null' if the row is empty.
+     *              Otherwise this will throw an RowMissingException.
      *
-     * map-arr  An array of identifier => value pairs, where the
-     *          identifier is the first column in the result set, and the
-     *          value an associative array of name => value pairs
-     *          (if there are multiple subsequent columns)
+     * - `row-num`  A single row, as a numeric array
      *
-     * val      A single value (i.e. the value of the first column of the
-     *          first row)
+     * - `map`      An array of identifier => value pairs, where the
+     *              identifier is the first column in the result set, and the
+     *              value is the second
      *
-     * col      All values from the first column, as a numeric array.
-     *          DO NOT USE with boolean columns; see note at
-     *          http://php.net/manual/en/pdostatement.fetchcolumn.php
+     * - `map-arr`  An array of identifier => value pairs, where the
+     *              identifier is the first column in the result set, and the
+     *              value an associative array of name => value pairs
+     *              (if there are multiple subsequent columns)
+     *              Optionally, one can provide an 'column' argument with the
+     *              type string in the form: 'map-arr:column'.
      *
-     * @param string $type One of 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
-     * @return array For most types
-     * @return string|int|null|array For 'val'
+     * - `val`      A single value (i.e. the value of the first column of the
+     *              first row)
+     *              Given an argument 'val:null' or the shorthand 'val?' this
+     *              will return 'null' if the result is empty.
+     *              Otherwise this will throw an RowMissingException.
+     *
+     * - `col`      All values from the first column, as a numeric array.
+     *              DO NOT USE with boolean columns; see note at
+     *              http://php.net/manual/en/pdostatement.fetchcolumn.php
+     *
+     * Arguments:
+     *
+     * Some types permit arguments in the type string, such as:
+     *  - `row:null`
+     *  - `val:null`
+     *  - `map-arr:{column}`
+     *
+     * This also supports the shorthand `row?` and `val?` forms.
+     *
+     * @param string|array|PdbReturn $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
      */
-    public static function formatRs(PDOStatement $rs, string $type)
+    public static function formatRs(PDOStatement $rs, $type)
     {
-        $nullable = false;
+        $config = PdbReturn::parse($type);
+        $nullable = !$config->throw;
 
-        switch ($type) {
+        switch ($config->type) {
         case 'null':
             return null;
 
@@ -1558,8 +1792,13 @@ abstract class Pdb implements Loggable
 
         case 'row':
             $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row;
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'row-num?':
             $nullable = true;
@@ -1567,8 +1806,13 @@ abstract class Pdb implements Loggable
 
         case 'row-num':
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row;
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'map':
             if ($rs->columnCount() < 2) {
@@ -1583,7 +1827,7 @@ abstract class Pdb implements Loggable
         case 'map-arr':
             $map = array();
             while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = reset($row);
+                $id = $row[$config->map_key] ?? reset($row);
                 $map[$id] = $row;
             }
             return $map;
@@ -1594,8 +1838,13 @@ abstract class Pdb implements Loggable
 
         case 'val':
             $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!$row and !$nullable) throw new RowMissingException('Expected a row');
-            return $row[0];
+            if (!empty($row)) {
+                return $row[0];
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
 
         case 'col':
             $arr = [];
@@ -1605,7 +1854,7 @@ abstract class Pdb implements Loggable
             return $arr;
 
         default:
-            $err = "Unknown return type: {$type}";
+            $err = 'Unknown return type: ' . $config->type;
             throw new InvalidArgumentException($err);
         }
     }
@@ -1628,7 +1877,13 @@ abstract class Pdb implements Loggable
      * });
      * ```
      *
-     * Note, this method will still use the same connection.
+     * Note, this method will still use the same connection. But the separation
+     * of Pdb instances prevents a logging loop.
+     *
+     * The 'debugger' logger will swap itself out while logging.
+     * Theoretically this should prevent any self-logging within the same instance.
+     *
+     * TODO It's possible we could detect loops? Maybe with debug_backtrace()?
      *
      * @param string $query
      * @param array $params
@@ -1661,5 +1916,44 @@ abstract class Pdb implements Loggable
             $fn($query, $params, $result);
             $this->debugger = $fn;
         }
+    }
+
+
+    /**
+     * Return a query with the values substituted into their respective
+     * binding positions.
+     *
+     * __DO NOT EXECUTE THIS STRING.__
+     *
+     * - These values are _not_ properly escaped.
+     * - This is purely for logging.
+     *
+     * @param string $query
+     * @param array $values
+     * @return string
+     */
+    public function prettyQuery(string $query, array $values)
+    {
+        $query = $this->insertPrefixes($query);
+
+        $i = 0;
+        return preg_replace_callback('/\?|:([a-z]\w*)/i', function($m) use ($values, &$i) {
+            $key = isset($m[1]) ? $m[1] : $i++;
+            $item = $values[$key] ?? null;
+
+            if (is_scalar($item)) {
+                return $this->quoteValue($item);
+            }
+
+            if (is_object($item)) {
+                return '[object]';
+            }
+
+            if (is_array($item)) {
+                return '[array]';
+            }
+
+            return '[?]';
+        }, $query);
     }
 }

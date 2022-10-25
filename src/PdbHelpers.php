@@ -61,26 +61,6 @@ class PdbHelpers
 
 
     /**
-     * Split an aliased field into a string pair.
-     *
-     * The second item is null if no alias present.
-     *
-     * @param string $value
-     * @return array [field, alias]
-     */
-    public static function alias(string $value): array
-    {
-        $match = [];
-        if (!preg_match('/^\s*(.+)\s+(?:AS\s+)?([^\s]+)/i', $value, $match)) {
-            return [ trim($value), null ];
-        }
-
-        // TODO also trim quotes.
-        return [ trim($match[1]), trim($match[2]) ];
-    }
-
-
-    /**
      * Normalise a column type to something a bit more consistent.
      *
      * @param string $type
@@ -130,7 +110,7 @@ class PdbHelpers
                     $digit = (int) ($parts[0] ?? 10);
                     $decimal = (int) ($parts[1] ?? 0);
 
-                    return "{$name}({$digit},{$decimal})";
+                    return "DECIMAL({$digit},{$decimal})";
             }
         }
 
@@ -158,39 +138,138 @@ class PdbHelpers
     /**
      * Escapes the special characters % and _ for use in a LIKE clause.
      *
+     * SQL permits one to set the escape character, so the second parameter
+     * here should match that of the query.
+     *
+     * `WHERE x LIKE '^%foo' ESCAPE '^'`
+     *
+     * Use this like:
+     *
+     * ```php
+     * // Be aware this example is not safely quoted for brevity.
+     * // Use prepared queries or `Pdb::quoteValue()`.
+     *
+     * $esc = '^';
+     * $like = likeEscape('%foo', $esc);
+     * $q = "WHERE x LIKE '{$like}' ESCAPE '{$esc}'";
+     * ```
+     *
+     * This defaults to backslash, which is the default for most (all?) databases.
+     *
      * @param string $str
+     * @param string $escape default backslash `\`
      * @return string
      */
-    public static function likeEscape(string $str)
+    public static function likeEscape(string $str, string $escape = '\\'): string
     {
-        return str_replace(['_', '%'], ['\\_', '\\%'], $str);
+        return strtr($str, [
+            '%' => $escape . '%',
+            '_' => $escape . '_',
+        ]);
     }
 
 
     /**
+     * Escape quoted fields.
      *
+     * Such as; `"abc"def" => "abc""def"`
      *
-     * @param string $type
-     * @param bool $strict
-     * @return string|null
+     * @param string $field
+     * @param array $quotes [ left, right ]
+     * @return string quoted field
+     */
+    public static function fieldEscape(string $field, array $quotes): string
+    {
+        [$left, $right] = $quotes;
+
+        return strtr($field, [
+            $left => $left . $left,
+            $right => $right . $right,
+        ]);
+    }
+
+
+    /**
+     * Parse an alias array or field.
+     *
+     * The second item is null if no alias present.
+     *
+     * This converts:
+     * - `[column => alias]` (array)
+     * - `'column as alias'` (string, full syntax)
+     * - `'column alias'` (string, shorthand)
+     *
+     * @param string|string[] $field
+     * @return array [ field, alias ] second param is null if no alias is present.
+     */
+    public static function parseAlias($field): array
+    {
+        if (is_array($field)) {
+            // Pass-through.
+            if (count($field) > 1) {
+                return array_values($field);
+            }
+
+            $value = reset($field);
+            $key = key($field);
+
+            // Flatten it.
+            if (is_numeric($key)) {
+                return [$value, null];
+            }
+
+            // Convert [ column => alias ] to [ column, alias ]
+            return [ $key, $value ];
+        }
+
+        // Convert 'column as alias' to [ column, alias ]
+        $field = trim($field);
+        $field = preg_split('/\s+AS\s+|\s+/i', $field, 2) ?: [];
+        return $field + [null, null];
+    }
+
+
+    /**
+     * Convert SQL types into PHP types.
+     *
+     * This does approximate conversions, e.g.
+     * ```
+     * 'VARCHAR' => 'string'
+     * 'DATE' => 'datetime'
+     * 'SET' => 'array'
+     * ```
+     *
+     * In 'strict' mode this will only return the real types that are returned
+     * from the database, one of `string|int|float`.
+     *
+     * Consider 'non-strict' mode as more of a 'hint' about how to use the value.
+     * Such as;
+     * - 'datetime' can be jammed into `strtotime()`
+     * - 'array' can be exploded into an array
+     *
+     * @param string $type the SQL type
+     * @param bool $strict only return real types
+     * @return string|null the PHP type, null if unknown
      */
     public static function convertDataType(string $type, $strict = false)
     {
         $matches = [];
 
-        if (!preg_match('/(?:
+        if (preg_match('/(?:
             (char|text|binary|blob|^enum|^bit$)|
-            (int|year)|
-            (float|dec|real|double|fixed)|
+            (int|year|timestamp)|
+            (float|dec|real|double|fixed|numeric)|
             (date|time)|
-            (^set)
-        )/ix', $type, $matches)) return null;
-
-        if ($matches[1]) return 'string';
-        if ($matches[2]) return 'int';
-        if ($matches[3]) return 'float';
-        if ($matches[4]) return $strict ? 'string' : 'datetime';
-        if ($matches[5]) return $strict ? 'string' : 'array';
+            (^set|^json)|
+            (bool)
+        )/ix', $type, $matches)) {
+            if ($matches[1]) return 'string';
+            if ($matches[2]) return 'int';
+            if ($matches[3]) return 'float';
+            if ($matches[4]) return $strict ? 'string' : 'datetime';
+            if ($matches[5]) return $strict ? 'string' : 'array';
+            if ($matches[6]) return 'bool';
+        }
 
         return null;
     }
@@ -215,7 +294,7 @@ class PdbHelpers
 
         // SQL escapes ' characters with ''
         // So split on all ',' which aren't followed by a ' character
-        $vals = preg_split("/','(?!')/", $enum_defn);
+        $vals = preg_split("/',\s*'(?!')/", $enum_defn);
 
         // Then convert any '' characters back into ' characters
         foreach ($vals as &$v) {
@@ -363,27 +442,4 @@ class PdbHelpers
         return implode("\n", $lines);
     }
 
-
-    /**
-     * Return a query with the values substituted into their respective
-     * binding positions.
-     *
-     * __DO NOT EXECUTE THIS STRING.__
-     *
-     * These values are _not_ properly escaped.
-     * This is purefuly for logging.
-     *
-     * Note, only works for ? bindings, not :name types.
-     *
-     * @param string $query
-     * @param array $values
-     * @return string
-     */
-    public static function prettyQuery(string $query, array $values)
-    {
-        $i = 0;
-        return preg_replace_callback('/\?/', function() use ($values, &$i) {
-            return preg_replace('/\'/', '\\\'', $values[$i++]);
-        }, $query);
-    }
 }

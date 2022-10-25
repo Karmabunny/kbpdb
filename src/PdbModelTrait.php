@@ -10,6 +10,33 @@ namespace karmabunny\pdb;
 /**
  * This implements basic methods for {@see PdbModelInterface}.
  *
+ * - The application is responsible for implementing `getConnection()`.
+ * - Each concrete model should implement their own `getTableName()`.
+ *
+ * For example:
+ *
+ * ```
+ * // app/Model.php
+ * abstract class Model implements PdbModelInterface
+ * {
+ *    use PdbModelTrait;
+ *
+ *    public static function getConnection(): Pdb
+ *    {
+ *       return MyApp::getPdb();
+ *    }
+ * }
+ *
+ * // app/Models/User.php
+ * class User extends Model
+ * {
+ *    public static function getTableName(): string
+ *    {
+ *       return 'users';
+ *    }
+ * }
+ * ```
+ *
  * @package karmabunny\pdb
  */
 trait PdbModelTrait
@@ -39,15 +66,40 @@ trait PdbModelTrait
      * Create a query for this model.
      *
      * @param array $conditions
-     * @return PdbQuery
+     * @return PdbModelQuery
      */
-    public static function find(array $conditions = []): PdbQuery
+    public static function find(array $conditions = []): PdbModelQuery
+    {
+        return (new PdbModelQuery(static::class))
+            ->where($conditions);
+    }
+
+
+    /**
+     * Loads default values from database table schema.
+     *
+     * This will only set defaults values for properties that are null.
+     *
+     * @return static
+     */
+    public function populateDefaults()
     {
         $pdb = static::getConnection();
         $table = static::getTableName();
-        return (new PdbQuery($pdb))
-            ->find($table, $conditions)
-            ->as(static::class);
+
+        $columns = $pdb->fieldList($table);
+
+        foreach ($columns as $column) {
+            if (
+                property_exists($this, $column->name)
+                and $this->{$column->name} === null
+                and $column->default !== null
+            ) {
+                $this->{$column->name} = $column->default;
+            }
+        }
+
+        return $this;
     }
 
 
@@ -60,7 +112,7 @@ trait PdbModelTrait
     public static function findOne(array $conditions)
     {
         /** @var static */
-        return self::find($conditions)->one();
+        return static::find($conditions)->one();
     }
 
 
@@ -72,7 +124,7 @@ trait PdbModelTrait
      */
     public static function findAll(array $conditions = [])
     {
-        return self::find($conditions)->all();
+        return static::find($conditions)->all();
     }
 
 
@@ -86,6 +138,11 @@ trait PdbModelTrait
      */
     public function save(): bool
     {
+        // Only populate defaults for new models.
+        if (!$this->id) {
+            $this->populateDefaults();
+        }
+
         $pdb = static::getConnection();
         $table = static::getTableName();
         $data = iterator_to_array($this);
@@ -104,13 +161,12 @@ trait PdbModelTrait
     /**
      * Delete this model.
      *
-     * @param bool $soft Ignored.
      * @return bool True if the record was deleted.
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function delete($soft = true): bool
+    public function delete(): bool
     {
         $pdb = static::getConnection();
         $table = static::getTableName();

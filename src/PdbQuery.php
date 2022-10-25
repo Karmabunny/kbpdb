@@ -6,12 +6,16 @@
 
 namespace karmabunny\pdb;
 
+use ArrayIterator;
 use Generator;
 use InvalidArgumentException;
+use JsonSerializable;
+use karmabunny\kb\Arrayable;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
@@ -35,62 +39,93 @@ use ReflectionClass;
  * Shorthands:
  * - `find($table, $conditions)`
  *
+ * Modifiers:
+ * - `as($class)`
+ * - `cache($ttl)`
+ *
  * Terminator methods:
- * - `build(): string`
+ * - `build(): [string, array]`
  * - `value($field): string`
- * - `one($class): array|object`
- * - `all($limit): array`
+ * - `one($throw): array|object`
+ * - `all(): array`
  * - `map($key, $value): array`
  * - `keyed($key): array`
  * - `column(): array`
  * - `count(): int`
+ * - `exists(): bool`
+ * - `iterator(): iterable`
+ * - `batch($size): iterable<array>`
  * - `pdo(): PDO`
+ * - `execute(): mixed`
  *
  * Class builders:
  * - `one(): object`
  * - `all(): object[]`
  * - `keyed(): [key => object]`
+ * - `iterator(): iterable<object>`
+ * - `batch($size): iterable<object[]>`
  *
  * @package karmabunny\pdb
  */
-class PdbQuery
+class PdbQuery implements Arrayable, JsonSerializable
 {
-    /** @var Pdb|null */
+
+    /** @var Pdb */
     protected $pdb;
 
+    /**
+     * - true: use `pdb.config.ttl`
+     * - false: no cache (default)
+     * - int: cache for this many seconds
+     *
+     * @var int|bool
+     */
+    protected $_cache_ttl = false;
+
+    /**
+     * Override the cache key.
+     *
+     * @var string|null
+     */
+    protected $_cache_key = null;
+
     /** @var array list [type, conditions, combine] */
-    private $_where = [];
+    protected $_where = [];
 
     /** @var array list [field, alias] */
-    private $_select = [];
+    protected $_select = [];
 
     /** @var array single [field, alias] */
-    private $_from = [];
+    protected $_from = [];
 
     /** @var array list [type, [table, alias], conditions, combine] */
-    private $_joins = [];
+    protected $_joins = [];
 
     /** @var array list [type, conditions, combine] */
-    private $_having = [];
+    protected $_having = [];
 
     /** @var array list [field, order] */
-    private $_order = [];
+    protected $_order = [];
 
     /** @var string[] */
-    private $_group = [];
+    protected $_group = [];
 
-    private $_limit = 0;
+    /** @var int */
+    protected $_limit = 0;
 
-    private $_offset = 0;
+    /** @var int */
+    protected $_offset = 0;
 
-    private $_as = null;
+    /** @var string|null */
+    protected $_as = null;
 
 
     /**
      *
      * @param Pdb|PdbConfig|array $pdb
+     * @param array $config
      */
-    public function __construct($pdb)
+    public function __construct($pdb, array $config = [])
     {
         if ($pdb instanceof Pdb) {
             $this->pdb = $pdb;
@@ -98,6 +133,49 @@ class PdbQuery
         else {
             $this->pdb = Pdb::create($pdb);
         }
+
+        $this->update($config);
+    }
+
+
+    /**
+     *
+     * @param array $config
+     * @return void
+     */
+    public function update(array $config)
+    {
+        foreach ($config as $key => $item) {
+            if ($key === 'pdb') continue;
+            $this->$key = $item;
+        }
+    }
+
+
+    /**
+     *
+     * @return array
+     */
+    public function toArray(): array
+    {
+        // @phpstan-ignore-next-line : not true.
+        $iterate = new ArrayIterator($this);
+        $array = [];
+
+        foreach ($iterate as $key => $item) {
+            if ($key === 'pdb') continue;
+
+            $array[$key] = $item;
+        }
+
+        return $array;
+    }
+
+
+    /** @inheritdoc */
+    public function jsonSerialize()
+    {
+        return $this->toArray();
     }
 
 
@@ -117,7 +195,7 @@ class PdbQuery
      *
      * Note, this will replace any previous select().
      *
-     * @param string|string[] $fields field => alias
+     * @param string|string[] $fields column => alias
      * @return static
      * @throws InvalidArgumentException
      */
@@ -134,7 +212,7 @@ class PdbQuery
      *
      * This does _not_ replace previous select(), only adds.
      *
-     * @param string ...$fields
+     * @param string|string[] $fields column => alias
      * @return static
      * @throws InvalidArgumentException
      */
@@ -143,13 +221,10 @@ class PdbQuery
         $fields = Arrays::flatten($fields, true);
 
         foreach ($fields as $key => $value) {
-            if (is_numeric($key)) {
-                $this->_select[] = Pdb::validateAlias($value, true);
-            }
-            else {
-                Pdb::validateIdentifierExtended($key, true);
-                $this->_select[] = [$key, $value];
-            }
+            $field = PdbHelpers::parseAlias([$key => $value]);
+            Pdb::validateAlias($field, true);
+
+            $this->_select[] = $field;
         }
 
         return $this;
@@ -164,7 +239,10 @@ class PdbQuery
      */
     public function from($table)
     {
-        $this->_from = Pdb::validateAlias($table);
+        $table = PdbHelpers::parseAlias($table);
+        Pdb::validateAlias($table);
+
+        $this->_from = $table;
         return $this;
     }
 
@@ -178,9 +256,11 @@ class PdbQuery
      * @return static
      * @throws InvalidArgumentException
      */
-    private function _join(string $type, $table, array $conditions, string $combine = 'AND')
+    protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
     {
-        $table = Pdb::validateAlias($table);
+        $table = PdbHelpers::parseAlias($table);
+        Pdb::validateAlias($table);
+
         $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
     }
@@ -298,7 +378,12 @@ class PdbQuery
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields);
-        $this->_group = $fields;
+
+        foreach ($fields as $field) {
+            $field = preg_split('/[, ]+/', $field);
+            array_push($this->_group, ...$field);
+        }
+
         return $this;
     }
 
@@ -312,12 +397,24 @@ class PdbQuery
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields, true);
-        $fields = Arrays::normalizeOptions($fields, 'ASC');
 
         $this->_order = [];
 
         foreach ($fields as $field => $order) {
-            Pdb::validateIdentifierExtended($field);
+
+            if (is_numeric($field)) {
+                $field = explode(' ', $order, 2);
+
+                if (count($field) == 2) {
+                    [$field, $order] = $field;
+                }
+                else {
+                    $field = $field[0];
+                    $order = 'ASC';
+                }
+            }
+
+            Pdb::validateIdentifierExtended($field, true);
             Pdb::validateDirection($order);
             $this->_order[$field] = $order;
         }
@@ -330,6 +427,7 @@ class PdbQuery
      *
      * @param string|string[] $fields
      * @return static
+     * @deprecated use orderBy
      */
     public function order(...$fields)
     {
@@ -341,6 +439,7 @@ class PdbQuery
      *
      * @param string|string[] $fields
      * @return static
+     * @deprecated use groupBy
      */
     public function group(...$fields)
     {
@@ -374,14 +473,68 @@ class PdbQuery
 
     /**
      *
-     * @param string $table
+     * @param string|string[] $table
      * @param array $conditions
      * @return static
      */
-    public function find(string $table, $conditions = [])
+    public function find($table, $conditions = [])
     {
         $this->from($table);
         $this->where($conditions);
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param string|null $class
+     * @return static
+     * @throws InvalidArgumentException
+     */
+    public function as(?string $class)
+    {
+        if (!$class) {
+            $this->_as = null;
+            return $this;
+        }
+
+        if (!class_exists($class)) {
+            throw new InvalidArgumentException("as({$class}) class does not exist");
+        }
+
+        $reflect = new ReflectionClass($class);
+        if (!$reflect->isInstantiable()) {
+            throw new InvalidArgumentException("as({$class}) is not a concrete class");
+        }
+
+        $this->_as = $class;
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param string|null $key
+     * @param int|bool $ttl seconds
+     * @return static
+     */
+    public function cache(string $key = null, $ttl = true)
+    {
+        $this->_cache_key = $key;
+
+        // Enable cache, this uses the global TTL.
+        if ($ttl === true) {
+            $this->_cache_ttl = true;
+        }
+        // Custom TTL value.
+        else if ($ttl) {
+            $this->_cache_ttl = $ttl;
+        }
+        // Disable cache, false/null/0.
+        else {
+            $this->_cache_ttl = false;
+        }
+
         return $this;
     }
 
@@ -400,7 +553,8 @@ class PdbQuery
         if ($this->_select) {
             $fields = [];
 
-            foreach ($this->_select as [$field, $alias]) {
+            foreach ($this->_select as $item) {
+                [$field, $alias] = $item + [null, null];
 
                 if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
                     $field = $this->pdb->quoteField($field);
@@ -420,8 +574,15 @@ class PdbQuery
         }
         // No select? Build a wildcard.
         else {
-            [$from, $alias] = $this->_from;
-            if ($from) {
+            [$from, $alias] = $this->_from + [null, null];
+
+            // Prefer the first alias, then use the table name.
+            // Fallback to just a wildcard and cross your fingers.
+            if ($alias) {
+                $alias = $this->pdb->quoteField($alias);
+                $sql .= "SELECT {$alias}.* ";
+            }
+            else if ($from) {
                 $sql .= "SELECT ~{$from}.* ";
             }
             else {
@@ -431,7 +592,7 @@ class PdbQuery
 
         // Build 'from'.
         if ($this->_from) {
-            [$from, $alias] = $this->_from;
+            [$from, $alias] = $this->_from + [null, null];
 
             $sql .= "FROM ~{$from} ";
             if ($alias) {
@@ -443,7 +604,7 @@ class PdbQuery
 
         // Build joiners.
         foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
-            [$table, $alias] = $table;
+            [$table, $alias] = $table + [null, null];
 
             $sql .= "{$type} JOIN ~{$table} ";
             if ($alias) {
@@ -537,53 +698,28 @@ class PdbQuery
      *
      * @param string|null $field
      * @param bool $throw
-     * @return string
+     * @return string|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function value(string $field = null, bool $throw = true): string
+    public function value(string $field = null, bool $throw = true): ?string
     {
+        $query = clone $this;
+
         if ($field) {
-            $this->select($field);
+            $query->select($field);
         }
 
-        [$sql, $params] = $this->build();
         $type = $throw ? 'val' : 'val?';
-        return $this->pdb->query($sql, $params, $type);
-    }
-
-
-    /**
-     *
-     * @param string|null $class
-     * @return static
-     */
-    public function as(?string $class)
-    {
-        if (!$class) {
-            $this->_as = null;
-            return $this;
-        }
-
-        if (!class_exists($class)) {
-            throw new InvalidArgumentException("as({$class}) class does not exist");
-        }
-
-        $reflect = new ReflectionClass($class);
-        if (!$reflect->isInstantiable()) {
-            throw new InvalidArgumentException("as({$class}) is not a concrete class");
-        }
-
-        $this->_as = $class;
-        return $this;
+        return $query->execute($type);
     }
 
 
     /**
      *
      * @param bool $throw
-     * @return array|object
+     * @return array|object|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
@@ -594,17 +730,8 @@ class PdbQuery
 
         $query->limit(1);
 
-        [$sql, $params] = $query->build();
-
         $type = $throw ? 'row' : 'row?';
-        $item = $this->pdb->query($sql, $params, $type);
-
-        if ($query->_as) {
-            $class = $query->_as;
-            $item = new $class($item);
-        }
-
-        return $item;
+        return $query->execute($type);
     }
 
 
@@ -618,24 +745,7 @@ class PdbQuery
     public function all(): array
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
-
-        if ($query->_as) {
-            $class = $query->_as;
-
-            $items = [];
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                $items[] = new $class($row);
-            }
-        }
-        else {
-            $items = $pdo->fetchAll(PDO::FETCH_ASSOC);
-        }
-
-        $pdo->closeCursor();
-        return $items;
+        return $query->execute('arr');
     }
 
 
@@ -649,9 +759,7 @@ class PdbQuery
     public function iterator(): Generator
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
+        $pdo = $query->execute('pdo');
 
         if ($query->_as) {
             $class = $query->_as;
@@ -667,6 +775,36 @@ class PdbQuery
         }
 
         $pdo->closeCursor();
+    }
+
+
+    /**
+     *
+     * @param int $size
+     * @return Generator<array>
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function batch(int $size): Generator
+    {
+        $query = clone $this;
+
+        $cursor = 0;
+
+        while (true) {
+            $query->offset($cursor);
+            $query->limit($size);
+
+            $results = $query->all();
+
+            if (empty($results)) {
+                break;
+            }
+
+            yield $results;
+            $cursor += $size;
+        }
     }
 
 
@@ -701,8 +839,7 @@ class PdbQuery
             }
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'map');
+        return $query->execute('map');
     }
 
 
@@ -711,7 +848,7 @@ class PdbQuery
      * This ends a query.
      *
      * @param string $key
-     * @return array
+     * @return array [ $key => item ]
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
@@ -719,30 +856,7 @@ class PdbQuery
     public function keyed(string $key): array
     {
         $query = clone $this;
-
-        [$sql, $params] = $query->build();
-        $pdo = $this->pdb->query($sql, $params, 'pdo');
-
-        $map = [];
-
-        // Convert into objects.
-        if ($query->_as) {
-            $class = $query->_as;
-
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                $id = $row[$key];
-                $map[$id] = new $class($row);
-            }
-        }
-        else {
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                $id = $row[$key];
-                $map[$id] = $row;
-            }
-        }
-
-        $pdo->closeCursor();
-        return $map;
+        return $query->execute('map-arr:' . $key);
     }
 
 
@@ -763,8 +877,7 @@ class PdbQuery
             $query->select($field);
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'col');
+        return $query->execute('col');
     }
 
 
@@ -784,8 +897,20 @@ class PdbQuery
             $query->select('count(1)');
         }
 
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'count');
+        return $query->execute('count');
+    }
+
+
+    /**
+     *
+     * @return bool
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function exists(): bool
+    {
+        return $this->count() > 0;
     }
 
 
@@ -799,8 +924,7 @@ class PdbQuery
     public function pdo(): PDOStatement
     {
         $query = clone $this;
-        [$sql, $params] = $query->build();
-        return $this->pdb->query($sql, $params, 'pdo');
+        return $query->execute('pdo');
     }
 
 
@@ -815,6 +939,14 @@ class PdbQuery
     public function execute(string $return_type)
     {
         [$sql, $params] = $this->build();
-        return $this->pdb->query($sql, $params, $return_type);
+
+        $config = PdbReturn::parse([
+            'type' => $return_type,
+            'class' => $this->_as,
+            'cache_ttl' => $this->_cache_ttl,
+            'cache_key' => $this->_cache_key,
+        ]);
+
+        return $this->pdb->query($sql, $params, $config);
     }
 }

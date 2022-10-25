@@ -14,14 +14,20 @@ namespace karmabunny\pdb;
  * - Saving (create/update)
  * - Deleting
  *
- * There are two implementations:
- * - {@see PdbModelTrait} (basic) only required an 'id' field.
- * - {@see PdbModel} (advanced) audit fields, soft deletes + uuids.
+ * {@see PdbModelTrait} for implementations of find() and save().
  *
  * @package karmabunny\pdb
  */
 interface PdbModelInterface
 {
+
+    /**
+     * The connection used queries in this model.
+     *
+     * @return Pdb
+     */
+    public static function getConnection(): Pdb;
+
 
     /**
      * The table name for this model, non-prefixed.
@@ -42,10 +48,9 @@ interface PdbModelInterface
     /**
      * Delete this model.
      *
-     * @param bool $soft 'Delete' without removing the record.
      * @return bool
      */
-    public function delete($soft = true): bool;
+    public function delete(): bool;
 
 
     /**
@@ -53,9 +58,9 @@ interface PdbModelInterface
      *
      * @see {PdbQuery::find()}
      * @param array $conditions
-     * @return PdbQuery
+     * @return PdbModelQuery
      */
-    public static function find(array $conditions = []): PdbQuery;
+    public static function find(array $conditions = []): PdbModelQuery;
 
 
     /**

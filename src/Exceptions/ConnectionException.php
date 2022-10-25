@@ -6,9 +6,10 @@
 
 namespace karmabunny\pdb\Exceptions;
 
+use PDOException;
+
 /**
- * Exception thrown when a database query fails, or gives an empty result set
- * for a query which required a row to be returned
+ * Exception thrown when a connection fails.
  */
 class ConnectionException extends PdbException
 {
@@ -16,6 +17,11 @@ class ConnectionException extends PdbException
     /** @var string */
     public $dsn;
 
+
+    /**
+     * @param string $dsn
+     * @return static
+     */
     public function setDsn(string $dsn)
     {
         $this->dsn = $dsn;

@@ -36,6 +36,7 @@ class PdbCondition
     const IN_SET = 'IN SET';
 
     const COMPOUNDS = [
+        'NOT',
         'OR',
         'AND',
         'XOR',
@@ -165,17 +166,17 @@ class PdbCondition
 
         // Key-style conditions + nested conditions.
         // :: COLUMN => VALUE
-        // :: AND|OR|XOR => CONDITION
+        // :: AND|OR|XOR|NOT => CONDITION
         if (is_string($key)) {
+            $modifier = strtoupper($key);
 
             // Support for nested conditions.
             if (
-                ($nested = strtoupper($key)) and
-                is_array($item) and
-                in_array($nested, ['AND', 'OR', 'XOR'])
+                is_array($item)
+                and in_array($modifier, self::COMPOUNDS)
             ) {
                 $conditions = self::fromArray($item);
-                return new PdbCondition($nested, null, $conditions);
+                return new PdbCondition($modifier, null, $conditions);
             }
 
             // Regular key-style conditions.
@@ -189,7 +190,8 @@ class PdbCondition
             }
         }
 
-        throw new InvalidArgumentException('Invalid condition');
+        $type = gettype($item);
+        throw new InvalidArgumentException("Invalid condition: {$key} => {$type}");
     }
 
 
@@ -221,23 +223,28 @@ class PdbCondition
      */
     public function validate()
     {
-        // This is a string or nested condition.
         // String conditions have little-to-no validation.
-        // Nested conditions are validated deeper down.
-        if ($this->operator === null or $this->column === null) {
+        if ($this->operator === null) {
             return;
         }
 
         if (!is_scalar($this->operator)) {
-            throw new InvalidArgumentException('Invalid unknown: ' . gettype($this->operator));
+            throw new InvalidArgumentException('Invalid operator: ' . gettype($this->operator));
         }
 
-        if (
-            !in_array($this->operator, self::OPERATORS) and
-            !in_array($this->operator, self::COMPOUNDS)
-        ) {
-            throw new InvalidArgumentException('Operator unknown: ' . $this->operator);
+        if ($this->column !== null) {
+            if (!in_array($this->operator, self::OPERATORS)) {
+                throw new InvalidArgumentException('Unknown operator: ' . $this->operator);
+            }
         }
+        else {
+            if (!in_array($this->operator, self::COMPOUNDS)) {
+                throw new InvalidArgumentException('Unknown compound operator: ' . $this->operator);
+            }
+        }
+
+        // Skip the rest for a nested condition.
+        if ($this->column === null) return;
 
         if (!is_scalar($this->column)) {
             throw new InvalidArgumentException('Column name must be scalar, not: ' . gettype($this->column));
@@ -291,13 +298,29 @@ class PdbCondition
             $this->column === null and
             is_array($this->value)
         ) {
-            $sql = [];
+            $operator = $this->operator;
+            $compound = '';
 
-            foreach ($this->value as $condition) {
-                $sql[] = $condition->build($pdb, $values);
+            // Special 'not' operator will perform a nested 'and'.
+            if ($operator === 'NOT') {
+                $operator = 'AND';
+                $compound .= 'NOT ';
             }
 
-            return '(' . implode(" {$this->operator} ", $sql) . ')';
+            $compound .= '(';
+            $first = true;
+
+            foreach ($this->value as $condition) {
+                if (!$first) {
+                    $compound .= " {$operator} ";
+                }
+
+                $compound .= $condition->build($pdb, $values);
+                $first = false;
+            }
+
+            $compound .= ')';
+            return $compound;
         }
 
         $column = $this->column;
@@ -329,14 +352,30 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                if (!$this->bind_type) $values[] = $this->value;
+                if (!$this->bind_type) {
+                    $values[] = $this->value;
+                }
+
                 return "{$column} {$this->operator} {$bind}";
 
             case self::IS:
                 $value = $this->value;
-                if ($value === null) $value = 'NULL';
 
-                if (!in_array($value, ['NULL', 'NOT NULL'])) {
+                if (is_string($value)) {
+                    $value = strtoupper($value);
+
+                    if (!in_array(strtoupper($value), ['NULL', 'NOT NULL'])) {
+                        $value = false;
+                    }
+                }
+                else if ($value === null) {
+                    $value = 'NULL';
+                }
+                else {
+                    $value = false;
+                }
+
+                if ($value === false) {
                     $err = "Operator IS value must be NULL or NOT NULL";
                     throw new InvalidArgumentException($err);
                 }
@@ -344,10 +383,27 @@ class PdbCondition
                 return "{$column} {$this->operator} {$value}";
 
             case self::IS_NOT:
-                if ($this->value !== null) {
+                $value = $this->value;
+
+                if (is_string($value)) {
+                    $value = strtoupper($value);
+
+                    if ($value !== 'NULL') {
+                        $value = false;
+                    }
+                }
+                else if ($value === null) {
+                    $value = 'NULL';
+                }
+                else {
+                    $value = false;
+                }
+
+                if ($value === false) {
                     $err = "Operator IS NOT value must be NULL";
                     throw new InvalidArgumentException($err);
                 }
+
                 return "{$column} {$this->operator} NULL";
 
             case self::BETWEEN:
@@ -407,19 +463,19 @@ class PdbCondition
                 return "{$column} {$this->operator} ({$binds})";
 
             case self::CONTAINS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT('%', {$bind}, '%')";
 
             case self::BEGINS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT({$bind}, '%')";
 
             case self::ENDS:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "{$column} LIKE CONCAT('%', {$bind})";
 
             case self::IN_SET:
-                $bind = $this->likeEscape($pdb, $values);
+                $bind = $this->quoteLike($pdb, $values);
                 return "FIND_IN_SET({$bind}, {$column}) > 0";
 
             default:
@@ -429,7 +485,7 @@ class PdbCondition
     }
 
 
-    private function likeEscape(Pdb $pdb, array &$values)
+    private function quoteLike(Pdb $pdb, array &$values)
     {
         if (!$this->bind_type) {
             $values[] = PdbHelpers::likeEscape($this->value);

@@ -351,10 +351,10 @@ class PdbSync
         }
 
         foreach ($this->warnings as $warning) {
-            $logs[] = [ 'message', $warning ];
+            $log[] = [ 'message', $warning ];
         }
 
-        if (!empty($this->warnings)) {
+        if (!empty($this->fixes)) {
             $log[] = [ 'section', 'Fixes' ];
         }
 
@@ -416,7 +416,7 @@ class PdbSync
         }
 
         // Print fixes as comments.
-        if (!empty($this->warnings)) {
+        if (!empty($this->fixes)) {
             $sql[] = '-- Fixes';
         }
 
@@ -618,7 +618,8 @@ class PdbSync
             }
         }
 
-        if ($key == $table->primary_key) return true;
+        $same = empty(array_diff($key, $table->primary_key));
+        if ($same) return true;
 
         $this->heading = "PRIMARY - Table '{$table->name}";
         $this->changePrimary($table);
@@ -660,13 +661,26 @@ class PdbSync
         $columns = $this->pdb->fieldList($table_name);
         $col = $columns[$column->name] ?? null;
 
+        // Check the column default matches the enum/set.
+        if (
+            $this->pdb instanceof PdbMysql
+            and $column->default
+            and preg_match('/^(ENUM|SET)/', $column->type)
+        ) {
+            $options = PdbHelpers::convertEnumArr($column->type);
+
+            if (!in_array($column->default, $options)) {
+                $this->storeWarning("Invalid default value for column '{$table->name}.{$column->name}'");
+            }
+        }
+
         // If not found, create it.
         if ($col === null) {
             $spec = $this->createSqlColumnSpec($table, $column);
 
             // Search previous names for a match; if found the column is renamed
             foreach ($column->previous_names as $old_name) {
-                if (!isset($column[$old_name])) continue;
+                if (!isset($columns[$old_name])) continue;
 
                 $old_name = $this->pdb->quote($old_name, Pdb::QUOTE_FIELD);
                 $new_name = $this->pdb->quote($column->name, Pdb::QUOTE_FIELD);
