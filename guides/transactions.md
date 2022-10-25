@@ -37,21 +37,21 @@ For example:
 ```php
 $tx = $pdb->transact();
 try {
-   $save1 = $pdb->transact();
-   // do pdb things
+    $save1 = $pdb->transact();
+    // do pdb things
 
-  $save2 = $pdb->transact();
-  // do more things
+    $save2 = $pdb->transact();
+    // do more things
 
-  // save1 _and_ save2 are released.
-  $save1->commit();
+    // save1 _and_ save2 are released.
+    $save1->commit();
 
-  // Commit the transaction.
-  $tx->commit();
+    // Commit the transaction.
+    $tx->commit();
 }
 finally {
-   // Assuming non-strict rollbacks.
-   $tx->rollback();
+    // Assuming non-strict rollbacks.
+    $tx->rollback();
 }
 ```
 
@@ -62,7 +62,7 @@ Goes like this:
 
 ```php
 $pdb->withTransaction(function() use ($pdb) {
-   $pdb->query("etc etc");
+    $pdb->query("etc etc");
 });
 ```
 
