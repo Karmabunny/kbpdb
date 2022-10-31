@@ -146,15 +146,15 @@ class PdbMysql extends Pdb
         $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $key = $row[0];
-            $autoinc = stripos($row[5], 'auto_increment') !== false;
+        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
+            $key = $row['COLUMN_NAME'];
+            $autoinc = stripos($row['EXTRA'], 'auto_increment') !== false;
 
-            $is_nullable = $row[2] == 'YES';
-            $default = $row[4];
+            $is_nullable = $row['IS_NULLABLE'] == 'YES';
+            $default = $row['COLUMN_DEFAULT'];
 
             if ($default) {
-                $default = trim($row[4], '\'');
+                $default = trim($row['COLUMN_DEFAULT'], '\'');
 
                 // - MariaDB will return a 'null' string.
                 // - MySQL will return an actual NULL.
@@ -165,7 +165,7 @@ class PdbMysql extends Pdb
 
                 // Convert numbers.
                 if (is_numeric($default)) {
-                    if (stripos($row[1], 'int')) {
+                    if (stripos($row['COLUMN_TYPE'], 'int')) {
                         $default = (int) $default;
                     } else {
                         $default = (float) $default;
@@ -174,13 +174,13 @@ class PdbMysql extends Pdb
             }
 
             $rows[$key] = new PdbColumn([
-                'name' => $row[0],
-                'type' => $row[1],
+                'name' => $row['COLUMN_NAME'],
+                'type' => $row['COLUMN_TYPE'],
                 'is_nullable' => $is_nullable,
-                'is_primary' => $row[3] == 'PRI',
+                'is_primary' => $row['COLUMN_KEY'] == 'PRI',
                 'default' => $default,
                 'auto_increment' => $autoinc,
-                'extra' => $row[5],
+                'extra' => $row['EXTRA'],
             ]);
         }
 
@@ -210,12 +210,12 @@ class PdbMysql extends Pdb
         $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
-            $columns = explode(',', $row[2]);
+        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
+            $columns = explode(',', $row['COLUMNS']);
 
             $rows[] = new PdbIndex([
-                'name' => $row[0],
-                'type' => $row[1] == 0 ? 'unique' : 'index',
+                'name' => $row['INDEX_NAME'],
+                'type' => $row['NON_UNIQUE'] == 0 ? 'unique' : 'index',
                 'columns' => array_combine($columns, $columns),
             ]);
         }
@@ -257,15 +257,15 @@ class PdbMysql extends Pdb
 
         $rows = [];
 
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
+        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
             $rows[] = new PdbForeignKey([
-                'constraint_name' => $row[0],
-                'from_table' => $this->stripPrefix($row[1]),
-                'from_column' => $row[2],
-                'to_table' => $this->stripPrefix($row[3]),
-                'to_column' => $row[4],
-                'update_rule' => $row[5],
-                'delete_rule' => $row[6],
+                'constraint_name' => $row['CONSTRAINT_NAME'],
+                'from_table' => $this->stripPrefix($row['TABLE_NAME']),
+                'from_column' => $row['COLUMN_NAME'],
+                'to_table' => $this->stripPrefix($row['REFERENCED_TABLE_NAME']),
+                'to_column' => $row['REFERENCED_COLUMN_NAME'],
+                'update_rule' => $row['UPDATE_RULE'],
+                'delete_rule' => $row['DELETE_RULE'],
             ]);
         }
 
@@ -307,16 +307,16 @@ class PdbMysql extends Pdb
         $res = $this->query($q, $params, 'pdo');
         $rows = [];
 
-        while ($row = $res->fetch(PDO::FETCH_NUM)) {
+        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
             $rows[] = new PdbForeignKey([
-                'constraint_name' => $row[0],
-                'from_table' => $this->stripPrefix($row[1]),
-                'from_column' => $row[2],
-                'to_table' => $this->stripPrefix($row[3]),
-                'to_column' => $row[4],
-                'update_rule' => $row[5],
+                'constraint_name' => $row['CONSTRAINT_NAME'],
+                'from_table' => $this->stripPrefix($row['TABLE_NAME']),
+                'from_column' => $row['COLUMN_NAME'],
+                'to_table' => $this->stripPrefix($row['REFERENCED_TABLE_NAME']),
+                'to_column' => $row['REFERENCED_COLUMN_NAME'],
+                'update_rule' => $row['UPDATE_RULE'],
                 // always 'CASCADE'.
-                'delete_rule' => $row[6],
+                'delete_rule' => $row['DELETE_RULE'],
             ]);
         }
 
