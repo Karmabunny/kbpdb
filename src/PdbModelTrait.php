@@ -76,6 +76,30 @@ trait PdbModelTrait
 
 
     /**
+     * Get a list of default values for the database record.
+     *
+     * @return array
+     */
+    public static function getFieldDefaults(): array
+    {
+        $defaults = [];
+
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+        $columns = $pdb->fieldList($table);
+
+        foreach ($columns as $column) {
+            if (!property_exists(static::class, $column->name)) continue;
+            if ($column->default === null) continue;
+
+            $defaults[$column->name] = $column->default;
+        }
+
+        return $defaults;
+    }
+
+
+    /**
      * Loads default values from database table schema.
      *
      * This will only set defaults values for properties that are null.
@@ -84,19 +108,11 @@ trait PdbModelTrait
      */
     public function populateDefaults()
     {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
+        $defaults = static::getFieldDefaults();
 
-        $columns = $pdb->fieldList($table);
-
-        foreach ($columns as $column) {
-            if (
-                property_exists($this, $column->name)
-                and $this->{$column->name} === null
-                and $column->default !== null
-            ) {
-                $this->{$column->name} = $column->default;
-            }
+        foreach ($defaults as $name => $value) {
+            if ($this->{$name} !== null) continue;
+            $this->{$name} = $value;
         }
 
         return $this;
