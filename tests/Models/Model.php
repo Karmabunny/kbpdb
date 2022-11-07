@@ -63,15 +63,15 @@ abstract class Model extends Collection implements PdbModelInterface
 
     protected function _afterSave(array $data)
     {
-        if ($data['date_added']) {
+        if (isset($data['date_added'])) {
             $this->date_added = $data['date_added'];
         }
 
-        if ($data['uid']) {
+        if (isset($data['uid'])) {
             $this->uid = $data['uid'];
         }
 
-        if ($data['date_modified']) {
+        if (isset($data['date_modified'])) {
             $this->date_modified = $data['date_modified'];
         }
     }

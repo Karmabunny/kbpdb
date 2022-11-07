@@ -200,7 +200,10 @@ trait PdbModelTrait
                 $pdb->commit();
             }
 
-            $this->id = $data['id'];
+            if (isset($data['id'])) {
+                $this->id = $data['id'];
+            }
+
             $this->_afterSave($data);
         }
         finally {
