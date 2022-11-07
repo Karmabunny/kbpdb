@@ -32,9 +32,6 @@ abstract class Model extends Collection implements PdbModelInterface
     /** @var string */
     public $date_modified;
 
-    /** @var string|null */
-    public $date_deleted;
-
     /** @var bool */
     public $active = true;
 

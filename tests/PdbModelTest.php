@@ -66,7 +66,6 @@ class PdbModelTest extends TestCase
 
         // Pdo is opened here.
         $this->assertTrue($model->save());
-        $this->assertNull($model->date_deleted);
         $this->assertGreaterThan(0, $model->id);
 
         $id = $model->id;
