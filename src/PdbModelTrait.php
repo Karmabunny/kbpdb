@@ -129,6 +129,18 @@ trait PdbModelTrait
 
 
     /**
+     *
+     * @return array
+     */
+    public function getSaveData(): array
+    {
+        $data = iterator_to_array($this, true);
+        unset($data['id']);
+        return $data;
+    }
+
+
+    /**
      * Save this model.
      *
      * @return bool
@@ -138,23 +150,69 @@ trait PdbModelTrait
      */
     public function save(): bool
     {
-        // Only populate defaults for new models.
-        if (!$this->id) {
-            $this->populateDefaults();
-        }
-
         $pdb = static::getConnection();
         $table = static::getTableName();
-        $data = iterator_to_array($this);
 
-        if ($this->id > 0) {
-            $pdb->update($table, $data, [ 'id' => $this->id ]);
+        $transact = false;
+
+        // Start a transaction but only if there isn't one already.
+        if (!$pdb->inTransaction()) {
+            $pdb->transact();
+            $transact = true;
         }
-        else {
-            $this->id = $pdb->insert($table, $data);
+
+        try {
+            $this->_beforeSave();
+
+            // Only populate defaults for new models.
+            if (!$this->id) {
+                $this->populateDefaults();
+            }
+
+            $data = $this->getSaveData();
+
+            if ($this->id > 0) {
+                if (empty($data)) return true;
+                $pdb->update($table, $data, [ 'id' => $this->id ]);
+            }
+            else {
+                $this->id = $pdb->insert($table, $data);
+                $data['id'] = $this->id;
+            }
+
+            // Punch it.
+            if ($transact and $pdb->inTransaction()) {
+                $pdb->commit();
+            }
+
+            $this->_afterSave($data);
+        }
+        finally {
+            if ($transact and $pdb->inTransaction()) {
+                $pdb->rollback();
+            }
         }
 
         return (bool) $this->id;
+    }
+
+
+    /**
+     *
+     * @return void
+     */
+    protected function _beforeSave()
+    {
+    }
+
+
+    /**
+     *
+     * @param array $data
+     * @return void
+     */
+    protected function _afterSave(array $data)
+    {
     }
 
 
