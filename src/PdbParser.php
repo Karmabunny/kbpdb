@@ -119,9 +119,9 @@ class PdbParser
                 'previous_names' => self::parseStringArray($table_node->getAttribute('previous-names')),
             ]);
 
-            $engine = $table_node->getAttribute('engine');
-            $charset = $table_node->getAttribute('charset');
-            $collate = $table_node->getAttribute('collate');
+            $engine = XML::attr($table_node, 'engine');
+            $charset = XML::attr($table_node, 'charset');
+            $collate = XML::attr($table_node, 'collate');
 
             if ($engine) $table->attributes['engine'] = $engine;
             if ($charset) $table->attributes['charset'] = $charset;
@@ -136,29 +136,17 @@ class PdbParser
 
             $type = self::parseColumnType($node);
 
-            // TODO Update to use kbphp (v2.16) XML.
+            $is_nullable = (bool) XML::attr($node, 'allownull');
+            $auto_increment = (bool) XML::attr($node, 'autoinc');
 
-            $is_nullable = true;
-            if ($node->hasAttribute('allownull')) {
-                $is_nullable = (bool) $node->getAttribute('allownull');
-            }
+            $default = XML::attr($node, 'default');
 
-            $auto_increment = false;
-            if ($node->hasAttribute('autoinc')) {
-                $auto_increment = (bool) $node->getAttribute('autoinc');
-            }
-
-            $default = null;
-            if ($node->hasAttribute('default')) {
-                $default = $node->getAttribute('default');
-
-                // Convert numbers.
-                if (is_numeric($default)) {
-                    if (stripos($type, 'int')) {
-                        $default = (int) $default;
-                    } else {
-                        $default = (float) $default;
-                    }
+            // Convert numbers.
+            if (is_numeric($default)) {
+                if (stripos($type, 'int')) {
+                    $default = (int) $default;
+                } else {
+                    $default = (float) $default;
                 }
             }
 
