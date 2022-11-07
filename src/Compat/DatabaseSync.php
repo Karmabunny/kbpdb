@@ -151,14 +151,17 @@ abstract class DatabaseSync
         foreach ($log as [$type, $body]) {
             switch ($type) {
                 case 'section':
+                    $body = Enc::html($body);
                     echo "<h3>{$body}</h3>\n";
                     break;
 
                 case 'heading':
-                    $body = explode(' - ', $body, 2);
-                    $title = $body[0];
-                    echo "<p class='heading'><b>{$body[0]}</b>";
-                    if (!empty($body[1])) echo $body[1];
+                    [$title, $body] = explode(' - ', $body, 2) + ['', ''];
+                    $title = Enc::html($title);
+                    $body = Enc::html($body);
+
+                    echo "<p class='heading'><b>{$title}</b>";
+                    if (!empty($body)) echo $body;
                     echo "</p>\n";
                     break;
 
@@ -168,6 +171,7 @@ abstract class DatabaseSync
                     break;
 
                 case 'message':
+                    $body = Enc::html($body);
                     echo "<p>{$body}</p>";
                     break;
             }
