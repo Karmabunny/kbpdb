@@ -2,45 +2,81 @@
 
 namespace kbtests\Models;
 
-use ArrayIterator;
+use karmabunny\kb\Collection;
+use karmabunny\kb\Uuid;
 use kbtests\Database;
 use karmabunny\pdb\Pdb;
-use karmabunny\pdb\PdbModel;
-use Traversable;
+use karmabunny\pdb\PdbModelInterface;
+use karmabunny\pdb\PdbModelTrait;
 
 /**
  * A base model.
  *
- * Using this library will typically the user to create something
+ * Using this library will typically require the user to create something
  * like this.
  *
- * The Pdb object needs to be cached _somewhere_.
- *
- * Also good because the PdbModel is pretty lightweight.
  * This is a good chance to combine in Collections and other helpers.
  */
-abstract class Model extends PdbModel
+abstract class Model extends Collection implements PdbModelInterface
 {
+    use PdbModelTrait {
+        getSaveData as private _getSaveData;
+    }
 
-    protected static $pdb;
+    /** @var string */
+    public $uid;
+
+    /** @var string */
+    public $date_added;
+
+    /** @var string */
+    public $date_modified;
+
+    /** @var string|null */
+    public $date_deleted;
+
+    /** @var bool */
+    public $active = true;
 
 
+    /** @inheritdoc */
     public static function getConnection(): Pdb
     {
         return Database::getConnection();
     }
 
 
-    public function __construct($config = [])
+    public function getSaveData(): array
     {
-        foreach ($config as $key => $value) {
-            $this->$key = $value;
+        $data = $this->_getSaveData();
+        $now = Pdb::now();
+
+        if (!$this->id) {
+            $data['date_added'] = $now;
+            $data['uid'] = Uuid::uuid4();
+        }
+
+        if (!empty($data)) {
+            $data['date_modified'] = $now;
+        }
+
+        return $data;
+    }
+
+
+    protected function _afterSave(array $data)
+    {
+        if ($data['date_added']) {
+            $this->date_added = $data['date_added'];
+        }
+
+        if ($data['uid']) {
+            $this->uid = $data['uid'];
+        }
+
+        if ($data['date_modified']) {
+            $this->date_modified = $data['date_modified'];
         }
     }
 
-
-    public function getIterator(): Traversable
-    {
-        return new ArrayIterator($this);
-    }
 }
