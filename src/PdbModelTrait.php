@@ -192,8 +192,7 @@ trait PdbModelTrait
                 $pdb->update($table, $data, [ 'id' => $this->id ]);
             }
             else {
-                $this->id = $pdb->insert($table, $data);
-                $data['id'] = $this->id;
+                $data['id'] = $pdb->insert($table, $data);
             }
 
             // Punch it.
@@ -201,6 +200,7 @@ trait PdbModelTrait
                 $pdb->commit();
             }
 
+            $this->id = $data['id'];
             $this->_afterSave($data);
         }
         finally {
