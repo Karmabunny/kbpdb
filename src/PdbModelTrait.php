@@ -6,6 +6,8 @@
 
 namespace karmabunny\pdb;
 
+use karmabunny\kb\Reflect;
+use Traversable;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -145,12 +147,18 @@ trait PdbModelTrait
 
 
     /**
+     * Data to be inserted or updated.
      *
-     * @return array
+     * This is a perfect spot to add generated values like audit rows
+     * (date_added, date_modified, uid, etc).
+     *
+     * Override this to implement dirty-property behaviour.
+     *
+     * @return array [ column => value ]
      */
     public function getSaveData(): array
     {
-        $data = iterator_to_array($this, true);
+        $data = Reflect::getProperties($this);
         unset($data['id']);
         return $data;
     }
@@ -217,6 +225,7 @@ trait PdbModelTrait
 
 
     /**
+     * Performed before all save actions.
      *
      * @return void
      */
@@ -226,8 +235,9 @@ trait PdbModelTrait
 
 
     /**
+     * Performed after all save actions.
      *
-     * @param array $data
+     * @param array $data as created by {@see getSaveData()}
      * @return void
      */
     protected function _afterSave(array $data)
