@@ -275,8 +275,6 @@ abstract class StaticPdb
      */
     public static function getConnection($type = 'RW')
     {
-        // TODO finish this properly.
-
         try {
             $pdb = static::getInstance($type);
             return $pdb->getConnection();

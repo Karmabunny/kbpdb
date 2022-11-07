@@ -1021,7 +1021,7 @@ abstract class Pdb implements Loggable
      * Get adapter specific table information.
      *
      * @param string $table non-prefixed
-     * @return array key => value
+     * @return array [ key => value]
      */
     public abstract function getTableAttributes(string $table);
 

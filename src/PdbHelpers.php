@@ -308,9 +308,9 @@ class PdbHelpers
     /**
      * Create a bunch of placeholder bind thingos.
      *
-     * This accepts a number or a keyed array.
+     * This accepts a number or an array of keys.
      * - If a number, it will create that many placeholders.
-     * - If a keyed array, it will create placeholders for each key.
+     * - If an array of keys, it will create placeholders for each item.
      *
      * Examples:
      * - `(int) 4 => '?, ?, ?, ?'`
