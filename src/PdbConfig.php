@@ -10,6 +10,7 @@ use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Inflector;
 use karmabunny\kb\InflectorInterface;
+use karmabunny\kb\Reflect;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Cache\PdbStaticCache;
 use PDO;
@@ -237,6 +238,26 @@ class PdbConfig extends Collection
      * @var PDO|null
      */
     public $_pdo;
+
+
+    /** @inheritdoc */
+    public function __serialize(): array
+    {
+        $data = Reflect::getProperties($this);
+
+        unset($data['_pdo']);
+        unset($data['formatters']);
+
+        if (is_object($data['cache'])) {
+            unset($data['cache']);
+        }
+
+        if (is_object($data['reflector'])) {
+            unset($data['inflector']);
+        }
+
+        return $data;
+    }
 
 
     /**

@@ -12,6 +12,7 @@ use karmabunny\kb\InflectorInterface;
 use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
+use karmabunny\kb\NotSerializable;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Exceptions\QueryException;
@@ -31,14 +32,14 @@ use karmabunny\pdb\Models\PdbReturn;
 use PDO;
 use PDOException;
 use PDOStatement;
-
+use Serializable;
 
 /**
  * Class for doing database queries via PDO (PDO Database => Pdb)
  *
  * @package karmabunny\pdb
  */
-abstract class Pdb implements Loggable
+abstract class Pdb implements Loggable, Serializable, NotSerializable
 {
     use LoggerTrait;
 
@@ -147,6 +148,13 @@ abstract class Pdb implements Loggable
         // Create a cache instance.
         // die(print_r($this->config->cache, true));
         $this->cache = Configure::configure($this->config->cache, PdbCache::class);
+    }
+
+
+    /** @inheritdoc */
+    public function __serialize(): array
+    {
+        return [];
     }
 
 
