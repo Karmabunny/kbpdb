@@ -102,7 +102,7 @@ class PdbConfig extends Collection
      *
      * @var string
      */
-    public $prefix = 'bloom_';
+    public $prefix = 'pdb_';
 
     /**
      * Connection charset, default utf8.
