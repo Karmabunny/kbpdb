@@ -13,6 +13,7 @@ use karmabunny\kb\Log;
 use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\NotSerializable;
+use karmabunny\kb\SerializeTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Exceptions\QueryException;
@@ -42,6 +43,7 @@ use Serializable;
 abstract class Pdb implements Loggable, Serializable, NotSerializable
 {
     use LoggerTrait;
+    use SerializeTrait;
 
     const UUID_NAMESPACE = '3afdd7bd-b030-4c46-a3b6-f4d600670865';
 
