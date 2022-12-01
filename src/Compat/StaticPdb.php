@@ -29,7 +29,7 @@ use PDOStatement;
  * @method static void setTablePrefixOverride(string $table, string $prefix)
  * @method static string getPrefix()
  * @method static PDOStatement prepare(string $query)
- * @method static array|string|int|null|PDOStatement execute(PDOStatement $st, array $params, string $return_type)
+ * @method static array|string|int|null|PDOStatement execute(PDOStatement $st, array $params, string|array|PdbReturn $config)
  * @method static array|string|int|null formatRs(PDOStatement $rs, string $type)
  * @method static void validateIdentifier(string $name)
  * @method static void validateIdentifierExtended(string $name)
@@ -221,20 +221,20 @@ abstract class StaticPdb
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public static function query(string $query, array $params, string $return_type)
+    public static function query(string $query, array $params, $config)
     {
         $pdb = static::getInstance();
         $st = $pdb->prepare($query);
 
         // This doesn't exist the new Pdb, instead use prepare().
         // This exists only for backward compat.
-        if ($return_type == 'prep') {
+        if ($config === 'prep') {
             if (count($params) !== 0) {
                 $err = 'You cannot provide parameters when preparing statements';
                 throw new InvalidArgumentException($err);
@@ -243,7 +243,7 @@ abstract class StaticPdb
             return $st;
         }
 
-        return $pdb->execute($st, $params, $return_type);
+        return $pdb->execute($st, $params, $config);
     }
 
 
@@ -253,15 +253,15 @@ abstract class StaticPdb
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string $return_type 'pdo', 'count', 'null', or a format type {@see Pdb::formatRs}
+     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public static function q($query, array $params, string $return_type)
+    public static function q($query, array $params, $config)
     {
-        return static::query($query, $params, $return_type);
+        return static::query($query, $params, $config);
     }
 
 
