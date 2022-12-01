@@ -428,7 +428,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function query(string $query, array $params, $config)
     {
-        $config = clone PdbReturn::parse($config);
+        if ($config instanceof PdbReturn) {
+            $config = clone $config;
+        }
+        else {
+            $config = PdbReturn::parse($config);
+        }
 
         // Build a key but also store on the config so we don't serialize the
         // query twice (here and in 'execute').
