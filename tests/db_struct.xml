@@ -27,4 +27,16 @@
             <col name="uid" />
         </index>
     </table>
+
+
+    <table name="logs">
+        <column name="id" type="INT UNSIGNED" allownull="0" autoinc="1"/>
+        <column name="date_added" type="DATETIME" allownull="0"/>
+
+        <column name="data" type="TEXT" allownull="0"/>
+
+        <primary>
+            <col name="id"/>
+        </primary>
+    </table>
 </database>

@@ -814,19 +814,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             throw new InvalidArgumentException($err);
         }
 
-        $columns = [];
-        $values = [];
+        [$cols, $values] = $this->buildUpdateSet($data);
 
-        foreach ($data as $col => $val) {
-            static::validateIdentifier($col);
-            $columns[] = $col;
-            $values[] = $val;
-        }
-
-        $columns = implode(', ', $this->quoteAll($columns, Pdb::QUOTE_FIELD));
-        $binds = PdbHelpers::bindPlaceholders(count($values));
-        $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
-
+        $q = "INSERT INTO ~{$table} SET {$cols}";
         $this->query($q, $values, 'count');
         return $this->last_insert_id;
     }
@@ -854,20 +844,42 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             throw new InvalidArgumentException($err);
         }
 
+        [$cols, $values] = $this->buildUpdateSet($data);
+
+        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
+        $q .= $this->buildClause($conditions, $values);
+        return $this->query($q, $values, 'count');
+    }
+
+
+    /**
+     * Build the SET clause for an UPDATE/INSERT query.
+     *
+     * @param array $data [ col => val ]
+     * @return array [ string, values[] ]
+     * @throws InvalidArgumentException
+     */
+    protected function buildUpdateSet(array $data): array
+    {
         $cols = [];
         $values = [];
 
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
-            $cols[] = $this->quoteField($col) . ' = ?';
+
+            if ($val instanceof PdbDataBinderInterface) {
+                $cols[] = $val->getBindingQuery($this, $col);
+            }
+            else {
+                $cols[] = $this->quoteField($col) . ' = ?';
+            }
+
             $values[] = $val;
         }
 
         $cols = implode(', ', $cols);
 
-        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
-        $q .= $this->buildClause($conditions, $values);
-        return $this->query($q, $values, 'count');
+        return [$cols, $values];
     }
 
 
@@ -1472,12 +1484,18 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Formatters convert objects to saveable types, such as a string or an integer
      *
      * @param mixed $value The value to format
-     * @return string The formatted value
+     * @return mixed The formatted value
      * @throws InvalidArgumentException
      */
     protected function format($value)
     {
-        if (!is_object($value)) return $value;
+        if ($value instanceof PdbDataBinderInterface) {
+            $value = $value->getBindingValue();
+        }
+
+        if (!is_object($value)) {
+            return $value;
+        }
 
         $class_name = get_class($value);
         $func = $this->config->formatters[$class_name] ?? null;
