@@ -722,19 +722,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             throw new InvalidArgumentException($err);
         }
 
-        $columns = [];
-        $values = [];
+        [$cols, $values] = $this->buildUpdateSet($data);
 
-        foreach ($data as $col => $val) {
-            static::validateIdentifier($col);
-            $columns[] = $col;
-            $values[] = $val;
-        }
-
-        $columns = implode(', ', $this->quoteAll($columns, Pdb::QUOTE_FIELD));
-        $binds = PdbHelpers::bindPlaceholders(count($values));
-        $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
-
+        $q = "INSERT INTO ~{$table} SET {$cols}";
         $this->query($q, $values, 'count');
         return $this->last_insert_id;
     }
@@ -762,20 +752,42 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             throw new InvalidArgumentException($err);
         }
 
+        [$cols, $values] = $this->buildUpdateSet($data);
+
+        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
+        $q .= $this->buildClause($conditions, $values);
+        return $this->query($q, $values, 'count');
+    }
+
+
+    /**
+     * Build the SET clause for an UPDATE/INSERT query.
+     *
+     * @param array $data [ col => val ]
+     * @return array [ string, values[] ]
+     * @throws InvalidArgumentException
+     */
+    protected function buildUpdateSet(array $data): array
+    {
         $cols = [];
         $values = [];
 
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
-            $cols[] = $this->quoteField($col) . ' = ?';
+
+            if ($val instanceof PdbDataModifierInterface) {
+                $cols[] = $val->getBinding($this, $col);
+            }
+            else {
+                $cols[] = $this->quoteField($col) . ' = ?';
+            }
+
             $values[] = $val;
         }
 
         $cols = implode(', ', $cols);
 
-        $q = "UPDATE ~{$table} SET {$cols} WHERE ";
-        $q .= $this->buildClause($conditions, $values);
-        return $this->query($q, $values, 'count');
+        return [$cols, $values];
     }
 
 
