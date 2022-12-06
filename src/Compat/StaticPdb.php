@@ -9,6 +9,7 @@ use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbReturn;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
