@@ -1,12 +1,12 @@
 <?php
 
-use karmabunny\pdb\Modifiers\ConcatModifier;
-use karmabunny\pdb\Modifiers\JsonLinesModifier;
+use karmabunny\pdb\DataBinders\ConcatDataBinder;
+use karmabunny\pdb\DataBinders\JsonLinesBinder;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
 
 
-class PdbDataModifierTest extends TestCase
+class PdbDataBinderTest extends TestCase
 {
 
     public function setUp(): void
@@ -22,7 +22,7 @@ class PdbDataModifierTest extends TestCase
         // Initial insert.
         $data = [
             'date_added' => $pdb->now(),
-            'data' => new ConcatModifier('foo'),
+            'data' => new ConcatDataBinder('foo'),
         ];
         $id = $pdb->insert('logs', $data);
         $this->assertGreaterThan(0, $id);
@@ -31,7 +31,7 @@ class PdbDataModifierTest extends TestCase
         $this->assertEquals('foo', $row['data']);
 
         // Update with more data.
-        $data = [ 'data' => new ConcatModifier('bar') ];
+        $data = [ 'data' => new ConcatDataBinder('bar') ];
         $nextid = $pdb->upsert('logs', $data, ['id' => $id]);
 
         $this->assertEquals($id, $nextid);
@@ -54,25 +54,25 @@ class PdbDataModifierTest extends TestCase
         // Initial insert.
         $data = [
             'date_added' => $pdb->now(),
-            'data' => new JsonLinesModifier($items[0]),
+            'data' => new JsonLinesBinder($items[0]),
         ];
         $id = $pdb->insert('logs', $data);
         $this->assertGreaterThan(0, $id);
 
         $row = $pdb->get('logs', $id);
-        $lines = JsonLinesModifier::parseJsonLines($row['data']);
+        $lines = JsonLinesBinder::parseJsonLines($row['data']);
         $lines = iterator_to_array($lines);
         $this->assertEquals($items[0], $lines[0]);
 
         // Update with more data.
-        $data = [ 'data' => new JsonLinesModifier($items[1]) ];
+        $data = [ 'data' => new JsonLinesBinder($items[1]) ];
         $nextid = $pdb->upsert('logs', $data, ['id' => $id]);
 
         $this->assertEquals($id, $nextid);
 
         // Check it.
         $row = $pdb->get('logs', $id);
-        $lines = JsonLinesModifier::parseJsonLines($row['data']);
+        $lines = JsonLinesBinder::parseJsonLines($row['data']);
         $lines = iterator_to_array($lines);
 
         $this->assertEquals($items, $lines);

@@ -775,8 +775,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
 
-            if ($val instanceof PdbDataModifierInterface) {
-                $cols[] = $val->getBinding($this, $col);
+            if ($val instanceof PdbDataBinderInterface) {
+                $cols[] = $val->getBindingQuery($this, $col);
             }
             else {
                 $cols[] = $this->quoteField($col) . ' = ?';
@@ -1397,8 +1397,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function format($value)
     {
-        if ($value instanceof PdbDataModifierInterface) {
-            $value = $value->format();
+        if ($value instanceof PdbDataBinderInterface) {
+            $value = $value->getBindingValue();
         }
 
         if (!is_object($value)) {

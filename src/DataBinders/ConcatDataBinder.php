@@ -1,9 +1,9 @@
 <?php
 
-namespace karmabunny\pdb\Modifiers;
+namespace karmabunny\pdb\DataBinders;
 
 use karmabunny\pdb\Pdb;
-use karmabunny\pdb\PdbDataModifierInterface;
+use karmabunny\pdb\PdbDataBinderInterface;
 
 /**
  * Wrap an item with a 'concat' modifier.
@@ -11,7 +11,7 @@ use karmabunny\pdb\PdbDataModifierInterface;
  * Such as:
  *
  * ```
- * $data = [ 'item' => new ConcatModifier($item) ];
+ * $data = [ 'item' => new ConcatDataBinder($item) ];
  * $pdb->update('table', $data, ['id' => $id]);
  * ```
  *
@@ -21,7 +21,7 @@ use karmabunny\pdb\PdbDataModifierInterface;
  *
  * @package karmabunny\pdb
  */
-class ConcatModifier implements PdbDataModifierInterface
+class ConcatDataBinder implements PdbDataBinderInterface
 {
 
     /** @var mixed */
@@ -38,14 +38,14 @@ class ConcatModifier implements PdbDataModifierInterface
 
 
     /** @inheritdoc */
-    public function format()
+    public function getBindingValue()
     {
         return $this->value;
     }
 
 
     /** @inheritdoc */
-    public function getBinding(Pdb $pdb, string $column): string
+    public function getBindingQuery(Pdb $pdb, string $column): string
     {
         $column = $pdb->quoteField($column);
         return "{$column} = CONCAT({$column}, ?)";

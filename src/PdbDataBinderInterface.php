@@ -11,26 +11,27 @@ namespace karmabunny\pdb;
  *
  * When using Pdb insert/update objects implementing these can override
  * the behaviour of the binding SQL statements of the query using
- * the `getBinding()` method.
+ * the `getBindingQuery()` method.
  *
  * The value is still bound using prepared statements. This interface also
- * lets one modify the value before binding using the `format()` method.
+ * lets one modify the value before binding using the `getBindingValue()` method.
  *
  * @package karmabunny\pdb
  */
-interface PdbDataModifierInterface
+interface PdbDataBinderInterface
 {
 
     /**
-     * Format the value before binding to a query.
+     * Get the value to bind to a query.
      *
-     * Despite being labelled 'format' this can simply pass through through any
-     * type of value. If the result is an object, even itself, it can be still
+     * This provides an opportunity to format the value, or not.
+     *
+     * If the result is an object, even itself, it can be still
      * be formatted by the global formatters in {@see PdbConfig}.
      *
      * @return mixed
      */
-    public function format();
+    public function getBindingValue();
 
 
     /**
@@ -48,5 +49,5 @@ interface PdbDataModifierInterface
      * @param string $column
      * @return string
      */
-    public function getBinding(Pdb $pdb, string $column): string;
+    public function getBindingQuery(Pdb $pdb, string $column): string;
 }

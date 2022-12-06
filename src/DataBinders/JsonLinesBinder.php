@@ -1,23 +1,23 @@
 <?php
 
-namespace karmabunny\pdb\Modifiers;
+namespace karmabunny\pdb\DataBinders;
 
 use JsonException;
 use karmabunny\kb\Json;
 use karmabunny\pdb\Pdb;
-use karmabunny\pdb\PdbDataModifierInterface;
+use karmabunny\pdb\PdbDataBinderInterface;
 
 /**
- * Wrap a item with a JSON lines 'concat' modifier.
+ * Wrap a item with a JSON lines 'concat' binding.
  *
- * This modifies the update/insert query like {@see ConcatPdbType} but also
+ * This modifies the update/insert query like {@see ConcatBinder} but also
  * encodes the value with JSON and prepends a newline character.
  *
  * Note, if the item fails to encode - this will throw a `JsonException`.
  *
  * @package karmabunny\pdb
  */
-class JsonLinesModifier implements PdbDataModifierInterface
+class JsonLinesBinder implements PdbDataBinderInterface
 {
 
     /** @var mixed */
@@ -39,14 +39,14 @@ class JsonLinesModifier implements PdbDataModifierInterface
 
 
     /** @inheritdoc */
-    public function format()
+    public function getBindingValue()
     {
         return Json::encode($this->value, $this->flags);
     }
 
 
     /** @inheritdoc */
-    public function getBinding(Pdb $pdb, string $column): string
+    public function getBindingQuery(Pdb $pdb, string $column): string
     {
         $column = $pdb->quoteField($column);
         return "{$column} = CONCAT({$column}, ?, '\n')";
