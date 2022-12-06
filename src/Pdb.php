@@ -45,47 +45,128 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     use LoggerTrait;
     use SerializeTrait;
 
+    /**
+     * The default namespace for UUIDv5 generation.
+     * @see generateUid()
+     */
     const UUID_NAMESPACE = '3afdd7bd-b030-4c46-a3b6-f4d600670865';
 
+    /**
+     * @see quote()
+     * @see quoteAll()
+     */
     const QUOTE_VALUE = 'value';
 
+    /**
+     * @see quote()
+     * @see quoteAll()
+     */
     const QUOTE_FIELD = 'field';
 
-
+    /**
+     * Return a PDOStatement object.
+     */
     const RETURN_PDO = 'pdo';
 
+    /**
+     * Return nothing.
+     */
     const RETURN_NULL = 'null';
 
+    /**
+     * The number of rows returned, or if the query is a
+     * `SELECT COUNT()` this will behave like 'val'.
+     */
     const RETURN_COUNT = 'count';
 
+    /**
+     * An array of rows, where each row is an associative array.
+     */
     const RETURN_ARR = 'arr';
 
+    /**
+     * An array of rows, where each row is a numeric array.
+     */
     const RETURN_ARR_NUM = 'arr-num';
 
+    /**
+     * A single row, as an associative array.
+     *
+     * Given an argument `'row:null'` or the shorthand `'row?'` this will
+     * return 'null' if the row is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_ROW = 'row';
 
+    /**
+     * A single row, as a numeric array
+     *
+     * Given an argument `'row-num:null'` or the shorthand `'row-num?'` this
+     * will return 'null' if the row is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_ROW_NUM = 'row-num';
 
+    /**
+     * An array of `[identifier => value]` pairs, where the identifier is the
+     * first column in the result set, and the value is the second.
+     */
     const RETURN_MAP = 'map';
 
+    /**
+     * An array of `[identifier => value]` pairs, where the identifier is the
+     * first column in the result set, and the value an associative array of
+     * `[name => value]` pairs.
+     *
+     * Optionally, one can provide an 'column' argument with the type string
+     * in the form: `'map-arr:column'`.
+     */
     const RETURN_MAP_ARR = 'map-arr';
 
+    /**
+     * A single value (i.e. the value of the first column of the first row).
+     *
+     * Given an argument `'val:null'` or the shorthand `'val?'` this will
+     * return 'null' if the result is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_VAL = 'val';
 
+    /**
+     * All values from the first column, as a numeric array.
+     *
+     * DO NOT USE with boolean columns; see note at
+     * http://php.net/manual/en/pdostatement.fetchcolumn.php
+     */
     const RETURN_COL = 'col';
 
+    /**
+     * A single value, or 'null' if the result is empty.
+     */
     const RETURN_TRY_VAL = 'val?';
 
+    /**
+     * A single associative row, or 'null' if the result is empty.
+     */
     const RETURN_TRY_ROW = 'row?';
 
+    /**
+     * A single numeric row, or 'null' if the result is empty.
+     */
     const RETURN_TRY_ROW_NUM = 'row-num?';
 
+    /**
+     * A subset of return types that are nullable.
+     */
     const RETURN_NULLABLE = [
         self::RETURN_TRY_VAL,
         self::RETURN_TRY_ROW,
         self::RETURN_TRY_ROW_NUM,
     ];
 
+    /**
+     * All valid return types, without arguments.
+     */
     const RETURN_TYPES = [
         self::RETURN_PDO,
         self::RETURN_NULL,
