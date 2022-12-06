@@ -1,4 +1,8 @@
 <?php
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2022 Karmabunny
+ */
 
 namespace karmabunny\pdb\Models;
 
@@ -7,6 +11,7 @@ use karmabunny\kb\DataObject;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
+use PDO;
 use PDOStatement;
 
 /**
@@ -215,7 +220,98 @@ class PdbReturn extends DataObject
      */
     public function format(PDOStatement $rs)
     {
-        return Pdb::formatRs($rs, $this);
+        $nullable = !$this->throw;
+
+        switch ($this->type) {
+        case 'null':
+            return null;
+
+        case 'count':
+            // Using SQL count() is always faster than rowCount().
+            if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
+                $row = $rs->fetch(PDO::FETCH_NUM);
+                return $row[0] ?? 0;
+            }
+
+            return $rs->rowCount();
+
+        case 'arr':
+            return $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        case 'arr-num':
+            return $rs->fetchAll(PDO::FETCH_NUM);
+
+        case 'row?':
+            $nullable = true;
+            // fall-through.
+
+        case 'row':
+            $row = $rs->fetch(PDO::FETCH_ASSOC);
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'row-num?':
+            $nullable = true;
+            // fall-through.
+
+        case 'row-num':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'map':
+            if ($rs->columnCount() < 2) {
+                throw new InvalidArgumentException('Two columns required');
+            }
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
+                $map[$row[0]] = $row[1];
+            }
+            return $map;
+
+        case 'map-arr':
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                $id = $row[$this->map_key] ?? reset($row);
+                $map[$id] = $row;
+            }
+            return $map;
+
+        case 'val?':
+            $nullable = true;
+            // fall-through.
+
+        case 'val':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!empty($row)) {
+                return $row[0];
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'col':
+            $arr = [];
+            while (($col = $rs->fetchColumn(0)) !== false) {
+                $arr[] = $col;
+            }
+            return $arr;
+
+        default:
+            $err = 'Unknown return type: ' . $this->type;
+            throw new InvalidArgumentException($err);
+        }
     }
 
 

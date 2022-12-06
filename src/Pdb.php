@@ -1539,9 +1539,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * - `row`      A single row, as an associative array
      *              Given an argument 'row:null' or the shorthand 'row?' this
      *              will return 'null' if the row is empty.
-     *              Otherwise this will throw an RowMissingException.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `row-num`  A single row, as a numeric array
+     *              Given an argument 'row-num:null' or the shorthand 'row?'
+     *              this will return 'null' if the row is empty.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `map`      An array of identifier => value pairs, where the
      *              identifier is the first column in the result set, and the
@@ -1558,7 +1561,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *              first row)
      *              Given an argument 'val:null' or the shorthand 'val?' this
      *              will return 'null' if the result is empty.
-     *              Otherwise this will throw an RowMissingException.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `col`      All values from the first column, as a numeric array.
      *              DO NOT USE with boolean columns; see note at
@@ -1573,105 +1576,22 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * This also supports the shorthand `row?` and `val?` forms.
      *
-     * @param string|array|PdbReturn $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @param string|array|PdbReturn $config One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
      * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
+     * @throws InvalidArgumentException If the type is invalid
      */
-    public static function formatRs(PDOStatement $rs, $type)
+    public static function formatRs(PDOStatement $rs, $config)
     {
-        $config = PdbReturn::parse($type);
-        $nullable = !$config->throw;
-
-        switch ($config->type) {
-        case 'null':
-            return null;
-
-        case 'count':
-            // Using SQL count() is always faster than rowCount().
-            if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
-                $row = $rs->fetch(PDO::FETCH_NUM);
-                return $row[0] ?? 0;
-            }
-
-            return $rs->rowCount();
-
-        case 'arr':
-            return $rs->fetchAll(PDO::FETCH_ASSOC);
-
-        case 'arr-num':
-            return $rs->fetchAll(PDO::FETCH_NUM);
-
-        case 'row?':
-            $nullable = true;
-            // fall-through.
-
-        case 'row':
-            $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!empty($row)) {
-                return $row;
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'row-num?':
-            $nullable = true;
-            // fall-through.
-
-        case 'row-num':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!empty($row)) {
-                return $row;
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'map':
-            if ($rs->columnCount() < 2) {
-                throw new InvalidArgumentException('Two columns required');
-            }
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
-                $map[$row[0]] = $row[1];
-            }
-            return $map;
-
-        case 'map-arr':
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = $row[$config->map_key] ?? reset($row);
-                $map[$id] = $row;
-            }
-            return $map;
-
-        case 'val?':
-            $nullable = true;
-            // fall-through.
-
-        case 'val':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!empty($row)) {
-                return $row[0];
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'col':
-            $arr = [];
-            while (($col = $rs->fetchColumn(0)) !== false) {
-                $arr[] = $col;
-            }
-            return $arr;
-
-        default:
-            $err = 'Unknown return type: ' . $config->type;
-            throw new InvalidArgumentException($err);
+        if (!is_object($config)) {
+            $config = PdbReturn::parse($config);
         }
+
+        if (!($config instanceof PdbReturn)) {
+            throw new InvalidArgumentException('Invalid return type: ' . get_class($config));
+        }
+
+        return $config->format($rs);
     }
 
 
