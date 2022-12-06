@@ -1392,12 +1392,18 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Formatters convert objects to saveable types, such as a string or an integer
      *
      * @param mixed $value The value to format
-     * @return string The formatted value
+     * @return mixed The formatted value
      * @throws InvalidArgumentException
      */
     protected function format($value)
     {
-        if (!is_object($value)) return $value;
+        if ($value instanceof PdbDataModifierInterface) {
+            $value = $value->format();
+        }
+
+        if (!is_object($value)) {
+            return $value;
+        }
 
         $class_name = get_class($value);
         $func = $this->config->formatters[$class_name] ?? null;
