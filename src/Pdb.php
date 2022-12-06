@@ -476,7 +476,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -501,7 +501,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -509,7 +509,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function query(string $query, array $params, $config)
     {
-        if ($config instanceof PdbReturn) {
+        if ($config instanceof PdbReturnInterface) {
             $config = clone $config;
         }
         else {
@@ -519,7 +519,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         // Build a key but also store on the config so we don't serialize the
         // query twice (here and in 'execute').
         $key = $this->getCacheKey($query, $params, $config);
-        $config->cache_key = $key;
+
+        // Perf hack: we can skip the serialisation step in execute() here
+        if ($config instanceof PdbReturn) {
+            $config->cache_key = $key;
+        }
 
         // This happens again in 'execute' but perhaps we can save some
         // time and effort (the prepare) by checking it here first.
@@ -578,7 +582,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -586,7 +590,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function execute(PDOStatement $st, array $params, $config)
     {
-        $config = PdbReturn::parse($config);
+        if (!($config instanceof PdbReturnInterface)) {
+            $config = PdbReturn::parse($config);
+        }
 
         // Get a cached result, if available.
         $key = $this->getCacheKey($st->queryString, $params, $config);
@@ -643,7 +649,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         // PDO returns must not prematurely close the cursor.
-        if ($config->type == self::RETURN_PDO) {
+        if (!$config->hasFormatting()) {
             $res->setFetchMode(PDO::FETCH_ASSOC);
             return $res;
         }
@@ -655,7 +661,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             // The TTL should always be non-null at this point, but whatever.
             if (
                 $key !== null and
-                ($ttl = $config->getCacheTtl($this->config))
+                ($ttl = $this->getCacheTtl($config))
             ) {
                 $this->cache->store($key, $ret, $ttl);
             }
@@ -1539,41 +1545,55 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string $sql
      * @param array $params
-     * @param PdbReturn $config
+     * @param PdbReturnInterface $config
      * @return string|null the key or null if the cache is disabled
      */
-    protected function getCacheKey(string $sql, array $params, PdbReturn $config): ?string
+    protected function getCacheKey(string $sql, array $params, PdbReturnInterface $config): ?string
     {
         // Prevent caching if the TTL is empty.
         // More importantly - do it here because otherwise we're serializing
         // the query when we don't need to.
-        if (!$config->getCacheTtl($this->config)) {
+        if (!$this->getCacheTtl($config)) {
             return null;
         }
 
-        // Each key begins with the 'identity key' and return type. This is
-        // important to prevent data leaking between connections that may not
-        // have the same permissions, access, or even data.
+        // Each key begins with the 'identity key'. This is important to
+        // prevent data leaking between connections that may not have the same
+        // permissions, access, or even data.
         $key = $this->config->getIdentity();
-        $key .= ':' . rtrim($config->type, '?');
 
-        // Optionally permit the user to invalidate their own cache.
-        if ($config->cache_key) {
-
-            // This is also used to cache the key across queue-prepare-execute.
-            // Don't re-add the prefix.
-            if (strpos($config->cache_key, $key) === 0) {
-                return $config->cache_key;
-            }
-
-            // This is just the user's custom key.
-            return $key . ':' . $config->cache_key;
-        }
+        // The return config gets to insert whatever uniqueness it feels is fit.
+        $key .= ':' . $config->getCacheKey();
 
         // This is always unique to the query.
         $key .= ':' . sha1(json_encode([$sql, $params]));
 
         return $key;
+    }
+
+
+    /**
+     * Determine the cache TTL from the return type or the global config.
+     *
+     * @param PdbReturnInterface $config
+     * @return int seconds
+     */
+    protected function getCacheTtl(PdbReturnInterface $config): int
+    {
+        $ttl = $config->getCacheTtl();
+
+        // Use the inline TTL.
+        if ($ttl > 0) {
+            return $ttl;
+        }
+
+        // Use the default.
+        if ($ttl < 0 and $this->config->ttl > 0) {
+            return $this->config->ttl;
+        }
+
+        // Everything else is zero, meaning no cache.
+        return 0;
     }
 
 
