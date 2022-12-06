@@ -806,13 +806,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         try {
             $params = [];
             $clause = $this->buildClause($conditions, $params);
-            $id = $this->query("SELECT id from {$table} WHERE {$clause}", $params, 'val');
+            $id = $this->query("SELECT id from ~{$table} WHERE {$clause}", $params, 'val');
 
             $this->update($table, $data, ['id' => $id]);
             return $id;
         }
         catch (RowMissingException $exception) {
-            return $this->insert($table, $data);
+            $id = $this->insert($table, $data);
+            return $id;
         }
         finally {
             // Only commit if it's our own transaction.
