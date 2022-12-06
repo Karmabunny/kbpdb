@@ -4,11 +4,12 @@ namespace kbtests;
 
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
-
+use karmabunny\pdb\PdbParser;
+use karmabunny\pdb\PdbSync;
 
 final class Database
 {
-    public static function getConnection()
+    public static function getConnection($type = 'mysql')
     {
         static $pdb;
 
@@ -17,6 +18,21 @@ final class Database
             $pdb = Pdb::create($config);
         }
         return $pdb;
+    }
+
+
+    public static function sync(string $type)
+    {
+        $pdb = self::getConnection($type);
+
+        $struct = new PdbParser();
+        $struct->loadXml(__DIR__ . '/db_struct.xml');
+        $struct->sanityCheck();
+
+        $sync = new PdbSync($pdb);
+        $sync->migrate($struct);
+
+        return $sync->execute();
     }
 
 
