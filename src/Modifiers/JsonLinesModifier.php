@@ -26,27 +26,22 @@ class JsonLinesModifier implements PdbDataModifierInterface
     /** @var int */
     public $flags;
 
-    /** @var int */
-    public $depth;
-
 
     /**
      * @param mixed $value
      * @param int $flags
-     * @param int $depth
      */
-    public function __construct($value, int $flags = 0, int $depth = 512)
+    public function __construct($value, int $flags = 0)
     {
         $this->value = $value;
         $this->flags = $flags;
-        $this->depth = $depth;
     }
 
 
     /** @inheritdoc */
     public function format()
     {
-        return Json::encode($this->value, $this->flags, $this->depth);
+        return Json::encode($this->value, $this->flags);
     }
 
 
