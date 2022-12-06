@@ -45,47 +45,128 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     use LoggerTrait;
     use SerializeTrait;
 
+    /**
+     * The default namespace for UUIDv5 generation.
+     * @see generateUid()
+     */
     const UUID_NAMESPACE = '3afdd7bd-b030-4c46-a3b6-f4d600670865';
 
+    /**
+     * @see quote()
+     * @see quoteAll()
+     */
     const QUOTE_VALUE = 'value';
 
+    /**
+     * @see quote()
+     * @see quoteAll()
+     */
     const QUOTE_FIELD = 'field';
 
-
+    /**
+     * Return a PDOStatement object.
+     */
     const RETURN_PDO = 'pdo';
 
+    /**
+     * Return nothing.
+     */
     const RETURN_NULL = 'null';
 
+    /**
+     * The number of rows returned, or if the query is a
+     * `SELECT COUNT()` this will behave like 'val'.
+     */
     const RETURN_COUNT = 'count';
 
+    /**
+     * An array of rows, where each row is an associative array.
+     */
     const RETURN_ARR = 'arr';
 
+    /**
+     * An array of rows, where each row is a numeric array.
+     */
     const RETURN_ARR_NUM = 'arr-num';
 
+    /**
+     * A single row, as an associative array.
+     *
+     * Given an argument `'row:null'` or the shorthand `'row?'` this will
+     * return 'null' if the row is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_ROW = 'row';
 
+    /**
+     * A single row, as a numeric array
+     *
+     * Given an argument `'row-num:null'` or the shorthand `'row-num?'` this
+     * will return 'null' if the row is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_ROW_NUM = 'row-num';
 
+    /**
+     * An array of `[identifier => value]` pairs, where the identifier is the
+     * first column in the result set, and the value is the second.
+     */
     const RETURN_MAP = 'map';
 
+    /**
+     * An array of `[identifier => value]` pairs, where the identifier is the
+     * first column in the result set, and the value an associative array of
+     * `[name => value]` pairs.
+     *
+     * Optionally, one can provide an 'column' argument with the type string
+     * in the form: `'map-arr:column'`.
+     */
     const RETURN_MAP_ARR = 'map-arr';
 
+    /**
+     * A single value (i.e. the value of the first column of the first row).
+     *
+     * Given an argument `'val:null'` or the shorthand `'val?'` this will
+     * return 'null' if the result is empty. Otherwise this will throw a
+     * RowMissingException.
+     */
     const RETURN_VAL = 'val';
 
+    /**
+     * All values from the first column, as a numeric array.
+     *
+     * DO NOT USE with boolean columns; see note at
+     * http://php.net/manual/en/pdostatement.fetchcolumn.php
+     */
     const RETURN_COL = 'col';
 
+    /**
+     * A single value, or 'null' if the result is empty.
+     */
     const RETURN_TRY_VAL = 'val?';
 
+    /**
+     * A single associative row, or 'null' if the result is empty.
+     */
     const RETURN_TRY_ROW = 'row?';
 
+    /**
+     * A single numeric row, or 'null' if the result is empty.
+     */
     const RETURN_TRY_ROW_NUM = 'row-num?';
 
+    /**
+     * A subset of return types that are nullable.
+     */
     const RETURN_NULLABLE = [
         self::RETURN_TRY_VAL,
         self::RETURN_TRY_ROW,
         self::RETURN_TRY_ROW_NUM,
     ];
 
+    /**
+     * All valid return types, without arguments.
+     */
     const RETURN_TYPES = [
         self::RETURN_PDO,
         self::RETURN_NULL,
@@ -395,7 +476,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -420,7 +501,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -428,12 +509,21 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function query(string $query, array $params, $config)
     {
-        $config = clone PdbReturn::parse($config);
+        if ($config instanceof PdbReturnInterface) {
+            $config = clone $config;
+        }
+        else {
+            $config = PdbReturn::parse($config);
+        }
 
         // Build a key but also store on the config so we don't serialize the
         // query twice (here and in 'execute').
         $key = $this->getCacheKey($query, $params, $config);
-        $config->cache_key = $key;
+
+        // Perf hack: we can skip the serialisation step in execute() here
+        if ($config instanceof PdbReturn) {
+            $config->cache_key = $key;
+        }
 
         // This happens again in 'execute' but perhaps we can save some
         // time and effort (the prepare) by checking it here first.
@@ -492,7 +582,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
-     * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
+     * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
      * @return array|string|int|null|PDOStatement
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
@@ -500,7 +590,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function execute(PDOStatement $st, array $params, $config)
     {
-        $config = PdbReturn::parse($config);
+        if (!($config instanceof PdbReturnInterface)) {
+            $config = PdbReturn::parse($config);
+        }
 
         // Get a cached result, if available.
         $key = $this->getCacheKey($st->queryString, $params, $config);
@@ -557,7 +649,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         // PDO returns must not prematurely close the cursor.
-        if ($config->type == self::RETURN_PDO) {
+        if (!$config->hasFormatting()) {
             $res->setFetchMode(PDO::FETCH_ASSOC);
             return $res;
         }
@@ -569,7 +661,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             // The TTL should always be non-null at this point, but whatever.
             if (
                 $key !== null and
-                ($ttl = $config->getCacheTtl($this->config))
+                ($ttl = $this->getCacheTtl($config))
             ) {
                 $this->cache->store($key, $ret, $ttl);
             }
@@ -1454,41 +1546,55 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string $sql
      * @param array $params
-     * @param PdbReturn $config
+     * @param PdbReturnInterface $config
      * @return string|null the key or null if the cache is disabled
      */
-    protected function getCacheKey(string $sql, array $params, PdbReturn $config): ?string
+    protected function getCacheKey(string $sql, array $params, PdbReturnInterface $config): ?string
     {
         // Prevent caching if the TTL is empty.
         // More importantly - do it here because otherwise we're serializing
         // the query when we don't need to.
-        if (!$config->getCacheTtl($this->config)) {
+        if (!$this->getCacheTtl($config)) {
             return null;
         }
 
-        // Each key begins with the 'identity key' and return type. This is
-        // important to prevent data leaking between connections that may not
-        // have the same permissions, access, or even data.
+        // Each key begins with the 'identity key'. This is important to
+        // prevent data leaking between connections that may not have the same
+        // permissions, access, or even data.
         $key = $this->config->getIdentity();
-        $key .= ':' . rtrim($config->type, '?');
 
-        // Optionally permit the user to invalidate their own cache.
-        if ($config->cache_key) {
-
-            // This is also used to cache the key across queue-prepare-execute.
-            // Don't re-add the prefix.
-            if (strpos($config->cache_key, $key) === 0) {
-                return $config->cache_key;
-            }
-
-            // This is just the user's custom key.
-            return $key . ':' . $config->cache_key;
-        }
+        // The return config gets to insert whatever uniqueness it feels is fit.
+        $key .= ':' . $config->getCacheKey();
 
         // This is always unique to the query.
         $key .= ':' . sha1(json_encode([$sql, $params]));
 
         return $key;
+    }
+
+
+    /**
+     * Determine the cache TTL from the return type or the global config.
+     *
+     * @param PdbReturnInterface $config
+     * @return int seconds
+     */
+    protected function getCacheTtl(PdbReturnInterface $config): int
+    {
+        $ttl = $config->getCacheTtl();
+
+        // Use the inline TTL.
+        if ($ttl > 0) {
+            return $ttl;
+        }
+
+        // Use the default.
+        if ($ttl < 0 and $this->config->ttl > 0) {
+            return $this->config->ttl;
+        }
+
+        // Everything else is zero, meaning no cache.
+        return 0;
     }
 
 
@@ -1535,9 +1641,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * - `row`      A single row, as an associative array
      *              Given an argument 'row:null' or the shorthand 'row?' this
      *              will return 'null' if the row is empty.
-     *              Otherwise this will throw an RowMissingException.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `row-num`  A single row, as a numeric array
+     *              Given an argument 'row-num:null' or the shorthand 'row?'
+     *              this will return 'null' if the row is empty.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `map`      An array of identifier => value pairs, where the
      *              identifier is the first column in the result set, and the
@@ -1554,7 +1663,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *              first row)
      *              Given an argument 'val:null' or the shorthand 'val?' this
      *              will return 'null' if the result is empty.
-     *              Otherwise this will throw an RowMissingException.
+     *              Otherwise this will throw a RowMissingException.
      *
      * - `col`      All values from the first column, as a numeric array.
      *              DO NOT USE with boolean columns; see note at
@@ -1569,105 +1678,22 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * This also supports the shorthand `row?` and `val?` forms.
      *
-     * @param string|array|PdbReturn $type One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @param string|array|PdbReturn $config One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
      * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
+     * @throws InvalidArgumentException If the type is invalid
      */
-    public static function formatRs(PDOStatement $rs, $type)
+    public static function formatRs(PDOStatement $rs, $config)
     {
-        $config = PdbReturn::parse($type);
-        $nullable = !$config->throw;
-
-        switch ($config->type) {
-        case 'null':
-            return null;
-
-        case 'count':
-            // Using SQL count() is always faster than rowCount().
-            if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
-                $row = $rs->fetch(PDO::FETCH_NUM);
-                return $row[0] ?? 0;
-            }
-
-            return $rs->rowCount();
-
-        case 'arr':
-            return $rs->fetchAll(PDO::FETCH_ASSOC);
-
-        case 'arr-num':
-            return $rs->fetchAll(PDO::FETCH_NUM);
-
-        case 'row?':
-            $nullable = true;
-            // fall-through.
-
-        case 'row':
-            $row = $rs->fetch(PDO::FETCH_ASSOC);
-            if (!empty($row)) {
-                return $row;
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'row-num?':
-            $nullable = true;
-            // fall-through.
-
-        case 'row-num':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!empty($row)) {
-                return $row;
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'map':
-            if ($rs->columnCount() < 2) {
-                throw new InvalidArgumentException('Two columns required');
-            }
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
-                $map[$row[0]] = $row[1];
-            }
-            return $map;
-
-        case 'map-arr':
-            $map = array();
-            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
-                $id = $row[$config->map_key] ?? reset($row);
-                $map[$id] = $row;
-            }
-            return $map;
-
-        case 'val?':
-            $nullable = true;
-            // fall-through.
-
-        case 'val':
-            $row = $rs->fetch(PDO::FETCH_NUM);
-            if (!empty($row)) {
-                return $row[0];
-            }
-            if ($nullable) {
-                return null;
-            }
-            throw new RowMissingException('Expected a row');
-
-        case 'col':
-            $arr = [];
-            while (($col = $rs->fetchColumn(0)) !== false) {
-                $arr[] = $col;
-            }
-            return $arr;
-
-        default:
-            $err = 'Unknown return type: ' . $config->type;
-            throw new InvalidArgumentException($err);
+        if (!is_object($config)) {
+            $config = PdbReturn::parse($config);
         }
+
+        if (!($config instanceof PdbReturn)) {
+            throw new InvalidArgumentException('Invalid return type: ' . get_class($config));
+        }
+
+        return $config->format($rs);
     }
 
 

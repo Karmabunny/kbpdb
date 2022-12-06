@@ -1,4 +1,8 @@
 <?php
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2022 Karmabunny
+ */
 
 namespace karmabunny\pdb\Models;
 
@@ -6,7 +10,8 @@ use InvalidArgumentException;
 use karmabunny\kb\DataObject;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Pdb;
-use karmabunny\pdb\PdbConfig;
+use karmabunny\pdb\PdbReturnInterface;
+use PDO;
 use PDOStatement;
 
 /**
@@ -24,7 +29,7 @@ use PDOStatement;
  *
  * @package karmabunny\pdb
  */
-class PdbReturn extends DataObject
+class PdbReturn extends DataObject implements PdbReturnInterface
 {
     /**
      * A return type is one support by the `format()` method of this class.
@@ -107,31 +112,32 @@ class PdbReturn extends DataObject
      *
      * The object/array syntax permits class building, cache controls, nullables, and more.
      *
-     * @param string|array|PdbReturn $config
-     * @return static
+     * @param string|array $config
+     * @return PdbReturn
      * @throws InvalidArgumentException
      */
-    public static function parse($config)
+    public static function parse($config): PdbReturn
     {
-        if ($config instanceof static) {
-            return $config;
-        }
-
         if (is_string($config)) {
             $config = [ 'type' => $config ];
         }
 
-        if ($type = $config['type'] ?? null) {
-            $type = self::parseType($type);
-            $config = array_merge($config, $type);
+        if (is_array($config)) {
+            if ($type = $config['type'] ?? null) {
+                $type = self::parseType($type);
+                $config = array_merge($config, $type);
+            }
+
+            Pdb::validateReturnType($config['type'] ?? '(empty)');
+
+            // @phpstan-ignore-next-line
+            $instance = new static();
+            $instance->update($config);
+            return $instance;
         }
 
-        Pdb::validateReturnType($config['type'] ?? '(empty)');
-
-        // @phpstan-ignore-next-line
-        $instance = new static();
-        $instance->update($config);
-        return $instance;
+        $type = is_object($config) ? get_class($config) : gettype($config);
+        throw new InvalidArgumentException('Invalid return type: ' . $type);
     }
 
 
@@ -175,66 +181,155 @@ class PdbReturn extends DataObject
     }
 
 
-    /**
-     * Determine an appropriate TTL between the return config and pdb config.
-     *
-     * @param PdbConfig $config
-     * @return null|int
-     */
-    public function getCacheTtl(PdbConfig $config): ?int
+    /** @inheritdoc */
+    public function getCacheTtl(): int
     {
         // Can't cache PDO things.
         if ($this->type === Pdb::RETURN_PDO) {
-            return null;
+            return 0;
         }
 
         // Use whatever default.
-        if ($this->cache_ttl === true and $config->ttl > 0) {
-            return $config->ttl;
+        if ($this->cache_ttl === true) {
+            return -1;
         }
 
-        // Then this.
+        // A valid TTL.
         if (is_numeric($this->cache_ttl) and $this->cache_ttl > 0) {
             return $this->cache_ttl;
         }
 
-        // There's no infinite TTL.
         // Give up.
-        return null;
+        return 0;
     }
 
 
-    /**
-     * Format the result set.
-     *
-     * {@see Pdb::formatRs}
-     *
-     * @param PDOStatement $rs
-     * @return string|int|null|array
-     * @throws RowMissingException
-     */
+    /** @inheritdoc */
+    public function getCacheKey(): string
+    {
+        $key = rtrim($this->type, '?');
+
+        // Optionally permit the user to invalidate their own cache.
+        if ($this->cache_key) {
+
+            // This is also used to cache the key across queue-prepare-execute.
+            // Don't re-add the prefix.
+            if (strpos($this->cache_key, $key) === 0) {
+                return $this->cache_key;
+            }
+
+            // This is just the user's custom key.
+            return $key . ':' . $this->cache_key;
+        }
+    }
+
+
+    /** @inheritdoc */
+    public function hasFormatting(): bool
+    {
+        return $this->type !== Pdb::RETURN_PDO;
+    }
+
+
+    /** @inheritdoc */
     public function format(PDOStatement $rs)
     {
-        return Pdb::formatRs($rs, $this);
+        $nullable = !$this->throw;
+
+        switch ($this->type) {
+        case 'null':
+            return null;
+
+        case 'count':
+            // Using SQL count() is always faster than rowCount().
+            if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
+                $row = $rs->fetch(PDO::FETCH_NUM);
+                return $row[0] ?? 0;
+            }
+
+            return $rs->rowCount();
+
+        case 'arr':
+            return $rs->fetchAll(PDO::FETCH_ASSOC);
+
+        case 'arr-num':
+            return $rs->fetchAll(PDO::FETCH_NUM);
+
+        case 'row?':
+            $nullable = true;
+            // fall-through.
+
+        case 'row':
+            $row = $rs->fetch(PDO::FETCH_ASSOC);
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'row-num?':
+            $nullable = true;
+            // fall-through.
+
+        case 'row-num':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!empty($row)) {
+                return $row;
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'map':
+            if ($rs->columnCount() < 2) {
+                throw new InvalidArgumentException('Two columns required');
+            }
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_NUM)) {
+                $map[$row[0]] = $row[1];
+            }
+            return $map;
+
+        case 'map-arr':
+            $map = array();
+            while ($row = $rs->fetch(PDO::FETCH_ASSOC)) {
+                $id = $row[$this->map_key] ?? reset($row);
+                $map[$id] = $row;
+            }
+            return $map;
+
+        case 'val?':
+            $nullable = true;
+            // fall-through.
+
+        case 'val':
+            $row = $rs->fetch(PDO::FETCH_NUM);
+            if (!empty($row)) {
+                return $row[0];
+            }
+            if ($nullable) {
+                return null;
+            }
+            throw new RowMissingException('Expected a row');
+
+        case 'col':
+            $arr = [];
+            while (($col = $rs->fetchColumn(0)) !== false) {
+                $arr[] = $col;
+            }
+            return $arr;
+
+        default:
+            $err = 'Unknown return type: ' . $this->type;
+            throw new InvalidArgumentException($err);
+        }
     }
 
 
-    /**
-     * Format a result into class instance.
-     *
-     * Given the 'class' property and an appropriate 'return type', this
-     * creates instance(s) of the class.
-     *
-     * Valid return types are:
-     * - row
-     * - row?
-     * - arr
-     * - map-arr
-     *
-     * @param array $result
-     * @return object[]|object|null
-     * @throws InvalidArgumentException
-     */
+    /** @inheritdoc */
     public function buildClass($result)
     {
         if ($class = $this->class) {
