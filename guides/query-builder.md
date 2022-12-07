@@ -2,6 +2,54 @@
 # Query builder
 
 
+Query elements:
+
+- `select(...$fields)`
+- `andSelect(...$fields)`
+- `from($table)`
+- `leftJoin($table, $conditions, $combine)`
+- `innerJoin($table, $conditions, $combine)`
+- `where($conditions, $combine)`
+- `andWhere($conditions, $combine)`
+- `orWhere($conditions, $combine)`
+- `groupBy($field)`
+- `orderBy(...$fields)`
+- `limit($limit)`
+- `offset($limit)`
+
+Shorthands:
+
+- `find($table, $conditions)`
+
+Modifiers:
+
+- `as($class)`
+- `cache($ttl)`
+
+Terminator methods:
+
+- `build(): [string, array]`
+- `value($field): string`
+- `one($throw): array|object`
+- `all(): array`
+- `map($key, $value): array`
+- `keyed($key): array`
+- `column(): array`
+- `count(): int`
+- `exists(): bool`
+- `iterator(): iterable`
+- `batch($size): iterable<array>`
+- `pdo(): PDO`
+- `execute(): mixed`
+
+Class builders:
+
+- `one(): object`
+- `all(): object[]`
+- `keyed(): [key => object]`
+- `iterator(): iterable<object>`
+- `batch($size): iterable<object[]>`
+
 
 ## Some examples
 
