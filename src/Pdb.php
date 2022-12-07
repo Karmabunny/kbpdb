@@ -16,6 +16,7 @@ use karmabunny\kb\NotSerializable;
 use karmabunny\kb\SerializeTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
+use karmabunny\pdb\DataBinders\CallableFormatter;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Exceptions\TransactionRecursionException;
@@ -208,6 +209,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
     /** @var callable|null (position, token) */
     protected $profiler;
+
+    /** @var PdbDataFormatterInterface[] */
+    protected $_formatters = [];
 
 
     /**
@@ -870,6 +874,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             if ($val instanceof PdbDataBinderInterface) {
                 $cols[] = $val->getBindingQuery($this, $col);
             }
+            else if ($formatter = $this->getFormatter($val)) {
+                $cols[] = $formatter->getBindingQuery($this, $col);
+            }
             else {
                 $cols[] = $this->quoteField($col) . ' = ?';
             }
@@ -1479,6 +1486,64 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     *
+     * @param mixed $value
+     * @return PdbDataFormatterInterface|null
+     */
+    protected function getFormatter($value)
+    {
+        if (!is_object($value)) {
+            return null;
+        }
+
+        // Check the cache first.
+        $class = get_class($value);
+        $formatter = $this->_formatters[$class] ?? null;
+
+        if ($formatter) {
+            return $formatter;
+        }
+
+        // Build the formatters cache.
+        foreach ($this->config->formatters as $class => $formatter) {
+
+            $cached = $this->_formatters[$class] ?? null;
+
+            if ($cached !== null) {
+                $formatter = $cached;
+            }
+            // Wrap callables.
+            else if (is_callable($formatter)) {
+                $formatter = new CallableFormatter($formatter);
+                $this->_formatters[$class] = $formatter;
+            }
+            // Configure the formatter.
+            else {
+                $formatter = Configure::configure($formatter, PdbDataFormatterInterface::class);
+
+                // Cache the formatter, even if it's not relevant for this value.
+                // It'll speed up future lookups for other exact-match classes.
+                $this->_formatters[$class] = $formatter;
+            }
+
+            // Check through the hierarchy tree for this value and store it
+            // against the concrete class name.
+            if (
+                !isset($this->_formatters[get_class($value)])
+                and ($value instanceof $class)
+            ) {
+                $this->_formatters[get_class($value)] = $formatter;
+            }
+        }
+
+        // Look it up one last time.
+        $class = get_class($value);
+        $formatter = $this->_formatters[$class] ?? null;
+        return $formatter;
+    }
+
+
+    /**
      * Format a object in accordance to the registered formatters.
      *
      * Formatters convert objects to saveable types, such as a string or an integer
@@ -1497,22 +1562,20 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             return $value;
         }
 
+        $formatter = $this->getFormatter($value);
+
+        // Got one.
+        if ($formatter) {
+            return $formatter->format($value);
+        }
+
+        // Fallback.
+        if (method_exists($value, '__toString')) {
+            return (string) $value;
+        }
+
         $class_name = get_class($value);
-        $func = $this->config->formatters[$class_name] ?? null;
-
-        if ($func === null) {
-            if (method_exists($value, '__toString')) {
-                return (string) $value;
-            }
-            throw new InvalidArgumentException("Unable to format objects of type '{$class_name}'");
-        }
-
-        $value = $func($value);
-        if (!is_string($value) and !is_int($value)) {
-            throw new InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
-        }
-
-        return $value;
+        throw new InvalidArgumentException("Unable to format objects of type '{$class_name}'");
     }
 
 
