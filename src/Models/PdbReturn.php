@@ -136,6 +136,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
             return $instance;
         }
 
+        // @phpstan-ignore-next-line : there's no guarantees. Gotta check.
         $type = is_object($config) ? get_class($config) : gettype($config);
         throw new InvalidArgumentException('Invalid return type: ' . $type);
     }
@@ -221,6 +222,8 @@ class PdbReturn extends DataObject implements PdbReturnInterface
             // This is just the user's custom key.
             return $key . ':' . $this->cache_key;
         }
+
+        return $key;
     }
 
 
