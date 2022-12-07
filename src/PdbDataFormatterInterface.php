@@ -30,7 +30,7 @@ interface PdbDataFormatterInterface
      * @param object $value
      * @return string
      */
-    public function format(object $value): string;
+    public function format($value): string;
 
 
     /**
