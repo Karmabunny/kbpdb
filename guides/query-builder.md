@@ -1,7 +1,13 @@
 
+# Query builder
+
+
+
 ## Some examples
 
 ```php
+<?php
+
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbQuery;
 

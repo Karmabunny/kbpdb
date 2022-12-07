@@ -1,6 +1,10 @@
 
 ## Modelling databases with PDB
 
+```py
+import test from ok
+```
+
 ```php
 use karmabunny\kb\Collection;
 use karmabunny\pdb\Pdb;
