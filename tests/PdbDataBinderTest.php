@@ -1,6 +1,8 @@
 <?php
 
+use karmabunny\kb\DataObject;
 use karmabunny\pdb\DataBinders\ConcatDataBinder;
+use karmabunny\pdb\DataBinders\DateTimeFormatter;
 use karmabunny\pdb\DataBinders\JsonLinesBinder;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
@@ -78,4 +80,103 @@ class PdbDataBinderTest extends TestCase
         $this->assertEquals($items, $lines);
     }
 
+
+    public function testDateFormatter(): void
+    {
+        $pdb = Database::getConnection('mysql');
+        $expected = '2020-02-05 12:00:12';
+
+        try {
+            $pdb->insert('logs', [
+                'date_added' => new DateTime($expected),
+                'data' => 'date-format-test',
+            ]);
+            $this->fail('Should have thrown an exception');
+        }
+        catch (InvalidArgumentException $ex) {
+            $this->assertStringContainsString('Unable to format object', $ex->getMessage());
+        }
+
+        // Add the formatter.
+        $pdb->config->formatters[DateTimeInterface::class] = DateTimeFormatter::class;
+
+        $id = $pdb->insert('logs', [
+            'date_added' => new DateTime($expected),
+            'data' => 'date-format-test',
+        ]);
+
+        $this->assertGreaterThan(0, $id);
+
+        // Check it.
+        $actual = $pdb->get('logs', $id);
+
+        $this->assertEquals($expected, $actual['date_added']);
+        $this->assertEquals('date-format-test', $actual['data']);
+
+        // A configured formatter.
+        $pdb->config->formatters[DateTimeInterface::class] = [
+            DateTimeFormatter::class => [
+                'format' => 'Y-m-d',
+            ],
+        ];
+
+        $id = $pdb->insert('logs', [
+            'date_added' => new DateTime(),
+            'data' => 'date-configure-test',
+        ]);
+
+        $this->assertGreaterThan(0, $id);
+
+        // Note, although the insert is formatted 'Y-m-d' - the database will
+        // still return the time component. But we can verify we've done it
+        // right because they're zeroed out.
+
+        $expected = date('Y-m-d 00:00:00');
+        $actual = $pdb->get('logs', $id);
+
+        $this->assertEquals($expected, $actual['date_added']);
+        $this->assertEquals('date-configure-test', $actual['data']);
+    }
+
+
+    public function testCallableFormatter(): void
+    {
+        $pdb = Database::getConnection('mysql');
+
+        $object = new FormattableObject(['value' => 'hello']);
+
+        try {
+            $pdb->insert('logs', [
+                'date_added' => $pdb->now(),
+                'data' => $object,
+            ]);
+            $this->fail('Should have thrown an exception');
+        }
+        catch (InvalidArgumentException $ex) {
+            $this->assertStringContainsString('Unable to format object', $ex->getMessage());
+        }
+
+        // Add the formatter.
+        $pdb->config->formatters[FormattableObject::class] = function ($object) {
+            return ucwords($object->value . ' world!');
+        };
+
+        $id = $pdb->insert('logs', [
+            'date_added' => $pdb->now(),
+            'data' => $object,
+        ]);
+
+        $this->assertGreaterThan(0, $id);
+
+        // Check it.
+        $actual = $pdb->get('logs', $id);
+        $this->assertEquals('Hello World!', $actual['data']);
+    }
+
+}
+
+
+class FormattableObject extends DataObject
+{
+    public $value;
 }
