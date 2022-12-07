@@ -622,6 +622,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
         unset($p);
 
+        // Clear the formatters cache.
+        $this->_formatters = [];
+
         try {
             $profiler = $this->profiler;
 
@@ -1501,6 +1504,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         // Check the cache first.
+        // Caches are only preserved per-query and are cleared at every execute().
         $class = get_class($value);
         $formatter = $this->_formatters[$class] ?? null;
 
