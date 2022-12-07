@@ -6,7 +6,13 @@ PHPDOC="./.phpdoc.phar"
 
 # Install phpdoc
 if ! [[ -f $PHPDOC ]]; then
-    wget https://phpdoc.org/phpDocumentor.phar -O $PHPDOC || exit $?
+    wget https://phpdoc.org/phpDocumentor.phar -O $PHPDOC
+
+    if [[ $? != 0 ]]; then
+        rm $PHPDOC
+        exit 1
+    fi
+
     chmod +x $PHPDOC
 fi
 
