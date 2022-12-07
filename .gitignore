@@ -1,4 +1,8 @@
 *.phar
 vendor
+venv
+docs
+guides/api
 *.sqlite
 *.cache
+.phpdoc

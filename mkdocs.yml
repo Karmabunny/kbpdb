@@ -1,0 +1,30 @@
+site_name: PDB - A PDO Wrapper
+docs_dir: guides
+site_dir: docs
+
+theme:
+  name: material
+
+nav:
+  - 'Getting Started': 'index.md'
+  - 'Basics': 'basics.md'
+  - 'Configuration': 'config.md'
+  - 'Models': 'modelling.md'
+  - 'Pdb Sync' : 'pdbsync.md'
+  - 'Query Builder': 'query-builder.md'
+  - 'Static PDB': 'static-pdb.md'
+  - 'Transactions': 'transactions.md'
+  - 'Return Formats': 'formatting.md'
+  - 'Data Binding': 'data-binding.md'
+  - 'Class Reference': '/api/'
+
+markdown_extensions:
+  - pymdownx.highlight:
+      use_pygments: false
+
+extra_css:
+  - //cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/idea.min.css
+
+extra_javascript:
+  - //cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js
+  - js/highlight.js
