@@ -11,7 +11,7 @@ use karmabunny\pdb\PdbDataFormatterInterface;
 use karmabunny\pdb\PdbDataFormatterTrait;
 
 /**
- *
+ * Wrap a callable into a formatter.
  *
  * @package karmabunny\pdb
  */

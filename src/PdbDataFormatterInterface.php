@@ -7,7 +7,17 @@
 namespace karmabunny\pdb;
 
 /**
+ * A formatter is much like a `PdbDataBinderInterface` instead these are
+ * registered globally rather than passed through as data objects.
  *
+ * Formatters are applies after binders.
+ *
+ * This is a slightly different behaviour effect compared to the binder interface:
+ *
+ * 1. Binders can bind or format non-object values, whereas formatters cannot.
+ * 2. Formatters apply to all queries, not just insert/update.
+ *
+ * As such, one might observe distinctly different but strikingly similar use-cases.
  *
  * @package karmabunny\pdb
  */
@@ -15,7 +25,7 @@ interface PdbDataFormatterInterface
 {
 
     /**
-     *
+     * Format a value before binding.
      *
      * @param object $value
      * @return string

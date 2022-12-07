@@ -7,7 +7,10 @@
 namespace karmabunny\pdb;
 
 /**
+ * This is a default implementation for the `PdbDataFormatterInterface`.
  *
+ * This is a 'fall-through' behaviour, so that the values simply do the
+ * bare-minimum to implement a functional formatter.
  *
  * @package karmabunny\pdb
  */

@@ -859,6 +859,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Build the SET clause for an UPDATE/INSERT query.
      *
+     * This will apply binding rules if the value is a PdbDataBinder or if
+     * there is a formatter registered for the respective class type.
+     *
      * @param array $data [ col => val ]
      * @return array [ string, values[] ]
      * @throws InvalidArgumentException
@@ -1486,6 +1489,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     * Fetch an appropriate formatter for this object.
      *
      * @param mixed $value
      * @return PdbDataFormatterInterface|null

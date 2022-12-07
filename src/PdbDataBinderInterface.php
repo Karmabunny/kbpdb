@@ -16,6 +16,10 @@ namespace karmabunny\pdb;
  * The value is still bound using prepared statements. This interface also
  * lets one modify the value before binding using the `getBindingValue()` method.
  *
+ * Binders are applied before formatters.
+ *
+ * @see PdbDataFormatterInterface
+ *
  * @package karmabunny\pdb
  */
 interface PdbDataBinderInterface

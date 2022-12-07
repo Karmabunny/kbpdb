@@ -139,7 +139,10 @@ class PdbConfig extends Collection
      * $config->formatters[DateTimeInterface::class] = $formatter;
      * ```
      *
-     * @var callable[] [class => fn]
+     * If the value is a string or array, this will be configured and asserted
+     * as a `PdbDataFormatterInterface` - {@see \karmabunny\kb\Configure}.
+     *
+     * @var (callable|PdbDataFormatterInterface|string)[] [class => fn]
      */
     public $formatters = [];
 
