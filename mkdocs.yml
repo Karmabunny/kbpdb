@@ -16,7 +16,7 @@ nav:
   - 'Transactions': 'transactions.md'
   - 'Return Formats': 'formatting.md'
   - 'Data Binding': 'data-binding.md'
-  - 'Class Reference': '/api/'
+  - 'Class Reference': './api/'
 
 markdown_extensions:
   - pymdownx.highlight:
