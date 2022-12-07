@@ -61,8 +61,33 @@ However, there are limitations:
 - only executes on matching objects (and child objects)
 - executes after binders
 
-
 Usage:
+
+```php
+$pdb->config->formatters[MyObject::class] = new MyFormatter();
+
+$pdb->insert([
+    'date_added' => new DateTime(),
+]);
+```
+
+### Configuring a formatter
+
+The formatters config is an array of 'configurable' types. That is, you can provide one of an object instance, class name, or array like `[ class => [config] ]`.
+
+
+### Built-in Formatters
+
+
+#### CallableFormatter
+
+This wraps any inline function formatters in the `formatters` config.
+
+
+#### DateTimeFormatter
+
+This formats anything that inherits `DateTimeInterface`. Formats can be configured with the formatter. For example:
+
 
 ```php
 // Default formatter (Y-m-d H:i:s)
@@ -70,18 +95,4 @@ $pdb->config->formatters[DateTimeInterface::class] = DateTimeFormatter::class;
 
 // Configured formatter
 $pdb->config->formatters[DateTimeInterface::class] = new DateTimeFormatter('Y-m-d');
-
-$pdb->insert([
-    'date_added' => new DateTime(),
-]);
 ```
-
-### Built-in Formatters
-
-
-#### CallableFormatter
-
-
-#### DateTimeFormatter
-
-

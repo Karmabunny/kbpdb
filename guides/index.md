@@ -46,6 +46,6 @@ Instructions for integrating with Sprout can be found [here](./static-pdb.md).
    - [Modelling](./modelling.md)
    - [Caching](./caching.md)
    - [Transactions](./transactions.md) - incomplete, to be merged
-   - [Return Formats](./formatting.md) - incomplete
-   - [Data Binding](./data-binding.md) - incomplete
+   - [Return Formats](./formatting.md)
+   - [Data Binding](./data-binding.md)
 
