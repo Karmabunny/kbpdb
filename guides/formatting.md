@@ -87,3 +87,12 @@ $row = $pdb->query("SELECT * FROM ~table LIMIT 1", [], 'row');
               DO NOT USE with boolean columns; see note at
               http://php.net/manual/en/pdostatement.fetchcolumn.php
 
+
+
+### Legacy Support
+
+The default return formatter can be accessed on the Pdb object via:
+
+```php
+Pdb::formatRs(PdbStatement $st, $type);
+```
