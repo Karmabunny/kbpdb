@@ -234,12 +234,12 @@ class PdbCondition
 
         if ($this->column !== null) {
             if (!in_array($this->operator, self::OPERATORS)) {
-                throw new InvalidArgumentException('Unknown operator: ' . $this->operator);
+                throw new InvalidArgumentException("Unknown operator: '{$this->operator}'");
             }
         }
         else {
             if (!in_array($this->operator, self::COMPOUNDS)) {
-                throw new InvalidArgumentException('Unknown compound operator: ' . $this->operator);
+                throw new InvalidArgumentException("Unknown compound operator: '{$this->operator}'");
             }
         }
 
