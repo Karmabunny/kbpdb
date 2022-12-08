@@ -228,4 +228,32 @@ class PdbConditionTest extends TestCase
 
         $this->assertEquals(['ok', 'also ok', 'things', 100, 'one', 'last-one'], $values);
     }
+
+
+    public function testNegated(): void
+    {
+        $pdb = Database::getConnection();
+
+        $conditions = PdbCondition::fromArray([
+            ['NOT' => ['abc' => 123]],
+            ['NOT', 'not' => 456],
+            ['NOT' => [
+                ['not' => null],
+                ['NOT', 'def' => 'not'],
+            ]],
+        ]);
+
+        $this->assertCount(3, $conditions);
+
+        $values = [];
+        $clause1 = $conditions[0]->build($pdb, $values);
+        $clause2 = $conditions[1]->build($pdb, $values);
+        $clause3 = $conditions[2]->build($pdb, $values);
+
+        $this->assertEquals('NOT (`abc` = ?)', $clause1);
+        $this->assertEquals('NOT (`not` = ?)', $clause2);
+        $this->assertEquals('NOT (`not` IS NULL AND NOT (`def` = ?))', $clause3);
+
+        $this->assertEquals([123, 456, 'not'], $values);
+    }
 }
