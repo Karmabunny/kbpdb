@@ -143,6 +143,12 @@ class PdbCondition
                 $column = key($item);
                 $value = $item[$column];
 
+                // Shortcut for those not wrapping their conditions.
+                if ($operator === 'NOT' and is_string($column)) {
+                    $condition = self::fromShorthand($column, $value);
+                    return new PdbCondition('NOT', null, [$condition]);
+                }
+
                 return new PdbCondition($operator, $column, $value);
             }
 
