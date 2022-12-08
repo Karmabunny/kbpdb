@@ -84,7 +84,7 @@ class PdbCondition
     public function __construct($operator, $column, $value, string $bind = null)
     {
         if ($operator) {
-            $operator = strtoupper($operator);
+            $operator = trim(strtoupper($operator));
         }
 
         $this->operator = $operator;
@@ -135,8 +135,10 @@ class PdbCondition
             // Modified key-style condition.
             // :: [OPERATOR, COLUMN => VALUE]
             if ($count == 2) {
+                // TODO this isn't a safe assumption.
                 /** @var string $operator */
                 $operator = array_shift($item);
+                $operator = trim(strtoupper($operator));
 
                 $column = key($item);
                 $value = $item[$column];
@@ -168,7 +170,7 @@ class PdbCondition
         // :: COLUMN => VALUE
         // :: AND|OR|XOR|NOT => CONDITION
         if (is_string($key)) {
-            $modifier = strtoupper($key);
+            $modifier = trim(strtoupper($key));
 
             // Support for nested conditions.
             if (
