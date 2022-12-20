@@ -6,8 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use InvalidArgumentException;
-use karmabunny\pdb\Exceptions\RowMissingException;
 use PDOStatement;
 
 /**
@@ -60,7 +58,6 @@ interface PdbReturnInterface
      *
      * @param PDOStatement $rs
      * @return string|int|null|array
-     * @throws RowMissingException
      */
     public function format(PDOStatement $rs);
 
@@ -70,7 +67,6 @@ interface PdbReturnInterface
      *
      * @param array $result
      * @return object[]|object|null
-     * @throws InvalidArgumentException
      */
     public function buildClass($result);
 

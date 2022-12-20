@@ -935,6 +935,7 @@ class PdbQuery implements Arrayable, JsonSerializable
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
+     * @throws RowMissingException
      */
     public function execute(string $return_type)
     {
