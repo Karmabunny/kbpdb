@@ -917,8 +917,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         //   no guarantee that all FKs have correct UPDATE triggers.
 
         // Create a transaction if one is not already active.
-        $transact = $this->inTransaction();
-        if (!$transact) $this->transact();
+        $extant_transaction = $this->inTransaction();
+        if (!$extant_transaction) $this->transact();
 
         try {
             $params = [];
@@ -934,7 +934,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
         finally {
             // Only commit if it's our own transaction.
-            if (!$transact) $this->commit();
+            if (!$extant_transaction) $this->commit();
         }
     }
 
