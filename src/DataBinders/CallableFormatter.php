@@ -38,11 +38,15 @@ class CallableFormatter implements PdbDataFormatterInterface
     {
         $value = ($this->fn)($value);
 
-        if (!is_string($value)) {
+        if (is_bool($value)) {
+            $value = (int) $value;
+        }
+
+        if (!is_scalar($value)) {
             $class_name = get_class($value);
             throw new InvalidArgumentException("Formatter for type '{$class_name}' must return a string or int");
         }
 
-        return $value;
+        return (string) $value;
     }
 }
