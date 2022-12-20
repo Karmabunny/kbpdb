@@ -74,6 +74,16 @@ interface PdbModelInterface
 
 
     /**
+     * Find one model. Create a default one if not found.
+     *
+     * @see {PdbQuery::find()}
+     * @param array $conditions
+     * @return static
+     */
+    public static function findOrCreate(array $conditions);
+
+
+    /**
      * Find a list of models.
      *
      * @see {PdbQuery::find()}

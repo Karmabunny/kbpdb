@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use karmabunny\pdb\Exceptions\RowMissingException;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -125,6 +126,26 @@ trait PdbModelTrait
     public static function findAll(array $conditions = [])
     {
         return static::find($conditions)->all();
+    }
+
+
+    /**
+     * Find one model. Create a default one if not found.
+     *
+     * @see {PdbQuery::find()}
+     * @param array $conditions
+     * @return static
+     */
+    public static function findOrCreate(array $conditions)
+    {
+        try {
+            $model = static::findOne($conditions);
+        } catch (RowMissingException $ex) {
+            $model = new static();
+            $model->populateDefaults();
+        }
+
+        return $model;
     }
 
 
