@@ -934,7 +934,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
         finally {
             // Only commit if it's our own transaction.
-            if ($transact) $this->commit();
+            if (!$transact) $this->commit();
         }
     }
 
