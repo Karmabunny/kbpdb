@@ -6,12 +6,9 @@
 
 namespace karmabunny\pdb;
 
-<<<<<<< HEAD
 use karmabunny\pdb\Exceptions\RowMissingException;
-=======
 use ReflectionClass;
 use ReflectionException;
->>>>>>> e491d8f (Fix model default properties helper for typed properties.)
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
