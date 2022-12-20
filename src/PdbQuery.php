@@ -698,6 +698,23 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param string $return_type
+     * @return PdbReturnInterface
+     * @throws InvalidArgumentException
+     */
+    public function getReturnConfig(string $return_type): PdbReturnInterface
+    {
+        return PdbReturn::parse([
+            'type' => $return_type,
+            'class' => $this->_as,
+            'cache_ttl' => $this->_cache_ttl,
+            'cache_key' => $this->_cache_key,
+        ]);
+    }
+
+
+    /**
+     *
      * @param string|null $field
      * @param bool $throw
      * @return string|null
@@ -942,14 +959,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function execute(string $return_type)
     {
         [$sql, $params] = $this->build();
-
-        $config = PdbReturn::parse([
-            'type' => $return_type,
-            'class' => $this->_as,
-            'cache_ttl' => $this->_cache_ttl,
-            'cache_key' => $this->_cache_key,
-        ]);
-
+        $config = $this->getReturnConfig($return_type);
         return $this->pdb->query($sql, $params, $config);
     }
 }
