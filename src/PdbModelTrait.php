@@ -6,7 +6,12 @@
 
 namespace karmabunny\pdb;
 
+<<<<<<< HEAD
 use karmabunny\pdb\Exceptions\RowMissingException;
+=======
+use ReflectionClass;
+use ReflectionException;
+>>>>>>> e491d8f (Fix model default properties helper for typed properties.)
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -89,18 +94,39 @@ trait PdbModelTrait
         $table = static::getTableName();
 
         $columns = $pdb->fieldList($table);
+        $reflect = new ReflectionClass($this);
 
         foreach ($columns as $column) {
-            if (
-                property_exists($this, $column->name)
-                and $this->{$column->name} === null
-                and $column->default !== null
-            ) {
-                $this->{$column->name} = $column->default;
+            // No default specified.
+            if ($column->default === null) {
+                continue;
             }
-        }
 
-        return $this;
+            // Skip invalid properties, that's someone else's problem.
+            try {
+                $property = $reflect->getProperty($column->name);
+                $property->setAccessible(true);
+            }
+            catch (ReflectionException $ex) {
+                continue;
+            }
+
+            // Newer PHP is picky about typed properties.
+            if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
+                $value = null;
+            }
+
+            if (!isset($value)) {
+                $value = $property->getValue($this);
+            }
+
+            // Already set - skip it.
+            if ($value !== null) {
+                continue;
+            }
+
+            $property->setValue($this, $column->default);
+        }
     }
 
 
