@@ -19,6 +19,7 @@ use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
+use ReturnTypeWillChange;
 
 /**
  *
@@ -173,6 +174,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /** @inheritdoc */
+    #[ReturnTypeWillChange]
     public function jsonSerialize()
     {
         return $this->toArray();
