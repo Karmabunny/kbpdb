@@ -9,6 +9,7 @@ namespace karmabunny\pdb;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
 use ReflectionException;
+use karmabunny\kb\Reflect;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -79,6 +80,30 @@ trait PdbModelTrait
 
 
     /**
+     * Get a list of default values for the database record.
+     *
+     * @return array
+     */
+    public static function getFieldDefaults(): array
+    {
+        $defaults = [];
+
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+        $columns = $pdb->fieldList($table);
+
+        foreach ($columns as $column) {
+            if (!property_exists(static::class, $column->name)) continue;
+            if ($column->default === null) continue;
+
+            $defaults[$column->name] = $column->default;
+        }
+
+        return $defaults;
+    }
+
+
+    /**
      * Loads default values from database table schema.
      *
      * This will only set defaults values for properties that are null.
@@ -87,21 +112,13 @@ trait PdbModelTrait
      */
     public function populateDefaults()
     {
-        $pdb = static::getConnection();
-        $table = static::getTableName();
-
-        $columns = $pdb->fieldList($table);
+        $defaults = static::getFieldDefaults();
         $reflect = new ReflectionClass($this);
 
-        foreach ($columns as $column) {
-            // No default specified.
-            if ($column->default === null) {
-                continue;
-            }
-
+        foreach ($defaults as $name => $value) {
             // Skip invalid properties, that's someone else's problem.
             try {
-                $property = $reflect->getProperty($column->name);
+                $property = $reflect->getProperty($name);
                 $property->setAccessible(true);
             }
             catch (ReflectionException $ex) {
@@ -109,20 +126,17 @@ trait PdbModelTrait
             }
 
             // Newer PHP is picky about typed properties.
+            // Here we set these immediately.
             if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
-                $value = null;
-            }
-
-            if (!isset($value)) {
-                $value = $property->getValue($this);
-            }
-
-            // Already set - skip it.
-            if ($value !== null) {
+                $property->setValue($this, $value);
                 continue;
             }
 
-            $property->setValue($this, $column->default);
+            // The value is not set, so set it!
+            if ($property->getValue($this) === null) {
+                $property->setValue($this, $value);
+                continue;
+            }
         }
     }
 
@@ -173,6 +187,24 @@ trait PdbModelTrait
 
 
     /**
+     * Data to be inserted or updated.
+     *
+     * This is a perfect spot to add generated values like audit rows
+     * (date_added, date_modified, uid, etc).
+     *
+     * Override this to implement dirty-property behaviour.
+     *
+     * @return array [ column => value ]
+     */
+    public function getSaveData(): array
+    {
+        $data = Reflect::getProperties($this);
+        unset($data['id']);
+        return $data;
+    }
+
+
+    /**
      * Save this model.
      *
      * @return bool
@@ -182,23 +214,74 @@ trait PdbModelTrait
      */
     public function save(): bool
     {
-        // Only populate defaults for new models.
-        if (!$this->id) {
-            $this->populateDefaults();
-        }
-
         $pdb = static::getConnection();
         $table = static::getTableName();
-        $data = iterator_to_array($this);
 
-        if ($this->id > 0) {
-            $pdb->update($table, $data, [ 'id' => $this->id ]);
+        $transact = false;
+
+        // Start a transaction but only if there isn't one already.
+        if (!$pdb->inTransaction()) {
+            $pdb->transact();
+            $transact = true;
         }
-        else {
-            $this->id = $pdb->insert($table, $data);
+
+        try {
+            $this->_beforeSave();
+
+            // Only populate defaults for new models.
+            if (!$this->id) {
+                $this->populateDefaults();
+            }
+
+            $data = $this->getSaveData();
+
+            if ($this->id > 0) {
+                if (empty($data)) return true;
+                $pdb->update($table, $data, [ 'id' => $this->id ]);
+            }
+            else {
+                $data['id'] = $pdb->insert($table, $data);
+            }
+
+            // Punch it.
+            if ($transact and $pdb->inTransaction()) {
+                $pdb->commit();
+            }
+
+            if (isset($data['id'])) {
+                $this->id = $data['id'];
+            }
+
+            $this->_afterSave($data);
+        }
+        finally {
+            if ($transact and $pdb->inTransaction()) {
+                $pdb->rollback();
+            }
         }
 
         return (bool) $this->id;
+    }
+
+
+    /**
+     * Performed before all save actions.
+     *
+     * @return void
+     */
+    protected function _beforeSave()
+    {
+    }
+
+
+    /**
+     * Performed after all save actions.
+     *
+     * @param array $data as created by {@see getSaveData()}
+     * @return void
+     */
+    protected function _afterSave(array $data)
+    {
     }
 
 
