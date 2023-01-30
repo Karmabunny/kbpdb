@@ -99,7 +99,7 @@ class PdbForeignKey extends Collection
             else {
                 foreach ($to_table->indexes as $index) {
                     // Apparently only the first column on index.
-                    $column = $index->columns[0] ?? null;
+                    $column = reset($index->columns);
                     if (!$column) continue;
 
                     // Found it!
