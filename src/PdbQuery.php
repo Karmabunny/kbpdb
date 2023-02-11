@@ -43,6 +43,7 @@ use ReturnTypeWillChange;
  *
  * Modifiers:
  * - `as($class)`
+ * - `throw($bool)`
  * - `cache($ttl)`
  *
  * Terminator methods:
@@ -120,6 +121,9 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /** @var string|null */
     protected $_as = null;
+
+    /** @var bool */
+    protected $_throw = true;
 
 
     /**
@@ -539,6 +543,23 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Emit RowMissingExceptions if the record is not found.
+     *
+     * This applies to:
+     * - one()
+     * - value()
+     *
+     * @param bool $throw
+     * @return static
+     */
+    public function throw(bool $throw = true)
+    {
+        $this->_throw = $throw;
+        return $this;
+    }
+
+
+    /**
      *
      * @param string|null $key
      * @param int|bool $ttl seconds
@@ -740,40 +761,48 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|null $field
-     * @param bool $throw
+     * @param bool|null $throw
      * @return string|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function value(string $field = null, bool $throw = true): ?string
+    public function value(string $field = null, bool $throw = null): ?string
     {
         $query = clone $this;
+
+        if ($throw !== null) {
+            $query->_throw = $throw;
+        }
 
         if ($field) {
             $query->select($field);
         }
 
-        $type = $throw ? 'val' : 'val?';
+        $type = $query->_throw ? 'val' : 'val?';
         return $query->execute($type);
     }
 
 
     /**
      *
-     * @param bool $throw
+     * @param bool|null $throw
      * @return array|object|null
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function one(bool $throw = true)
+    public function one(bool $throw = null)
     {
         $query = clone $this;
 
+        if ($throw !== null) {
+            $query->_throw = $throw;
+        }
+
         $query->limit(1);
 
-        $type = $throw ? 'row' : 'row?';
+        $type = $query->_throw ? 'row' : 'row?';
         return $query->execute($type);
     }
 
