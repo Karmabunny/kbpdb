@@ -713,6 +713,11 @@ class PdbQuery implements Arrayable, JsonSerializable
             $fields = [];
             foreach ($this->_group as $field) {
                 if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    // Apply the table if missing.
+                    if ($from and strpos($field, '.') === false) {
+                        $field = "{$from}.{$field}";
+                    }
+
                     $field = $this->pdb->quoteField($field);
                 }
 
@@ -748,6 +753,11 @@ class PdbQuery implements Arrayable, JsonSerializable
             $fields = [];
             foreach ($this->_order as $field => $order) {
                 if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    // Apply the table if missing.
+                    if ($from and strpos($field, '.') === false) {
+                        $field = "{$from}.{$field}";
+                    }
+
                     $field = $this->pdb->quoteField($field);
                 }
 
