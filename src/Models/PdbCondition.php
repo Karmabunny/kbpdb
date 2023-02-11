@@ -224,6 +224,36 @@ class PdbCondition
 
 
     /**
+     * Walk through all nested conditions.
+     *
+     * Each callback is able to modify the condition in-place.
+     *
+     * @param PdbCondition|PdbCondition[] $condition
+     * @param callable $fn (PdbCondition &$condition) => void
+     * @return void
+     */
+    public static function walk(&$condition, $fn)
+    {
+        if ($condition instanceof static) {
+            $fn($condition);
+
+            if ($condition->value instanceof static) {
+                $fn($condition->value);
+            }
+            else if (is_array($condition->value)) {
+                self::walk($condition->value, $fn);
+            }
+        }
+        else if (is_array($condition)) {
+            foreach ($condition as &$item) {
+                self::walk($item, $fn);
+            }
+            unset($item);
+        }
+    }
+
+
+    /**
      * Validate this condition.
      *
      * @return void
