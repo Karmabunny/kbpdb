@@ -97,14 +97,23 @@ class PdbModelQuery extends PdbQuery
 
         $query = clone $this;
 
-        if ($this->_inflect) {
-            $query->_from = [];
+        if (
+            $this->_inflect
+            and !empty($this->_from)
+            and empty($this->_from[1])
+        ) {
+            $alias = $this->_from[0];
 
-            if (count($this->_from) == 1) {
-                $from = reset($this->_from);
-                $from = $this->_inflect($from);
-                $query->from($from);
+            $prefix = $this->pdb->getPrefix($alias);
+            if (strpos($alias, $prefix) === 0) {
+                $alias = substr($alias, strlen($prefix));
             }
+
+            $inflector = $this->pdb->getInflector();
+            $alias = $inflector->singular($alias);
+            Pdb::validateAlias($alias);
+
+            $query->alias($alias);
         }
 
         if ($this->_deleted !== null) {
@@ -122,33 +131,5 @@ class PdbModelQuery extends PdbQuery
 
         $query->_dirty = false;
         return $query->build();
-    }
-
-
-    /**
-     * Create an automatic alias from a field name.
-     *
-     * This strips the prefix and flips the pluralisation.
-     *
-     * Example:
-     * ```sprout_sites => site```
-     *
-     * @param string $field
-     * @return string[] [ field, alias ]
-     */
-    protected function _inflect(string $field): array
-    {
-        $inflector = $this->pdb->getInflector();
-        $prefix = $this->pdb->getPrefix($field);
-
-        if (strpos($field, $prefix) === 0) {
-            $alias = substr($field, strlen($prefix));
-            $alias = $inflector->singular($alias);
-        }
-        else {
-            $alias = $inflector->singular($field);
-        }
-
-        return [$field, $alias];
     }
 }
