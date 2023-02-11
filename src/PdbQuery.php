@@ -566,6 +566,29 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Insert the 'from' table into the condition columns if they are missing.
+     *
+     * @param PdbCondition[] $conditions
+     * @param string $from
+     * @return PdbCondition[]
+     */
+    protected function insertColumnTables(array $conditions, string $from)
+    {
+        PdbCondition::walk($conditions, function(PdbCondition &$condition) use ($from) {
+            if (
+                !empty($condition->column)
+                and strpos($condition->column, '.') === false
+            ) {
+
+                $condition->column = "{$from}.{$condition->column}";
+            }
+        });
+
+        return $conditions;
+    }
+
+
+    /**
      *
      * @return array [ sql, params ]
      * @throws InvalidArgumentException
@@ -575,6 +598,17 @@ class PdbQuery implements Arrayable, JsonSerializable
         $sql = '';
         $params = [];
 
+        // Determine the 'from' table/alias - if any.
+        if ($this->_from[1] ?? null) {
+            $from = $this->_from[1];
+        }
+        else if ($this->_from[0] ?? null) {
+            $from = '~' . $this->_from[0];
+        }
+        else {
+            $from = null;
+        }
+
         // Build 'select'.
         if ($this->_select) {
             $fields = [];
@@ -583,6 +617,11 @@ class PdbQuery implements Arrayable, JsonSerializable
                 [$field, $alias] = $item + [null, null];
 
                 if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                    // Apply the table if missing.
+                    if ($from and strpos($field, '.') === false) {
+                        $field = "{$from}.{$field}";
+                    }
+
                     $field = $this->pdb->quoteField($field);
                 }
 
@@ -600,7 +639,7 @@ class PdbQuery implements Arrayable, JsonSerializable
         }
         // No select? Build a wildcard.
         else {
-            [$from, $alias] = $this->_from + [null, null];
+            [$table, $alias] = $this->_from + [null, null];
 
             // Prefer the first alias, then use the table name.
             // Fallback to just a wildcard and cross your fingers.
@@ -608,8 +647,8 @@ class PdbQuery implements Arrayable, JsonSerializable
                 $alias = $this->pdb->quoteField($alias);
                 $sql .= "SELECT {$alias}.* ";
             }
-            else if ($from) {
-                $sql .= "SELECT ~{$from}.* ";
+            else if ($table) {
+                $sql .= "SELECT ~{$table}.* ";
             }
             else {
                 $sql .= "SELECT * ";
@@ -618,9 +657,9 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         // Build 'from'.
         if ($this->_from) {
-            [$from, $alias] = $this->_from + [null, null];
+            [$table, $alias] = $this->_from + [null, null];
 
-            $sql .= "FROM ~{$from} ";
+            $sql .= "FROM ~{$table} ";
             if ($alias) {
                 $sql .= 'AS ';
                 $sql .= $this->pdb->quoteField($alias);
@@ -639,6 +678,12 @@ class PdbQuery implements Arrayable, JsonSerializable
                 $sql .= ' ';
             }
 
+            $conditions = PdbCondition::fromArray($conditions);
+
+            if ($from) {
+                $conditions = self::insertColumnTables($conditions, $from);
+            }
+
             $sql .= 'ON ' . $this->pdb->buildClause($conditions, $params, $combine);
             $sql .= ' ';
         }
@@ -649,6 +694,12 @@ class PdbQuery implements Arrayable, JsonSerializable
             if ($first) {
                 $type = 'WHERE';
                 $first = false;
+            }
+
+            $conditions = PdbCondition::fromArray($conditions);
+
+            if ($from) {
+                $conditions = self::insertColumnTables($conditions, $from);
             }
 
             $sql .= $type . ' ';
@@ -679,6 +730,12 @@ class PdbQuery implements Arrayable, JsonSerializable
             if ($first) {
                 $type = 'HAVING';
                 $first = false;
+            }
+
+            $conditions = PdbCondition::fromArray($conditions);
+
+            if ($from) {
+                $conditions = self::insertColumnTables($conditions, $from);
             }
 
             $sql .= $type . ' ';
