@@ -224,9 +224,9 @@ class PdbQuery implements Arrayable, JsonSerializable
         $fields = Arrays::flatten($fields, true);
 
         foreach ($fields as $key => $value) {
-            $field = PdbHelpers::parseAlias([$key => $value]);
+            $field = is_numeric($key) ? $value : [$key => $value];
+            $field = PdbHelpers::parseAlias($field);
             Pdb::validateAlias($field, true);
-
             $this->_select[] = $field;
         }
 
