@@ -27,6 +27,7 @@ use ReturnTypeWillChange;
  * - `select(...$fields)`
  * - `andSelect(...$fields)`
  * - `from($table)`
+ * - `alias($alias)`
  * - `leftJoin($table, $conditions, $combine)`
  * - `innerJoin($table, $conditions, $combine)`
  * - `where($conditions, $combine)`
@@ -245,6 +246,20 @@ class PdbQuery implements Arrayable, JsonSerializable
         Pdb::validateAlias($table);
 
         $this->_from = $table;
+        return $this;
+    }
+
+
+    /**
+     *
+     * @param string $alias
+     * @return static
+     * @throws InvalidArgumentException
+     */
+    public function alias(string $alias)
+    {
+        Pdb::validateIdentifier($alias);
+        $this->_from[1] = $alias;
         return $this;
     }
 
