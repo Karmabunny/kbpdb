@@ -121,6 +121,9 @@ class PdbQuery implements Arrayable, JsonSerializable
     /** @var string|null */
     protected $_as = null;
 
+    /** @var bool */
+    protected $_fix_tables = false;
+
 
     /**
      *
@@ -566,6 +569,35 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Set this to fix column fields that are missing a table name.
+     *
+     * This is particularly useful for resolving 'ambiguous column' errors.
+     *
+     * Such as when applying conditions to a model query, but the caller
+     * doesn't necessarily know the base table name or alias.
+     *
+     * ```sql
+     * -- broken
+     * SELECT id FROM here INNER JOIN other ON other.id = id;
+     * -- fixed
+     * SELECT here.id FROM here INNER JOIN other ON other.id = here.id;
+     * ```
+     *
+     * This will use the alias if provided.
+     *
+     * Note, this cannot be used with functions, such as `COUNT(id)`.
+     *
+     * @param bool $fix
+     * @return static
+     */
+    public function fixTables(bool $fix = true)
+    {
+        $this->_fix_tables = $fix;
+        return $this;
+    }
+
+
+    /**
      * Insert the 'from' table into the condition columns if they are missing.
      *
      * @param PdbCondition[] $conditions
@@ -599,14 +631,15 @@ class PdbQuery implements Arrayable, JsonSerializable
         $params = [];
 
         // Determine the 'from' table/alias - if any.
-        if ($this->_from[1] ?? null) {
-            $from = $this->_from[1];
-        }
-        else if ($this->_from[0] ?? null) {
-            $from = '~' . $this->_from[0];
-        }
-        else {
-            $from = null;
+        $from = null;
+
+        if ($this->_fix_tables) {
+            if ($this->_from[1] ?? null) {
+                $from = $this->_from[1];
+            }
+            else if ($this->_from[0] ?? null) {
+                $from = '~' . $this->_from[0];
+            }
         }
 
         // Build 'select'.
