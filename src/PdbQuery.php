@@ -239,6 +239,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Set the FROM table and alias (optional).
      *
      * @param string|string[] $table
      * @param string $alias
@@ -264,6 +265,9 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Set the alias for the FROM table.
+     *
+     * This can only modify an existing FROM statement.
      *
      * @param string $alias
      * @return static
@@ -272,7 +276,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function alias(string $alias)
     {
         Pdb::validateIdentifier($alias);
-        $this->_from[1] = $alias;
+
+        if (!empty($this->_from)) {
+            $this->_from[1] = $alias;
+        }
+
         return $this;
     }
 
