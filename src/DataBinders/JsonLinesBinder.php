@@ -41,7 +41,7 @@ class JsonLinesBinder implements PdbDataBinderInterface
     /** @inheritdoc */
     public function getBindingValue()
     {
-        return Json::encode($this->value, $this->flags);
+        return Json::encode($this->value, $this->flags) . "\n";
     }
 
 
@@ -49,7 +49,7 @@ class JsonLinesBinder implements PdbDataBinderInterface
     public function getBindingQuery(Pdb $pdb, string $column): string
     {
         $column = $pdb->quoteField($column);
-        return "{$column} = CONCAT({$column}, ?, '\n')";
+        return "{$column} = CONCAT({$column}, ?)";
     }
 
 
