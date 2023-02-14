@@ -56,11 +56,7 @@ class PdbTable extends Collection
      *
      * @var string[]
      */
-    public $attributes = [
-        'engine' => 'InnoDB',
-        'charset' => 'utf8',
-        'collate' => 'utf8_unicode_ci',
-    ];
+    public $attributes = [];
 
 
     /**

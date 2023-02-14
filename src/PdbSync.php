@@ -212,6 +212,21 @@ class PdbSync
             // Check the table exists
             $new_table = false;
 
+            // Apply some default attributes.
+            if (!isset($table->attributes['engine'])) {
+                $table->attributes['engine'] = 'InnoDB';
+            }
+
+            if (!isset($table->attributes['charset'])) {
+                $table->attributes['charset'] = $this->pdb->config->character_set;
+            }
+
+            // TODO Super naive. Total hack. Do better.
+            if (!isset($table->attributes['collate'])) {
+                $collation = $table->attributes['charset'] . '_general_ci';
+                $table->attributes['collate'] = $collation;
+            }
+
             if ($do['create']) {
                 if (! $this->checkTableMatches($table)) {
                     $new_table = true;
