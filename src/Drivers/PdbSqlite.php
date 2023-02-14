@@ -66,6 +66,7 @@ class PdbSqlite extends Pdb
         $q = "SELECT name
             FROM sqlite_master
             WHERE type = 'table'
+            AND name NOT LIKE 'sqlite_%'
         ";
         $res = $this->query($q, [], 'col');
 

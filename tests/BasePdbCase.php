@@ -29,7 +29,11 @@ abstract class BasePdbCase extends TestCase
 
     public function testSync(): void
     {
-        $this->pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
+        $tables = $this->pdb->listTables();
+
+        foreach ($tables as $table) {
+            $this->pdb->query("DROP TABLE ~{$table}", [], 'null');
+        }
 
         // Load up.
         $sync = new PdbSync($this->pdb);
@@ -54,11 +58,15 @@ abstract class BasePdbCase extends TestCase
      */
     public function testTables()
     {
-        $tables = $this->pdb->listTables();
-        $this->assertNotEmpty($tables);
+        $actual = $this->pdb->listTables();
+        $this->assertNotEmpty($actual);
 
         $expected = array_keys($this->struct->tables);
-        $this->assertEquals($expected, $tables);
+
+        sort($actual);
+        sort($expected);
+
+        $this->assertEquals($expected, $actual);
     }
 
 
