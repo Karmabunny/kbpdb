@@ -84,4 +84,48 @@ class PdbQueryTest extends TestCase
         $this->assertEquals($expected, $sql);
         $this->assertCount(0, $params);
     }
+
+
+    public function testKeyed()
+    {
+        $this->pdb->query('CREATE TABLE ~mmm (id INT, name VARCHAR(100))', [], 'null');
+        $this->pdb->insert('mmm', ['id' => 10, 'name' => 'test ten']);
+        $this->pdb->insert('mmm', ['id' => 20, 'name' => 'test twenty']);
+        $this->pdb->insert('mmm', ['id' => 30, 'name' => 'test thirty']);
+
+        // Maps.
+        $actual = $this->pdb->find('mmm')
+            ->indexBy('id')
+            ->all();
+
+        $expected = [
+            10 => [
+                'id' => 10,
+                'name' => 'test ten',
+            ],
+            20 => [
+                'id' => 20,
+                'name' => 'test twenty',
+            ],
+            30 => [
+                'id' => 30,
+                'name' => 'test thirty',
+            ],
+        ];
+
+        $this->assertEquals($expected, $actual);
+
+        // Columns.
+        $actual = $this->pdb->find('mmm')
+            ->indexBy('id')
+            ->column('name');
+
+        $expected = [
+            10 => 'test ten',
+            20 => 'test twenty',
+            30 => 'test thirty',
+        ];
+
+        $this->assertEquals($expected, $actual);
+    }
 }
