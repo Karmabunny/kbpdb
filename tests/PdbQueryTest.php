@@ -18,6 +18,8 @@ class PdbQueryTest extends TestCase
             'type' => PdbConfig::TYPE_SQLITE,
             'dsn' => __DIR__ . '/db.sqlite',
         ]);
+
+        $this->pdb->query('DROP TABLE IF EXISTS ~mmm', [], 'null');
     }
 
 

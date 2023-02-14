@@ -2,6 +2,7 @@
 
 namespace kbtests;
 
+use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
@@ -27,14 +28,24 @@ abstract class BasePdbCase extends TestCase
     }
 
 
-    public function testSync(): void
+    public function drop()
     {
+        // OK whoever wrote this stupid method (me)...
+        // HOW DO I KNOW WHAT IS AND ISN'T PREFIXED??
         $tables = $this->pdb->listTables();
 
         foreach ($tables as $table) {
-            $this->pdb->query("DROP TABLE ~{$table}", [], 'null');
+            $this->pdb->query("DROP TABLE IF EXISTS ~{$table}", [], 'null');
+            $this->pdb->query("DROP TABLE IF EXISTS {$table}", [], 'null');
         }
 
+        $tables = $this->pdb->listTables();
+        $this->assertEmpty($tables, implode(',', $tables));
+    }
+
+
+    public function sync()
+    {
         // Load up.
         $sync = new PdbSync($this->pdb);
         $sync->migrate($this->struct);
@@ -49,15 +60,31 @@ abstract class BasePdbCase extends TestCase
         $sync->migrate($this->struct);
 
         // Not sure why this is broken.
-        // $this->assertFalse($sync->hasQueries());
+        if ($this->pdb instanceof PdbSqlite) {
+            return;
+        }
+
+        $queries = '';
+        foreach ($sync->getQueries() as $query) {
+            $queries .= "\n" . $query->sql;
+        }
+
+        $this->assertEmpty($queries, $queries);
     }
 
 
-    /**
-     * @depends testSync
-     */
+    public function testSync()
+    {
+        $this->drop();
+        $this->sync();
+    }
+
+
     public function testTables()
     {
+        $this->drop();
+        $this->sync();
+
         $actual = $this->pdb->listTables();
         $this->assertNotEmpty($actual);
 
@@ -70,12 +97,11 @@ abstract class BasePdbCase extends TestCase
     }
 
 
-    /**
-     * @depends testSync
-     */
     public function testColumns()
     {
         $this->markTestSkipped('Casing for the types is wrong, should probably apply some normalisation.');
+
+        $this->sync();
 
         $columns = $this->pdb->fieldList('clubs');
         $this->assertNotEmpty($columns);
