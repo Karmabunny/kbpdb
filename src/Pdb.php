@@ -822,9 +822,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             throw new InvalidArgumentException($err);
         }
 
-        [$cols, $values] = $this->buildUpdateSet($data);
+        [$columns, $binds, $values] = $this->buildInsertSet($data);
 
-        $q = "INSERT INTO ~{$table} SET {$cols}";
+        $q = "INSERT INTO ~{$table} ({$columns}) VALUES ({$binds})";
         $this->query($q, $values, 'count');
         return $this->last_insert_id;
     }
@@ -861,7 +861,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
-     * Build the SET clause for an UPDATE/INSERT query.
+     * Build the SET clause for an UPDATE query.
      *
      * This will apply binding rules if the value is a PdbDataBinder or if
      * there is a formatter registered for the respective class type.
@@ -872,28 +872,73 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function buildUpdateSet(array $data): array
     {
-        $cols = [];
+        $columns = [];
         $values = [];
 
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
-
-            if ($val instanceof PdbDataBinderInterface) {
-                $cols[] = $val->getBindingQuery($this, $col);
-            }
-            else if ($formatter = $this->getFormatter($val)) {
-                $cols[] = $formatter->getBindingQuery($this, $col);
-            }
-            else {
-                $cols[] = $this->quoteField($col) . ' = ?';
-            }
-
+            $columns[] = $this->getBindingQuery($col, $val);
             $values[] = $val;
         }
 
-        $cols = implode(', ', $cols);
+        $columns = implode(', ', $columns);
 
-        return [$cols, $values];
+        return [$columns, $values];
+    }
+
+
+    /**
+     * Build the VALUES clause for an INSERT query.
+     *
+     * This will not apply binding rules. However the value formatting is
+     * still applied when processed by `execute()`.
+     *
+     * @param array $data [ col => val ]
+     * @return array [ string, string, values[] ]
+     * @throws InvalidArgumentException
+     */
+    protected function buildInsertSet(array $data): array
+    {
+        $columns = [];
+        $values = [];
+        $binds = [];
+
+        foreach ($data as $col => $val) {
+            static::validateIdentifier($col);
+
+            $columns[] = $this->quoteField($col);
+            $values[] = $val;
+            $binds[] = '?';
+        }
+
+        $columns = implode(', ', $columns);
+        $binds = implode(', ', $binds);
+
+        return [$columns, $binds, $values];
+    }
+
+
+    /**
+     * Build a binding query for a SET clause.
+     *
+     * This applies the appropriate binder or formatter, if applicable.
+     *
+     * @param string $col
+     * @param mixed $val
+     * @return string
+     * @throws InvalidArgumentException
+     */
+    protected function getBindingQuery(string $col, $val): string
+    {
+        if ($val instanceof PdbDataBinderInterface) {
+            return $val->getBindingQuery($this, $col, false);
+        }
+
+        if ($formatter = $this->getFormatter($val)) {
+            return $formatter->getBindingQuery($this, $col);
+        }
+
+        return $this->quoteField($col) . ' = ?';
     }
 
 

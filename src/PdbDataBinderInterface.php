@@ -39,7 +39,7 @@ interface PdbDataBinderInterface
 
 
     /**
-     * Get the SQL snippet for an `INSERT/UPDATE SET` query.
+     * Get the SQL snippet for an `UPDATE SET` query.
      *
      * The column value will be a numeric placeholder like `?`.
      *
@@ -48,6 +48,9 @@ interface PdbDataBinderInterface
      * Please note, although the value is properly escaped using prepared
      * statements - the column names are not. The Pdb object is provided for
      * this purpose {@see Pdb::quoteField}.
+     *
+     * Also this is not used for `INSERT VALUES`. However `getBindingValue()`
+     * is still used to process the value before binding.
      *
      * @param Pdb $pdb
      * @param string $column
