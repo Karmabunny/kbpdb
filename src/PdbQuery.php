@@ -45,6 +45,7 @@ use ReturnTypeWillChange;
  * - `as($class)`
  * - `throw($bool)`
  * - `cache($ttl)`
+ * - `indexBy($field)`
  *
  * Terminator methods:
  * - `build(): [string, array]`
@@ -124,6 +125,9 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /** @var bool */
     protected $_throw = true;
+
+    /** @var string|null */
+    protected $_keyed = null;
 
 
     /**
@@ -568,6 +572,24 @@ class PdbQuery implements Arrayable, JsonSerializable
 
 
     /**
+     * Specify a key for array results.
+     *
+     * This applies to:
+     * - all()
+     * - column()
+     * - iterator()
+     *
+     * @param string|null $field
+     * @return static
+     */
+    public function indexBy($field)
+    {
+        $this->_keyed = $field;
+        return $this;
+    }
+
+
+    /**
      *
      * @param string|null $key
      * @param int|bool $ttl seconds
@@ -825,7 +847,13 @@ class PdbQuery implements Arrayable, JsonSerializable
     public function all(): array
     {
         $query = clone $this;
-        return $query->execute('arr');
+
+        if ($query->_keyed) {
+            return $query->execute('map-arr:' . $query->_keyed);
+        }
+        else {
+            return $query->execute('arr');
+        }
     }
 
 
@@ -844,13 +872,29 @@ class PdbQuery implements Arrayable, JsonSerializable
         if ($query->_as) {
             $class = $query->_as;
 
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                yield new $class($row);
+            if ($query->_keyed) {
+                while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                    $key = $row[$query->_keyed] ?? reset($row);
+                    yield $key => new $class($row);
+                }
+            }
+            else {
+                while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                    yield new $class($row);
+                }
             }
         }
         else {
-            while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
-                yield $row;
+            if ($query->_keyed) {
+                while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                    $key = $row[$query->_keyed] ?? reset($row);
+                    yield $key => $row;
+                }
+            }
+            else {
+                while ($row = $pdo->fetch(PDO::FETCH_ASSOC)) {
+                    yield $row;
+                }
             }
         }
 
@@ -954,10 +998,20 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         // Insert field if missing.
         if ($field) {
-            $query->select($field);
+            if ($query->_keyed) {
+                $query->select($query->_keyed, $field);
+            }
+            else {
+                $query->select($field);
+            }
         }
 
-        return $query->execute('col');
+        if ($query->_keyed) {
+            return $query->execute('map-arr:' . $query->_keyed);
+        }
+        else {
+            return $query->execute('col');
+        }
     }
 
 
