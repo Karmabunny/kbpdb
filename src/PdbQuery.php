@@ -1007,7 +1007,7 @@ class PdbQuery implements Arrayable, JsonSerializable
         }
 
         if ($query->_keyed) {
-            return $query->execute('map-arr:' . $query->_keyed);
+            return $query->execute('map');
         }
         else {
             return $query->execute('col');
