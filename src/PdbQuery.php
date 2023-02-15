@@ -444,7 +444,8 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         foreach ($fields as $field => $order) {
 
-            if (is_numeric($field)) {
+            // Convert strings to key->value pair.
+            if (is_numeric($field) and is_string($order)) {
                 $field = explode(' ', $order, 2);
 
                 if (count($field) == 2) {
@@ -454,6 +455,14 @@ class PdbQuery implements Arrayable, JsonSerializable
                     $field = $field[0];
                     $order = 'ASC';
                 }
+            }
+
+            // Convert PHP constants to strings.
+            if ($order === SORT_ASC) {
+                $order = 'ASC';
+            }
+            else if ($order === SORT_DESC) {
+                $order = 'DESC';
             }
 
             Pdb::validateIdentifierExtended($field, true);
