@@ -215,7 +215,6 @@ trait PdbModelTrait
     public function save(): bool
     {
         $pdb = static::getConnection();
-        $table = static::getTableName();
 
         $transact = false;
 
@@ -235,13 +234,11 @@ trait PdbModelTrait
 
             $data = $this->getSaveData();
 
-            if ($this->id > 0) {
-                if (empty($data)) return true;
-                $pdb->update($table, $data, [ 'id' => $this->id ]);
+            if (empty($data)) {
+                return true;
             }
-            else {
-                $data['id'] = $pdb->insert($table, $data);
-            }
+
+            $this->_internalSave($data);
 
             // Punch it.
             if ($transact and $pdb->inTransaction()) {
@@ -271,6 +268,30 @@ trait PdbModelTrait
      */
     protected function _beforeSave()
     {
+    }
+
+
+    /**
+     * Perform inserts and updates.
+     *
+     * This is wrapped by the save() method with a transaction.
+     *
+     * This modifies the 'ID' into the `$data` array to the
+     *
+     * @param array $data as created by {@see getSaveData()}, this is mutable
+     * @return void
+     */
+    protected function _internalSave(array &$data)
+    {
+        $pdb = static::getConnection();
+        $table = static::getTableName();
+
+        if ($this->id > 0) {
+            $pdb->update($table, $data, [ 'id' => $this->id ]);
+        }
+        else {
+            $data['id'] = $pdb->insert($table, $data);
+        }
     }
 
 
