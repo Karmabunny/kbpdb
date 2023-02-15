@@ -2,12 +2,8 @@
 
 namespace kbtests\Models;
 
-use karmabunny\kb\Collection;
 use karmabunny\kb\Uuid;
-use kbtests\Database;
 use karmabunny\pdb\Pdb;
-use karmabunny\pdb\PdbModelInterface;
-use karmabunny\pdb\PdbModelTrait;
 
 /**
  * A base model.
@@ -17,12 +13,8 @@ use karmabunny\pdb\PdbModelTrait;
  *
  * This is a good chance to combine in Collections and other helpers.
  */
-abstract class Model extends Collection implements PdbModelInterface
+abstract class Model extends Record
 {
-    use PdbModelTrait {
-        getSaveData as private _getSaveData;
-    }
-
     /** @var string */
     public $uid;
 
@@ -36,16 +28,9 @@ abstract class Model extends Collection implements PdbModelInterface
     public $active = true;
 
 
-    /** @inheritdoc */
-    public static function getConnection(): Pdb
-    {
-        return Database::getConnection();
-    }
-
-
     public function getSaveData(): array
     {
-        $data = $this->_getSaveData();
+        $data = parent::getSaveData();
         $now = Pdb::now();
 
         if (!$this->id) {
@@ -63,6 +48,8 @@ abstract class Model extends Collection implements PdbModelInterface
 
     protected function _afterSave(array $data)
     {
+        parent::_afterSave($data);
+
         if (isset($data['date_added'])) {
             $this->date_added = $data['date_added'];
         }

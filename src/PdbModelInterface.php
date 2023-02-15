@@ -38,6 +38,17 @@ interface PdbModelInterface
 
 
     /**
+     * Data to be inserted or updated.
+     *
+     * This is a perfect spot to add generated values like audit rows
+     * (date_added, date_modified, uid, etc).
+     *
+     * @return array [ column => value ]
+     */
+    public function getSaveData(): array;
+
+
+    /**
      * Save this model.
      *
      * @return bool

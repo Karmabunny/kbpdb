@@ -1,5 +1,6 @@
 <?php
 
+use karmabunny\kb\Uuid;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
@@ -7,6 +8,7 @@ use kbtests\Database;
 use PHPUnit\Framework\TestCase;
 use kbtests\Models\Club;
 use kbtests\Models\DirtyClub;
+use kbtests\Models\SproutItem;
 
 class PdbModelTest extends TestCase
 {
@@ -196,5 +198,55 @@ class PdbModelTest extends TestCase
         // Does not exist.
         $exists = $pdb->recordExists($model->getTableName(), ['id' => $model->id]);
         $this->assertFalse($exists);
+    }
+
+
+    public function testSproutModel()
+    {
+        // A new model.
+        $model = new SproutItem();
+        $model->name = 'sprout test';
+
+        $expected = [
+            'date_added',
+            'name',
+            'uid',
+        ];
+
+        $actual = array_keys(array_filter($model->getSaveData()));
+        $this->assertArraySame($expected, $actual);
+
+        $this->assertNull($model->uid);
+        $this->assertNull($model->date_added);
+
+        // Pdo is opened here.
+        $this->assertTrue($model->save());
+        $this->assertGreaterThan(0, $model->id);
+
+        $this->assertNotEquals(Uuid::NIL, $model->uid);
+        $this->assertTrue(Uuid::valid($model->uid, 5));
+
+        $this->assertGreaterThanOrEqual(date('Y-m-d H:i:s'), $model->date_added);
+
+        $uid = $model->uid;
+        $added = $model->date_added;
+
+        usleep(500 * 1000);
+
+        $model->name = 'something else';
+        $this->assertTrue($model->save());
+
+        // Some things change, others stay the same.
+        $this->assertEquals($added, $model->date_added);
+        $this->assertEquals($uid, $model->uid);
+
+        // Fetch a fresh one.
+        $other = SproutItem::findOne(['id' => $model->id]);
+
+        // Test it all again.
+        $this->assertEquals($model->id, $other->id);
+        $this->assertEquals($model->uid, $other->uid);
+        $this->assertEquals($model->date_added, $other->date_added);
+        $this->assertEquals($model->name, $other->name);
     }
 }
