@@ -13,6 +13,7 @@ General improvements are things like:
 - migration exports
 - adapter architecture for other DBs (postgres, sqlite, mssql)
 - more tests
+- data binding interface
 
 
 ## Install
@@ -23,7 +24,12 @@ Add as a dependency:
 composer require karmabunny/pdb
 ```
 
-### Examples
+
+## Examples
 
 Usage is documented in the `docs/` folder.
 
+
+## Contributing
+
+Please see the TODO and CONTRIBUTING documents.
