@@ -128,4 +128,51 @@ class PdbQueryTest extends TestCase
 
         $this->assertEquals($expected, $actual);
     }
+
+
+    public function testOrderBy()
+    {
+        // Basic ordering, default direction.
+        $query = $this->pdb->find('mmm')
+            ->orderBy('name');
+
+        [$sql, $params] = $query->build();
+        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "name" ASC';
+
+        $this->assertEquals($expected, $sql);
+
+
+        // Explicit ordering.
+        $query = $this->pdb->find('mmm')
+            ->orderBy('name DESC', 'id ASC');
+
+        [$sql, $params] = $query->build();
+        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "name" DESC, "id" ASC';
+
+        $this->assertEquals($expected, $sql);
+
+
+        // Array syntax + nested array.
+        $query = $this->pdb->find('mmm')
+            ->orderBy([
+                ['record_order' => SORT_DESC],
+                ['name' => 'DESC'],
+                ['id ASC', 'status'],
+            ]);
+
+        [$sql, $params] = $query->build();
+        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "record_order" DESC, "name" DESC, "id" ASC, "status" ASC';
+
+        $this->assertEquals($expected, $sql);
+
+
+        // Functions ordering.
+        $query = $this->pdb->find('mmm')
+            ->orderBy('rand()');
+
+        [$sql, $params] = $query->build();
+        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY rand() ASC';
+
+        $this->assertEquals($expected, $sql);
+    }
 }
