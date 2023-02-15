@@ -1,6 +1,20 @@
 
 ## Modelling databases with PDB
 
+### Why models?
+
+TODO
+
+
+### Using models
+
+TODO
+
+- querying models
+- creating data with models
+- saving and validating models
+
+
 
 ### Basic implementation
 
