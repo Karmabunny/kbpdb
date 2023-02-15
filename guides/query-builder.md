@@ -139,11 +139,16 @@ Calling this method a multiples times will replace the previous selects.
 This appends to an existing list of selects instead of replacing it.
 
 
-> `from($table)`
+> `from($table, [$alias])`
 
 Choose a table to select from.
 
 - aliases
+
+
+> `alias($name)`
+
+Overwrite the alias of the FROM clause.
 
 
 > `leftJoin($table, $conditions)`
@@ -245,6 +250,17 @@ Possible forms:
 - `cache('key', false)` - disable cache
 
 Each Pdb instance can configure it's caching TTL config.
+
+
+> `indexBy($field)`
+
+TODO
+
+
+> `throw([$bool])`
+
+TODO
+
 
 
 ### Terminator methods
