@@ -227,11 +227,6 @@ trait PdbModelTrait
         try {
             $this->_beforeSave();
 
-            // Only populate defaults for new models.
-            if (!$this->id) {
-                $this->populateDefaults();
-            }
-
             $data = $this->getSaveData();
 
             if (empty($data)) {
@@ -243,10 +238,6 @@ trait PdbModelTrait
             // Punch it.
             if ($transact and $pdb->inTransaction()) {
                 $pdb->commit();
-            }
-
-            if (isset($data['id'])) {
-                $this->id = $data['id'];
             }
 
             $this->_afterSave($data);
@@ -268,6 +259,10 @@ trait PdbModelTrait
      */
     protected function _beforeSave()
     {
+        // Only populate defaults for new models.
+        if (!$this->id) {
+            $this->populateDefaults();
+        }
     }
 
 
@@ -303,6 +298,9 @@ trait PdbModelTrait
      */
     protected function _afterSave(array $data)
     {
+        if (isset($data['id'])) {
+            $this->id = $data['id'];
+        }
     }
 
 
