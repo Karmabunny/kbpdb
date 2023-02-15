@@ -38,17 +38,6 @@ interface PdbModelInterface
 
 
     /**
-     * Data to be inserted or updated.
-     *
-     * This is a perfect spot to add generated values like audit rows
-     * (date_added, date_modified, uid, etc).
-     *
-     * @return array [ column => value ]
-     */
-    public function getSaveData(): array;
-
-
-    /**
      * Save this model.
      *
      * @return bool
@@ -82,16 +71,6 @@ interface PdbModelInterface
      * @return static
      */
     public static function findOne(array $conditions);
-
-
-    /**
-     * Find one model. Create a default one if not found.
-     *
-     * @see {PdbQuery::find()}
-     * @param array $conditions
-     * @return static
-     */
-    public static function findOrCreate(array $conditions);
 
 
     /**
