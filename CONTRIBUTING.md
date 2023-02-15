@@ -115,3 +115,11 @@ Much functionality needs to perform the same regardless of the backing database.
 The `StaticPdbTest` is ripped directly from the Sprout project.
 
 This is the contract made with Sprout to say: 'Yes, we still behave like you have always expected of us'. _Do not break these tests_.
+
+
+
+## Publishing
+
+Releases are cut from the master branch with a version tag like `vX.X.X`. Upon pushing this tag to Github this revision is published to the public packagist.org repository.
+
+Considering the security implications of this, only trusted contributors are able to push to the master branch and create version tags.
