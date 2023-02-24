@@ -1036,7 +1036,7 @@ class PdbQuery implements Arrayable, JsonSerializable
         $query = clone $this;
 
         // Use a fast search if no fields are given.
-        if (!$this->_select) {
+        if (!$query->_select) {
             $query->select('count(1)');
         }
 
