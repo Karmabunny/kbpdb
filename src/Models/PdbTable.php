@@ -56,7 +56,9 @@ class PdbTable extends Collection
      *
      * @var string[]
      */
-    public $attributes = [];
+    public $attributes = [
+        'charset' => 'utf8',
+    ];
 
 
     /**
