@@ -446,7 +446,7 @@ class PdbParser
                     $value = "'{$value}'";
                 }
                 unset($value);
-                return str_replace('XML', implode(',', $values), $type);
+                return str_ireplace('XML', implode(',', $values), $type);
 
             default:
                 return $type;
