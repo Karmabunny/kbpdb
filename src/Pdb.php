@@ -1319,9 +1319,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      *
      * @param string $field
+     * @param bool $prefixes
      * @return string
      */
-    public function quoteField(string $field): string
+    public function quoteField(string $field, bool $prefixes = false): string
     {
         // Integer-ish fields are ok.
         // TODO At least for SELECT, everything else though?
@@ -1338,13 +1339,16 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             // Prefer `."field"` over `""."field"`
             if (strlen($part) === 0) continue;
 
-            // Can't do prefixing here, skip it.
-            if (strpos($part, '~') === 0) continue;
+            // Do prefixing bits.
+            if (strpos($part, '~') === 0) {
+                // Or not.
+                if (!$prefixes) {
+                    continue;
+                }
 
-            // TODO well actually...
-            // if (strpos($part, '~') === 0) {
-            //     $part = $this->getPrefix($part) . substr($part, 1);
-            // }
+                $part = substr($part, 1);
+                $part = $this->getPrefix($part) . $part;
+            }
 
             // Don't wrap/escape wildcards.
             if ($part == '*') continue;
@@ -1355,6 +1359,65 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         unset($part);
 
         return implode('.', $parts);
+    }
+
+
+    /**
+     * Wrap extended field identifiers in quotes.
+     *
+     * Such as:
+     *
+     * ```
+     * table.column => `table`.`column`
+     * ~table.column => `pdb_table`.`column`
+     *
+     * // Given 'prefixes = false'
+     * ~table.column => ~table.`column`
+     * ```
+     *
+     * Given a list of table identifiers this will only quote matching table
+     * identifiers. This is recommended to prevent accidentally mangling
+     * inline values.
+     *
+     * Table identifiers must be in their full non-prefixed form.
+     *
+     * @param string $query
+     * @param string[]|null $tables list of identifiers
+     * @param bool $prefixes Convert prefixes, otherwise only quotes the column component
+     * @return string
+     */
+    public function quoteIdentifiers(string $query, array $tables = null, bool $prefixes = false): string
+    {
+        if ($tables) {
+            $tables = array_fill_keys($tables, true);
+        }
+
+        return preg_replace_callback(
+            PdbHelpers::RE_IDENTIFIER_PARTS,
+            function($matches) use ($tables, $prefixes) {
+                [$id, $table, $column] = $matches;
+
+                if (strpos($table, '~') === 0) {
+                    // Don't escape the table here - just the column. This is
+                    // useful when we want to perform the prefixing later.
+                    if (!$prefixes) {
+                        return $table . '.' . $this->quoteField($column);
+                    }
+
+                    // Otherwise apply the prefix before performing
+                    // identifier lookups.
+                    $table = substr($table, 1);
+                    $table = $this->getPrefix($table) . $table;
+                }
+
+                if ($tables === null or isset($tables[$table])) {
+                    return $this->quoteField($id);
+                }
+
+                return $id;
+            },
+            $query
+        );
     }
 
 
@@ -1641,6 +1704,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function insertPrefixes(string $query)
     {
+        // Shortcut.
+        if (strpos($query, '~') === false) {
+            return $query;
+        }
+
         [$lquote, $rquote] = $this->config->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
@@ -1648,7 +1716,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             return $lquote . $prefix . $matches[1] . $rquote;
         };
 
-        return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
+        return preg_replace_callback(PdbHelpers::RE_IDENTIFIER_PREFIX, $replacer, $query);
     }
 
 

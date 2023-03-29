@@ -658,6 +658,10 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     protected function _afterBuild(string &$sql, array &$params)
     {
+        $ids = $this->getIdentifiers();
+
+        $sql = $this->pdb->quoteIdentifiers($sql, array_keys($ids), false);
+        $sql = $this->pdb->insertPrefixes($sql);
     }
 
 
@@ -830,6 +834,30 @@ class PdbQuery implements Arrayable, JsonSerializable
             'cache_ttl' => $this->_cache_ttl,
             'cache_key' => $this->_cache_key,
         ]);
+    }
+
+
+    /**
+     *
+     * @return string[] [ alias => table ]
+     */
+    public function getIdentifiers(): array
+    {
+        $ids = [];
+
+        [$table, $alias] = $this->_from;
+        $table = $this->pdb->getPrefix($table) . $table;
+        $alias = $alias ?: $table;
+        $ids[$alias] = $table;
+
+        foreach ($this->_joins as $join) {
+            [$table, $alias] = $join[1];
+            $table = $this->pdb->getPrefix($table) . $table;
+            $alias = $alias ?: $table;
+            $ids[$alias] = $table;
+        }
+
+        return $ids;
     }
 
 
