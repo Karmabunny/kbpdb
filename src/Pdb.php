@@ -931,7 +931,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     protected function getBindingQuery(string $col, $val): string
     {
         if ($val instanceof PdbDataBinderInterface) {
-            return $val->getBindingQuery($this, $col, false);
+            return $val->getBindingQuery($this, $col);
         }
 
         if ($formatter = $this->getFormatter($val)) {

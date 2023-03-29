@@ -108,7 +108,7 @@ trait PdbModelTrait
      *
      * This will only set defaults values for properties that are null.
      *
-     * @return static
+     * @return void
      */
     public function populateDefaults()
     {
@@ -127,6 +127,7 @@ trait PdbModelTrait
 
             // Newer PHP is picky about typed properties.
             // Here we set these immediately.
+            // @phpstan-ignore-next-line : phpstan runs on 7.1.
             if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
                 $property->setValue($this, $value);
                 continue;
@@ -178,6 +179,7 @@ trait PdbModelTrait
         try {
             $model = static::findOne($conditions);
         } catch (RowMissingException $ex) {
+            // @phpstan-ignore-next-line : I don't care.
             $model = new static();
             $model->populateDefaults();
         }
