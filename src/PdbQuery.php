@@ -632,6 +632,42 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     public function build(): array
     {
+        $query = clone $this;
+        $this->_beforeBuild($query);
+        [$sql, $params] = $query->_build();
+        $this->_afterBuild($sql, $params);
+        return [$sql, $params];
+    }
+
+
+    /**
+     *
+     * @param PdbQuery $query
+     * @return void
+     */
+    protected function _beforeBuild(PdbQuery &$query)
+    {
+    }
+
+
+    /**
+     *
+     * @param string $sql
+     * @param array $params
+     * @return void
+     */
+    protected function _afterBuild(string &$sql, array &$params)
+    {
+    }
+
+
+    /**
+     *
+     * @return array [ sql, params ]
+     * @throws InvalidArgumentException
+     */
+    protected function _build(): array
+    {
         $sql = '';
         $params = [];
 

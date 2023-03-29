@@ -16,9 +16,6 @@ use InvalidArgumentException;
 class PdbModelQuery extends PdbQuery
 {
 
-    /** @var bool */
-    private $_dirty = false;
-
     /** @var bool|string */
     public $_inflect = false;
 
@@ -70,7 +67,6 @@ class PdbModelQuery extends PdbQuery
     public function inflect(bool $inflect = true)
     {
         $this->_inflect = $inflect;
-        $this->_dirty = true;
         return $this;
     }
 
@@ -83,19 +79,14 @@ class PdbModelQuery extends PdbQuery
     public function deleted(?bool $deleted)
     {
         $this->_deleted = $deleted;
-        $this->_dirty = true;
         return $this;
     }
 
 
     /** @inheritdoc */
-    public function build(): array
+    protected function _beforeBuild(PdbQuery &$query)
     {
-        if (!$this->_dirty) {
-            return parent::build();
-        }
-
-        $query = clone $this;
+        parent::_beforeBuild($query);
 
         if (
             $this->_inflect
@@ -128,8 +119,5 @@ class PdbModelQuery extends PdbQuery
                 ]);
             }
         }
-
-        $query->_dirty = false;
-        return $query->build();
     }
 }
