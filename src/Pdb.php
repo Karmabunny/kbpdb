@@ -1319,9 +1319,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      *
      * @param string $field
+     * @param bool $prefixes
      * @return string
      */
-    public function quoteField(string $field): string
+    public function quoteField(string $field, bool $prefixes = false): string
     {
         // Integer-ish fields are ok.
         // TODO At least for SELECT, everything else though?
@@ -1338,13 +1339,16 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             // Prefer `."field"` over `""."field"`
             if (strlen($part) === 0) continue;
 
-            // Can't do prefixing here, skip it.
-            if (strpos($part, '~') === 0) continue;
+            // Do prefixing bits.
+            if (strpos($part, '~') === 0) {
+                // Or not.
+                if (!$prefixes) {
+                    continue;
+                }
 
-            // TODO well actually...
-            // if (strpos($part, '~') === 0) {
-            //     $part = $this->getPrefix($part) . substr($part, 1);
-            // }
+                $part = substr($part, 1);
+                $part = $this->getPrefix($part) . $part;
+            }
 
             // Don't wrap/escape wildcards.
             if ($part == '*') continue;
