@@ -1700,6 +1700,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function insertPrefixes(string $query)
     {
+        // Shortcut.
+        if (strpos($query, '~') === false) {
+            return $query;
+        }
+
         [$lquote, $rquote] = $this->config->getFieldQuotes();
 
         $replacer = function(array $matches) use ($lquote, $rquote) {
@@ -1707,7 +1712,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             return $lquote . $prefix . $matches[1] . $rquote;
         };
 
-        return preg_replace_callback('/\~([\w0-9_]+)/', $replacer, $query);
+        return preg_replace_callback(PdbHelpers::RE_IDENTIFIER_PREFIX, $replacer, $query);
     }
 
 
