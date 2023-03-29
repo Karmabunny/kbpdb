@@ -175,4 +175,36 @@ class PdbQueryTest extends TestCase
 
         $this->assertEquals($expected, $sql);
     }
+
+
+    public function testEscapes(): void
+    {
+        $prefix = $this->pdb->getPrefix();
+
+        $query = $this->pdb->find('stuff')
+            ->innerJoin('more as mmm', ['~stuff.id = mmm.stuff_id'])
+            ->select([
+                'count(~stuff.id)',
+                'max(missing.count)',
+                'min(~also.count)',
+            ]);
+
+        // Also test IDs while we're here.
+        $ids = $query->getIdentifiers();
+
+        $expected = [
+            $prefix . 'stuff' => $prefix . 'stuff',
+            'mmm' => $prefix . 'more',
+        ];
+        $this->assertEquals($expected, $ids);
+
+        [$sql, $params] = $query->build();
+
+        $expected = 'SELECT count("pdb_stuff"."id"), max(missing.count), min("pdb_also"."count") ';
+        $expected .= 'FROM "pdb_stuff" ';
+        $expected .= 'INNER JOIN "pdb_more" AS "mmm" ';
+        $expected .= 'ON "pdb_stuff"."id" = "mmm"."stuff_id"';
+        $this->assertEquals($expected, $sql);
+    }
+
 }
