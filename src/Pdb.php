@@ -1359,6 +1359,65 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     * Wrap extended field identifiers in quotes.
+     *
+     * Such as:
+     *
+     * ```
+     * table.column => `table`.`column`
+     * ~table.column => `pdb_table`.`column`
+     *
+     * // Given 'prefixes = false'
+     * ~table.column => ~table.`column`
+     * ```
+     *
+     * Given a list of table identifiers this will only quote matching table
+     * identifiers. This is recommended to prevent accidentally mangling
+     * inline values.
+     *
+     * Table identifiers must be in their full non-prefixed form.
+     *
+     * @param string $query
+     * @param string[]|null $tables list of identifiers
+     * @param bool $prefixes Convert prefixes, otherwise only quotes the column component
+     * @return string
+     */
+    public function quoteIdentifiers(string $query, array $tables = null, bool $prefixes = false): string
+    {
+        if ($tables) {
+            $tables = array_fill_keys($tables, true);
+        }
+
+        return preg_replace_callback(
+            PdbHelpers::RE_IDENTIFIER_PARTS,
+            function($matches) use ($tables, $prefixes) {
+                [$id, $table, $column] = $matches;
+
+                if (strpos($table, '~') === 0) {
+                    // Don't escape the table here - just the column. This is
+                    // useful when we want to perform the prefixing later.
+                    if (!$prefixes) {
+                        return $table . '.' . $this->quoteField($column);
+                    }
+
+                    // Otherwise apply the prefix before performing
+                    // identifier lookups.
+                    $table = substr($table, 1);
+                    $table = $this->getPrefix($table) . $table;
+                }
+
+                if ($tables === null or isset($tables[$table])) {
+                    return $this->quoteField($id);
+                }
+
+                return $id;
+            },
+            $query
+        );
+    }
+
+
+    /**
      * Create a UUIDv5 for this table + id.
      *
      * These are 'namespaced' UUIDs. Within this namespace we have a 'scheme'

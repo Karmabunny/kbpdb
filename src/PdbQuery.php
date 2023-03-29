@@ -660,26 +660,8 @@ class PdbQuery implements Arrayable, JsonSerializable
     {
         $ids = $this->getIdentifiers();
 
-        // Escape any extended identifiers in the query.
-        $sql = preg_replace_callback(
-            PdbHelpers::RE_IDENTIFIER_PARTS,
-            function($matches) use ($ids) {
-                [$id, $table, $column] = $matches;
-
-                // Don't escape the table here - just the column.
-                // Escaping for the prefixed table happens later.
-                if (strpos($table, '~') === 0) {
-                    return $table . '.' . $this->pdb->quoteField($column);
-                }
-
-                if (isset($ids[$table])) {
-                    return $this->pdb->quoteField($id);
-                }
-
-                return $id;
-            },
-            $sql
-        );
+        $sql = $this->pdb->quoteIdentifiers($sql, array_keys($ids), false);
+        $sql = $this->pdb->insertPrefixes($sql);
     }
 
 
