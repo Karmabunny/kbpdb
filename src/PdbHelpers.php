@@ -40,6 +40,8 @@ class PdbHelpers
 
     const RE_IDENTIFIER_EXTENDED = '/^~?[a-z_][a-z_0-9]*(?:\.[a-z_][a-z_0-9]*|\.\*)?$/i';
 
+    const RE_IDENTIFIER_PARTS = '/(\~?[a-z_][a-z_0-9]*)\.([a-z_][a-z_0-9]*|\.\*)/i';
+
     const RE_FUNCTION = '/[a-z_]+\(.*\)$/i';
 
 

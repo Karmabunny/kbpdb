@@ -658,6 +658,28 @@ class PdbQuery implements Arrayable, JsonSerializable
      */
     protected function _afterBuild(string &$sql, array &$params)
     {
+        $ids = $this->getIdentifiers();
+
+        // Escape any extended identifiers in the query.
+        $sql = preg_replace_callback(
+            PdbHelpers::RE_IDENTIFIER_PARTS,
+            function($matches) use ($ids) {
+                [$id, $table, $column] = $matches;
+
+                // Don't escape the table here - just the column.
+                // Escaping for the prefixed table happens later.
+                if (strpos($table, '~') === 0) {
+                    return $table . '.' . $this->pdb->quoteField($column);
+                }
+
+                if (isset($ids[$table])) {
+                    return $this->pdb->quoteField($id);
+                }
+
+                return $id;
+            },
+            $sql
+        );
     }
 
 
@@ -830,6 +852,30 @@ class PdbQuery implements Arrayable, JsonSerializable
             'cache_ttl' => $this->_cache_ttl,
             'cache_key' => $this->_cache_key,
         ]);
+    }
+
+
+    /**
+     *
+     * @return string[] [ alias => table ]
+     */
+    public function getIdentifiers(): array
+    {
+        $ids = [];
+
+        [$table, $alias] = $this->_from;
+        $table = $this->pdb->getPrefix($table) . $table;
+        $alias = $alias ?: $table;
+        $ids[$alias] = $table;
+
+        foreach ($this->_joins as $join) {
+            [$table, $alias] = $join[1];
+            $table = $this->pdb->getPrefix($table) . $table;
+            $alias = $alias ?: $table;
+            $ids[$alias] = $table;
+        }
+
+        return $ids;
     }
 
 
