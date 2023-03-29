@@ -38,7 +38,7 @@ class PdbQueryTest extends TestCase
                 ['project.region_id', 'IN', $regions],
             ])
             ->innerJoin(['project_roles_trade_type_ids', 'trade_join'], [
-                'trade_join = ~project_rules.id',
+                'trade_join.role_id = ~project_roles.id',
                 ['trade_join.trade_type_id', 'IN', $trades],
             ])
             ->where([
@@ -57,9 +57,9 @@ class PdbQueryTest extends TestCase
 
         [$sql, $params] = $query->build();
 
-        $expected = 'SELECT ~project_roles.* FROM ~project_roles ';
-        $expected .= 'INNER JOIN ~projects AS "project" ON project.id = ~project_roles.project_id AND "project"."active" != ? AND "project"."visible_members" != ? AND "project"."profile_id" != ? AND "project"."region_id" IN (?, ?, ?) ';
-        $expected .= 'INNER JOIN ~project_roles_trade_type_ids AS "trade_join" ON trade_join = ~project_rules.id AND "trade_join"."trade_type_id" IN (?, ?, ?) ';
+        $expected = 'SELECT "pdb_project_roles".* FROM "pdb_project_roles" ';
+        $expected .= 'INNER JOIN "pdb_projects" AS "project" ON "project"."id" = "pdb_project_roles"."project_id" AND "project"."active" != ? AND "project"."visible_members" != ? AND "project"."profile_id" != ? AND "project"."region_id" IN (?, ?, ?) ';
+        $expected .= 'INNER JOIN "pdb_project_roles_trade_type_ids" AS "trade_join" ON "trade_join"."role_id" = "pdb_project_roles"."id" AND "trade_join"."trade_type_id" IN (?, ?, ?) ';
         $expected .= 'WHERE "active" != ? AND "start_date" BETWEEN ? AND ? AND "end_date" BETWEEN ? AND ? AND ("level1" = ? OR ("level2" = ? AND "level3" = ?)) ';
         $expected .= 'GROUP BY "project_roles"."id"';
 
@@ -73,13 +73,13 @@ class PdbQueryTest extends TestCase
         $query = $this->pdb->find('big_thingy');
 
         [$sql, $params] = $query->build();
-        $expected = 'SELECT ~big_thingy.* FROM ~big_thingy';
+        $expected = 'SELECT "pdb_big_thingy".* FROM "pdb_big_thingy"';
 
         $this->assertEquals($expected, $sql);
         $this->assertCount(0, $params);
 
         [$sql, $params] = $query->alias('thing')->build();
-        $expected = 'SELECT "thing".* FROM ~big_thingy AS "thing"';
+        $expected = 'SELECT "thing".* FROM "pdb_big_thingy" AS "thing"';
 
         $this->assertEquals($expected, $sql);
         $this->assertCount(0, $params);
@@ -137,7 +137,7 @@ class PdbQueryTest extends TestCase
             ->orderBy('name');
 
         [$sql, $params] = $query->build();
-        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "name" ASC';
+        $expected = 'SELECT "pdb_mmm".* FROM "pdb_mmm" ORDER BY "name" ASC';
 
         $this->assertEquals($expected, $sql);
 
@@ -147,7 +147,7 @@ class PdbQueryTest extends TestCase
             ->orderBy('name DESC', 'id ASC');
 
         [$sql, $params] = $query->build();
-        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "name" DESC, "id" ASC';
+        $expected = 'SELECT "pdb_mmm".* FROM "pdb_mmm" ORDER BY "name" DESC, "id" ASC';
 
         $this->assertEquals($expected, $sql);
 
@@ -161,7 +161,7 @@ class PdbQueryTest extends TestCase
             ]);
 
         [$sql, $params] = $query->build();
-        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY "record_order" DESC, "name" DESC, "id" ASC, "status" ASC';
+        $expected = 'SELECT "pdb_mmm".* FROM "pdb_mmm" ORDER BY "record_order" DESC, "name" DESC, "id" ASC, "status" ASC';
 
         $this->assertEquals($expected, $sql);
 
@@ -171,7 +171,7 @@ class PdbQueryTest extends TestCase
             ->orderBy('rand()');
 
         [$sql, $params] = $query->build();
-        $expected = 'SELECT ~mmm.* FROM ~mmm ORDER BY rand() ASC';
+        $expected = 'SELECT "pdb_mmm".* FROM "pdb_mmm" ORDER BY rand() ASC';
 
         $this->assertEquals($expected, $sql);
     }
