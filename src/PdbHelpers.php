@@ -44,6 +44,8 @@ class PdbHelpers
 
     const RE_IDENTIFIER_PREFIX = '/\~([a-z0-9_]+)/i';
 
+    const RE_BINDING = '/^:?[a-z_0-9]+$/i';
+
     const RE_FUNCTION = '/[a-z_]+\(.*\)$/i';
 
 

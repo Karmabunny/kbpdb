@@ -1594,6 +1594,25 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     * Validate a binding placeholder name for parameter binding.
+     *
+     * @param mixed $name
+     * @return void
+     * @throws InvalidArgumentException
+     */
+    public static function validateBinding($name)
+    {
+        if (!is_string($name)) {
+            throw new InvalidArgumentException("Invalid bind name: {$name}");
+        }
+
+        if (!preg_match(PdbHelpers::RE_BINDING, $name)) {
+            throw new InvalidArgumentException("Invalid bind name: {$name}");
+        }
+    }
+
+
+    /**
      * Validates a value meant for an ENUM field, e.g.
      *
      * `$valid->addRules('col1', 'required', 'Pdb::validateEnum[table, col]');`
