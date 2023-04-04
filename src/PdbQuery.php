@@ -129,6 +129,9 @@ class PdbQuery implements Arrayable, JsonSerializable
     /** @var string|null */
     protected $_keyed = null;
 
+    /** @var array additional named parameters [name => value] */
+    protected $_params = [];
+
 
     /**
      *
@@ -524,6 +527,34 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param int $offset
+     * @return static
+     */
+    public function setParams(array $params)
+    {
+        $this->_params = [];
+        $this->addParams($params);
+    }
+
+
+    /**
+     *
+     * @param int $offset
+     * @return static
+     */
+    public function addParams(array $params)
+    {
+        foreach ($params as $name => $value) {
+            Pdb::validateBinding($name);
+
+            $name = ltrim($name, ':');
+            $this->_params[$name] = $value;
+        }
+    }
+
+
+    /**
+     *
      * @param string|string[] $table
      * @param array $conditions
      * @return static
@@ -673,7 +704,7 @@ class PdbQuery implements Arrayable, JsonSerializable
     protected function _build(): array
     {
         $sql = '';
-        $params = [];
+        $params = $this->_params;
 
         // Build 'select'.
         if ($this->_select) {
