@@ -389,4 +389,17 @@ class PdbConfig extends Collection
         return array_merge($prefixes, $this->table_prefixes);
     }
 
+
+    /**
+     * Is the binding setting named or numeric?
+     *
+     * @return bool
+     */
+    public function hasNamedBinding(): bool
+    {
+        return (
+            empty($this->binding)
+            or $this->binding === '?'
+        );
+    }
 }

@@ -944,10 +944,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
         // Hacks on hacks.
         // But really, does the formatter need to know?
-        if (
-            !empty($this->config->binding)
-            and $this->config->binding !== '?'
-        ) {
+        if ($this->config->hasNamedBinding()) {
             $fragment = preg_replace_callback(
                 '/\?/',
                 function () use ($val, &$params) {
@@ -1882,10 +1879,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function bindValue($value, array &$params): string
     {
-        if (
-            empty($this->config->binding)
-            or $this->config->binding === '?'
-        ) {
+        if (!$this->config->hasNamedBinding()) {
             $params[] = $value;
             return '?';
         }
