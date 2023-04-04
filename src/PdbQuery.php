@@ -527,8 +527,9 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param int $offset
+     * @param array $params [ name => value ]
      * @return static
+     * @throws InvalidArgumentException
      */
     public function setParams(array $params)
     {
@@ -539,11 +540,16 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param int $offset
+     * @param array $params [ name => value ]
      * @return static
+     * @throws InvalidArgumentException
      */
     public function addParams(array $params)
     {
+        if (!$this->pdb->config->hasNamedBinding()) {
+            throw new InvalidArgumentException('Named binding is not enabled.');
+        }
+
         foreach ($params as $name => $value) {
             Pdb::validateBinding($name);
 
