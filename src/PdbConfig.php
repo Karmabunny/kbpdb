@@ -119,6 +119,15 @@ class PdbConfig extends Collection
     public $namespace = Pdb::UUID_NAMESPACE;
 
     /**
+     * The binding prefix for parameterized queries.
+     *
+     * Use the special value `'?'` to indicate numeric bindings.
+     *
+     * @var string
+     */
+    public $binding = '?';
+
+    /**
      * Per-table prefixes.
      *
      * These override the global `prefix` config.

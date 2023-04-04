@@ -1828,6 +1828,35 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     * Get the binding token for a value and add it to the params array.
+     *
+     * This modifies the params array by reference and returns the appropriate
+     * query placeholder token.
+     *
+     * The binding type (numeric or named) is controlled by the `binding` config.
+     *
+     * @param string|null $value
+     * @param array $params
+     * @return string
+     */
+    public function bindValue($value, array &$params): string
+    {
+        if (
+            empty($this->config->binding)
+            or $this->config->binding === '?'
+        ) {
+            $params[] = $value;
+            return '?';
+        }
+        else {
+            $name = trim($this->config->binding, ':') . count($params);
+            $params[$name] = $value;
+            return ':' . $name;
+        }
+    }
+
+
+    /**
      * Converts a PDO result set to a common data format:
      *
      * - `null`     just a null
