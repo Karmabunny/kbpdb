@@ -798,8 +798,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     {
         static::validateIdentifier($table);
 
-        $q = "SELECT * FROM ~{$table} WHERE id = ?";
-        return $this->query($q, [(int) $id], 'row');
+        $params = [];
+        $bind = $this->bindValue((int) $id, $params);
+
+        $q = "SELECT * FROM ~{$table} WHERE id = {$bind}";
+        return $this->query($q, $params, 'row');
     }
 
 
