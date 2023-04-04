@@ -7,6 +7,8 @@
 namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
 use PDOException;
@@ -338,15 +340,6 @@ class PdbCondition
             $column = $pdb->quoteField($column);
         }
 
-        // Gonna 'bind' this one manually. Doesn't feel great.
-        if ($this->bind_type and is_scalar($this->value)) {
-            $bind = $pdb->quote($this->value, $this->bind_type);
-        }
-        // Natural bindings. Good.
-        else {
-            $bind = '?';
-        }
-
         switch ($this->operator) {
             case self::EQUAL:
             case self::NOT_EQUAL;
@@ -360,10 +353,7 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                if (!$this->bind_type) {
-                    $values[] = $this->value;
-                }
-
+                $bind = $this->bindValue($pdb, $this->value, $values);
                 return "{$column} {$this->operator} {$bind}";
 
             case self::IS:
@@ -427,15 +417,8 @@ class PdbCondition
                     throw new InvalidArgumentException($err);
                 }
 
-                if (!$this->bind_type) {
-                    $values[] = $low;
-                    $values[] = $high;
-                    $high = $low = '?';
-                }
-                else {
-                    $low = $pdb->quoteValue($low);
-                    $high = $pdb->quoteValue($high);
-                }
+                $low = $this->bindValue($pdb, $low, $values);
+                $high = $this->bindValue($pdb, $high, $values);
 
                 return "{$column} BETWEEN {$low} AND {$high}";
 
@@ -456,34 +439,25 @@ class PdbCondition
 
                 if (empty($items)) return '';
 
-                if (!$this->bind_type) {
-                    $binds = PdbHelpers::bindPlaceholders(count($items));
-
-                    foreach ($items as $item) {
-                        $values[] = $item;
-                    }
-                }
-                else {
-                    $items = $pdb->quoteAll($items, $this->bind_type);
-                    $binds = implode(', ', $items);
-                }
+                $binds = $this->bindValues($pdb, $items, $values);
+                $binds = implode(', ', $binds);
 
                 return "{$column} {$this->operator} ({$binds})";
 
             case self::CONTAINS:
-                $bind = $this->quoteLike($pdb, $values);
+                $bind = $this->bindLike($pdb, $this->value, $values);
                 return "{$column} LIKE CONCAT('%', {$bind}, '%')";
 
             case self::BEGINS:
-                $bind = $this->quoteLike($pdb, $values);
+                $bind = $this->bindLike($pdb, $this->value, $values);
                 return "{$column} LIKE CONCAT({$bind}, '%')";
 
             case self::ENDS:
-                $bind = $this->quoteLike($pdb, $values);
+                $bind = $this->bindLike($pdb, $this->value, $values);
                 return "{$column} LIKE CONCAT('%', {$bind})";
 
             case self::IN_SET:
-                $bind = $this->quoteLike($pdb, $values);
+                $bind = $this->bindLike($pdb, $this->value, $values);
                 return "FIND_IN_SET({$bind}, {$column}) > 0";
 
             default:
@@ -493,20 +467,84 @@ class PdbCondition
     }
 
 
-    private function quoteLike(Pdb $pdb, array &$values)
+    /**
+     * Bind a value and return the binding token.
+     *
+     * The binding token will be either a placeholder or a quoted value - as
+     * determined by the condition 'bind_type'.
+     *
+     * @param Pdb $pdb
+     * @param mixed $value
+     * @param mixed $params
+     * @return string
+     * @throws ConnectionException
+     * @throws PdbException
+     */
+    private function bindValue(Pdb $pdb, $value, array &$params): string
     {
-        if (!$this->bind_type) {
-            $values[] = PdbHelpers::likeEscape($this->value);
-            return '?';
+        if ($this->bind_type) {
+            return $pdb->quote($value, $this->bind_type);
         }
         else {
+            return $pdb->bindValue($value, $params);
+        }
+    }
+
+
+    /**
+     * Bind all values of an array.
+     *
+     * The binding tokens are returned as an array, either as placeholders or
+     * quoted values - as determined by the condition 'bind_type'.
+     *
+     * @param Pdb $pdb
+     * @param array $values
+     * @param array $params
+     * @return string[]
+     * @throws ConnectionException
+     * @throws PdbException
+     */
+    private function bindValues(Pdb $pdb, array $values, array &$params): array
+    {
+        if ($this->bind_type) {
+            return $pdb->quoteAll($values, $this->bind_type);
+        }
+        else {
+            $names = [];
+
+            foreach ($values as $value) {
+                $names[] = $pdb->bindValue($value, $params);
+            }
+
+            return $names;
+        }
+    }
+
+
+    /**
+     * Bind a value and wrap the binding token for a 'LIKE' condition.
+     *
+     * The binding token is either a placeholder or a quoted value - as
+     * determined by the condition 'bind_type'.
+     *
+     * @param Pdb $pdb
+     * @param string|null $value
+     * @param array $params
+     * @return string
+     */
+    private function bindLike(Pdb $pdb, $value, array &$params)
+    {
+        if ($this->bind_type) {
             if (!is_scalar($this->value)) {
                 throw new InvalidArgumentException("Operator {$this->operator} value must be scalar");
             }
 
             $value = PdbHelpers::likeEscape($this->value);
-            $value = $pdb->quote($value, $this->bind_type);
-            return $value;
+            return $pdb->quote($value, $this->bind_type);
+        }
+        else {
+            $value = PdbHelpers::likeEscape($this->value);
+            return $pdb->bindValue($value, $params);
         }
     }
 }
