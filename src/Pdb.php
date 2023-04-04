@@ -872,18 +872,17 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function buildUpdateSet(array $data): array
     {
-        $columns = [];
+        $binds = [];
         $values = [];
 
         foreach ($data as $col => $val) {
             static::validateIdentifier($col);
-            $columns[] = $this->getBindingQuery($col, $val);
-            $values[] = $val;
+            $binds[] = $this->bindQuery($col, $val, $values);
         }
 
-        $columns = implode(', ', $columns);
+        $binds = implode(', ', $binds);
 
-        return [$columns, $values];
+        return [$binds, $values];
     }
 
 
@@ -907,8 +906,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             static::validateIdentifier($col);
 
             $columns[] = $this->quoteField($col);
-            $values[] = $val;
-            $binds[] = '?';
+            $binds[] = $this->bindValue($val, $values);
         }
 
         $columns = implode(', ', $columns);
@@ -925,20 +923,38 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string $col
      * @param mixed $val
+     * @param array $params
      * @return string
      * @throws InvalidArgumentException
      */
-    protected function getBindingQuery(string $col, $val): string
+    protected function bindQuery(string $col, $val, array &$params): string
     {
         if ($val instanceof PdbDataBinderInterface) {
-            return $val->getBindingQuery($this, $col);
+            $fragment = $val->getBindingQuery($this, $col);
+        }
+        else if ($formatter = $this->getFormatter($val)) {
+            $fragment = $formatter->getBindingQuery($this, $col);
+        }
+        else {
+            $fragment = $this->quoteField($col) . ' = ?';
         }
 
-        if ($formatter = $this->getFormatter($val)) {
-            return $formatter->getBindingQuery($this, $col);
+        // Hacks on hacks.
+        // But really, does the formatter need to know?
+        if (
+            !empty($this->config->binding)
+            and $this->config->binding !== '?'
+        ) {
+            $fragment = preg_replace_callback(
+                '/\?/',
+                function () use ($val, &$params) {
+                    return $this->bindValue($val, $params);
+                },
+                $fragment
+            );
         }
 
-        return $this->quoteField($col) . ' = ?';
+        return $fragment;
     }
 
 
