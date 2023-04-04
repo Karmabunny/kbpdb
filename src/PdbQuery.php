@@ -806,14 +806,14 @@ class PdbQuery implements Arrayable, JsonSerializable
 
         // Limit.
         if ($this->_limit) {
-            $params[] = $this->_limit;
-            $sql .= 'LIMIT ? ';
+            $bind = $this->pdb->bindValue($this->_limit, $params);
+            $sql .= "LIMIT {$bind} ";
         }
 
         // Offset.
         if ($this->_offset) {
-            $params[] = $this->_offset;
-            $sql .= 'OFFSET ? ';
+            $bind = $this->pdb->bindValue($this->_offset, $params);
+            $sql .= "OFFSET {$bind} ";
         }
 
         return [trim($sql), $params];
