@@ -1836,6 +1836,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             if (!is_string($key)) {
                 $key += 1;
             }
+            else {
+                $key = ltrim($key, ':');
+            }
 
             if (is_int($val)) {
                 $st->bindValue($key, $val, PDO::PARAM_INT);
