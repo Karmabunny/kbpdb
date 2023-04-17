@@ -932,6 +932,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function bindQuery(string $col, $val, array &$params): string
     {
+        $bind = $this->bindValue($val, $params);
+
         if ($val instanceof PdbDataBinderInterface) {
             $fragment = $val->getBindingQuery($this, $col);
         }
@@ -939,19 +941,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             $fragment = $formatter->getBindingQuery($this, $col);
         }
         else {
-            $fragment = $this->quoteField($col) . ' = ?';
+            $fragment = $this->quoteField($col) . ' = ' . $bind;
         }
 
         // Hacks on hacks.
-        // But really, does the formatter need to know?
         if ($this->config->hasNamedBinding()) {
-            $fragment = preg_replace_callback(
-                '/\?/',
-                function () use ($val, &$params) {
-                    return $this->bindValue($val, $params);
-                },
-                $fragment
-            );
+            $fragment = str_replace('?', $bind, $fragment);
         }
 
         return $fragment;
