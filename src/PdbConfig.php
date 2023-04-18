@@ -398,8 +398,8 @@ class PdbConfig extends Collection
     public function hasNamedBinding(): bool
     {
         return (
-            empty($this->binding)
-            or $this->binding === '?'
+            !empty($this->binding)
+            and $this->binding !== '?'
         );
     }
 }
