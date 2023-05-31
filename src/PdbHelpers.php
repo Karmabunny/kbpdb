@@ -206,7 +206,8 @@ class PdbHelpers
      * This converts:
      * - `[column => alias]` (array)
      * - `'column as alias'` (string, full syntax)
-     * - `'column alias'` (string, shorthand)
+     *
+     * The short syntax is not supported.
      *
      * @param string|string[] $field
      * @return array [ field, alias ] second param is null if no alias is present.
@@ -232,9 +233,14 @@ class PdbHelpers
         }
 
         // Convert 'column as alias' to [ column, alias ]
-        $field = trim($field);
-        $field = preg_split('/\s+AS\s+|\s+/i', $field, 2) ?: [];
-        return $field + [null, null];
+        $matches = [];
+        if (preg_match("/^(.+)\s+AS\s+([^\s]+)$/i", trim($field), $matches)) {
+            [, $field, $alias] = $matches;
+            $alias = trim($alias, PdbHelpers::FIELD_QUOTES);
+            return [$field, $alias];
+        }
+
+        return [$field, null];
     }
 
 
