@@ -44,4 +44,30 @@ class PdbParserTest extends TestCase
         $this->assertEquals(true, $column->is_nullable);
         $this->assertEquals(null, $column->default);
     }
+
+
+    /**
+     * TODO mysql only
+     */
+    public function testEnums()
+    {
+        $parser = $this->parse();
+
+        $clubs = $parser->getTable('clubs');
+
+        $column = $clubs->columns['status'];
+        $enum = "ENUM('new','active','retired')";
+
+        // Regular enums.
+        $this->assertEquals(false, $column->is_nullable);
+        $this->assertEquals('string', $column->getPhpType());
+        $this->assertEquals($enum, $column->type);
+
+        // XML style enums.
+        $column = $clubs->columns['type'];
+        $enum = "ENUM('one','two','three')";
+        $this->assertEquals(true, $column->is_nullable);
+        $this->assertEquals('string|null', $column->getPhpType());
+        $this->assertEquals($enum, $column->type);
+    }
 }

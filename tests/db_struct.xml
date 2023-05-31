@@ -18,6 +18,12 @@
         <!-- test implicit allownull -->
         <column name="flags" type="INT UNSIGNED" />
 
+        <column name="type" type="ENUM(xml)">
+            <val>one</val>
+            <val>two</val>
+            <val>three</val>
+        </column>
+
         <primary>
             <col name="id"/>
         </primary>
