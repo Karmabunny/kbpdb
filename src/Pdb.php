@@ -1334,7 +1334,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         $parts = explode('.', $field, 2);
 
         foreach ($parts as &$part) {
-            $part = trim($part, '\'"`[]{}');
+            $part = trim($part, PdbHelpers::FIELD_QUOTES);
 
             // Prefer `."field"` over `""."field"`
             if (strlen($part) === 0) continue;

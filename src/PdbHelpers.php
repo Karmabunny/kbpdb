@@ -47,6 +47,9 @@ class PdbHelpers
     const RE_FUNCTION = '/[a-z_]+\(.*\)$/i';
 
 
+    const FIELD_QUOTES = '\'"`[]{}';
+
+
     /**
      * Determine the query type.
      *
