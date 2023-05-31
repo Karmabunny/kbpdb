@@ -136,8 +136,8 @@ class PdbParser
 
             $type = self::parseColumnType($node);
 
-            $is_nullable = (bool) XML::attr($node, 'allownull');
-            $auto_increment = (bool) XML::attr($node, 'autoinc');
+            $is_nullable = (bool) (XML::attr($node, 'allownull') ?? true);
+            $auto_increment = (bool) (XML::attr($node, 'autoinc') ?? false);
 
             $default = XML::attr($node, 'default');
 
