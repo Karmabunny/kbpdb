@@ -15,6 +15,9 @@
         <column name="status" type="ENUM('new','active','retired')" allownull="0"/>
         <column name="founded" type="DATETIME" allownull="0"/>
 
+        <!-- test implicit allownull -->
+        <column name="flags" type="INT UNSIGNED" />
+
         <primary>
             <col name="id"/>
         </primary>
