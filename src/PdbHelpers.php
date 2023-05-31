@@ -70,6 +70,8 @@ class PdbHelpers
     /**
      * Normalise a column type to something a bit more consistent.
      *
+     * TODO this should be moved into the driver.
+     *
      * @param string $type
      * @return string
      */
@@ -254,6 +256,8 @@ class PdbHelpers
      * - 'datetime' can be jammed into `strtotime()`
      * - 'array' can be exploded into an array
      *
+     * TODO should this live in each driver?
+     *
      * @param string $type the SQL type
      * @param bool $strict only return real types
      * @return string|null the PHP type, null if unknown
@@ -284,6 +288,8 @@ class PdbHelpers
 
     /**
      * Convert an ENUM or SET definition from MySQL into an array of values
+     *
+     * TODO considering this is a mysql feature, should this be a driver method?
      *
      * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
      * @return array Numerically indexed
