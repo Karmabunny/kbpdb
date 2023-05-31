@@ -4,24 +4,24 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "07a9c00c182b67954da9322da6ce8b81",
+    "content-hash": "a78ac6afa8c99c2cc053feca49100f94",
     "packages": [
         {
             "name": "karmabunny/kb",
-            "version": "v2.33.18",
+            "version": "v3.36.21",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbphp.git",
-                "reference": "65542bd8dd007796e79271d83ba04f8e4c338047"
+                "reference": "0bb9707e277ed5d632a0244c70a1a64c9e179629"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/65542bd8dd007796e79271d83ba04f8e4c338047",
-                "reference": "65542bd8dd007796e79271d83ba04f8e4c338047",
+                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/0bb9707e277ed5d632a0244c70a1a64c9e179629",
+                "reference": "0bb9707e277ed5d632a0244c70a1a64c9e179629",
                 "shasum": ""
             },
             "require": {
-                "php": ">=7.0",
+                "php": "^7.2|^8",
                 "symfony/polyfill-php73": "*",
                 "symfony/polyfill-php81": "^1.26"
             },
@@ -55,9 +55,9 @@
             ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbphp/issues",
-                "source": "https://github.com/Karmabunny/kbphp/tree/v2.33.18"
+                "source": "https://github.com/Karmabunny/kbphp/tree/v3.36.21"
             },
-            "time": "2022-11-07T07:24:42+00:00"
+            "time": "2023-05-01T06:46:25+00:00"
         },
         {
             "name": "symfony/polyfill-php73",
