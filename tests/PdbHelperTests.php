@@ -41,6 +41,47 @@ class PdbHelperTests extends TestCase
     }
 
 
+    public function dataStripStrings()
+    {
+        return [
+            ['test', 'test'],
+            // 1x single quote
+            ['te\'st', 'te\'st'],
+            ['\'test', '\'test'],
+            ['test\'', 'test\''],
+            // 1x double quote
+            ['te"st', 'te"st'],
+            ['"test', '"test'],
+            ['test"', 'test"'],
+            // Single quoted string
+            ['before\'mid\'after', 'beforeafter'],
+            ['before\'m\\\'id\'after', 'beforeafter'],
+            ['before\'\\\'mid\'after', 'beforeafter'],
+            ['before\'mid\\\'\'after', 'beforeafter'],
+            ['\'mid\'', ''],
+            ['\'mid\'after', 'after'],
+            ['before\'mid\'', 'before'],
+            // Double quoted string
+            ['before"mid"after', 'beforeafter'],
+            ['before"m\"id"after', 'beforeafter'],
+            ['before"mid\""after', 'beforeafter'],
+            ['before"\"mid"after', 'beforeafter'],
+            ['"mid"', ''],
+            ['"mid"after', 'after'],
+            ['before"mid"', 'before'],
+        ];
+    }
+
+
+    /**
+     * @dataProvider dataStripStrings
+     */
+    public function testStripStrings($in, $exp)
+    {
+        $this->assertEquals($exp, Pdb::stripStrings($in));
+    }
+
+
     public function dataLikeEscape()
     {
         return [
