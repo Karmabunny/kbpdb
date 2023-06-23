@@ -1465,13 +1465,15 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Validates a identifier (column name, table name, etc)
      *
-     * @param string $name The identifier to check
+     * @param mixed $name The identifier to check
      * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
     public static function validateIdentifier($name, $loose = false)
     {
+        $name = (string) $name;
+
         if ($loose) {
             // Numbers are ok.
             if (is_numeric($name) and (int) $name == (float) $name) {
@@ -1483,9 +1485,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             if (preg_match(PdbHelpers::RE_FUNCTION, $name)) return;
         }
 
-        if (!preg_match(PdbHelpers::RE_IDENTIFIER, $name)) {
-            throw new InvalidArgumentException("Invalid identifier: {$name}");
+        if ($name and preg_match(PdbHelpers::RE_IDENTIFIER, $name)) {
+            return;
         }
+
+        throw new InvalidArgumentException("Invalid identifier: {$name}");
     }
 
 
@@ -1493,13 +1497,15 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Validates a identifier in extended format -- table.column
      * Also accepts short format like {@see validateIdentifier} does.
      *
-     * @param string $name The identifier to check
+     * @param mixed $name The identifier to check
      * @param bool $loose Permit integers + functions - e.g. SELECT 1, COUNT(*), etc
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
     public static function validateIdentifierExtended($name, $loose = false)
     {
+        $name = (string) $name;
+
         if ($loose) {
             // Numbers are ok.
             if (is_numeric($name) and (int) $name == (float) $name) {
@@ -1511,36 +1517,44 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             if (preg_match(PdbHelpers::RE_FUNCTION, $name)) return;
         }
 
-        if (!preg_match(PdbHelpers::RE_IDENTIFIER_EXTENDED, $name)) {
-            throw new InvalidArgumentException("Invalid identifier: {$name}");
+        if ($name and preg_match(PdbHelpers::RE_IDENTIFIER_EXTENDED, $name)) {
+            return;
         }
+
+        throw new InvalidArgumentException("Invalid identifier: {$name}");
     }
 
 
     /**
      * Validate an SQL function.
      *
-     * @param string $value
+     * @param mixed $value
      * @return void
      * @throws InvalidArgumentException
      */
     public static function validateFunction($value)
     {
-        if (!preg_match(PdbHelpers::RE_FUNCTION, $value)) {
-            throw new InvalidArgumentException("Invalid function: {$value}");
+        $value = (string) $value;
+
+        if ($value and preg_match(PdbHelpers::RE_FUNCTION, $value)) {
+            return;
         }
+
+        throw new InvalidArgumentException("Invalid function: {$value}");
     }
 
 
     /**
      * Validates an order-by direction.
      *
-     * @param string $name The identifier to check
+     * @param mixed $name The identifier to check
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
     public static function validateDirection($name)
     {
+        $name = (string) $name;
+
         if (!in_array(strtoupper($name), ['DESC', 'ASC'])) {
             throw new InvalidArgumentException("Invalid direction: {$name}");
         }
