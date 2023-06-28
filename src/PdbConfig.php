@@ -112,6 +112,13 @@ class PdbConfig extends Collection
     public $character_set = 'utf8';
 
     /**
+     * Connection timeout.
+     *
+     * @var string
+     */
+    public $timeout = 0;
+
+    /**
      * Namespace for UUIDv5 generation.
      *
      * @var string

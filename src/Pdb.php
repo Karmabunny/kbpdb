@@ -286,8 +286,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         try {
-            $pdo = new PDO($config->getDsn(), $config->user, $config->pass);
-            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $options = [];
+            $options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
+
+            if ($config->timeout) {
+                $options[PDO::ATTR_TIMEOUT] = (int) $config->timeout;
+            }
+
+            $pdo = new PDO($config->getDsn(), $config->user, $config->pass, $options);
 
             // Set session variables.
             // These can be overridden by the HACKS fields.
