@@ -178,15 +178,16 @@ class PdbCondition
         if (is_string($key)) {
             $modifier = trim(strtoupper($key));
 
-            // Support for nested conditions.
-            if (
-                is_array($item)
-                and in_array($modifier, self::COMPOUNDS)
-            ) {
-                $conditions = self::fromArray($item);
-                return new PdbCondition($modifier, null, $conditions);
+            if (is_array($item)) {
+                // Support for nested conditions.
+                if (in_array($modifier, self::COMPOUNDS)) {
+                    $conditions = self::fromArray($item);
+                    return new PdbCondition($modifier, null, $conditions);
+                }
+                else {
+                    return new PdbCondition(self::IN, $key, $item);
+                }
             }
-
             // Regular key-style conditions.
             else {
                 $operator = PdbCondition::EQUAL;
