@@ -63,6 +63,8 @@ class PdbConfig extends Collection
     /**
      * Connection username.
      *
+     * Note that when you connect to SQL Azure, your username will be `UserName@ServerId`.
+     *
      * @var string
      */
     public $user;
@@ -288,12 +290,34 @@ class PdbConfig extends Collection
      */
     public function getDsn(): string
     {
+        $type = $this->type;
+
+        if ($this->type === 'mssql') {
+            $type = 'sqlsrv';
+        }
+
         if ($this->dsn) {
-            return $this->type . ':' . $this->dsn;
+            return $type . ':' . $this->dsn;
+        }
+
+        $parts = [];
+
+        if ($this->type === 'mssql') {
+            if ($this->host) {
+                $server = 'Server=' . $this->host;
+
+                if ($this->port) {
+                    $server .= ',' . $this->port;
+                }
+
+                $parts[] = $server;
+            }
+
+            if ($this->database) {
+                $parts[] = 'Database=' . $this->database;
+            }
         }
         else {
-            $parts = [];
-
             if (is_string($this->socket)) {
                 $parts[] = 'unix_socket=' . $this->socket;
             }
@@ -323,9 +347,9 @@ class PdbConfig extends Collection
             if ($this->port) {
                 $parts[] = 'port=' . $this->port;
             }
-
-            return $this->type . ':' . implode(';', $parts);
         }
+
+        return $type . ':' . implode(';', $parts);
     }
 
 
