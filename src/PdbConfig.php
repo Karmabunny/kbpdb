@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use InvalidArgumentException;
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Inflector;
@@ -107,6 +108,15 @@ class PdbConfig extends Collection
      * @var string
      */
     public $schema = 'public';
+
+    /**
+     * Secure mode, for Postgres.
+     *
+     * https://www.postgresql.org/docs/15/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS
+     *
+     * @var string
+     */
+    public $sslmode = 'prefer';
 
     /**
      * Global table prefix.
@@ -287,6 +297,7 @@ class PdbConfig extends Collection
      * The 'Data Source Name' used to connect to the database.
      *
      * @return string
+     * @throws InvalidArgumentException
      */
     public function getDsn(): string
     {
@@ -317,7 +328,7 @@ class PdbConfig extends Collection
                 $parts[] = 'Database=' . $this->database;
             }
         }
-        else {
+        else if ($this->type === 'mysql') {
             if (is_string($this->socket)) {
                 $parts[] = 'unix_socket=' . $this->socket;
             }
@@ -341,12 +352,54 @@ class PdbConfig extends Collection
             if ($this->database) {
                 $parts[] = 'dbname=' . $this->database;
             }
+            if ($this->port) {
+                $parts[] = 'port=' . $this->port;
+            }
             if ($this->character_set) {
                 $parts[] = 'charset=' . $this->character_set;
+            }
+        }
+        else if ($this->type === 'pgsql') {
+            if ($this->host) {
+                $parts[] = 'host=' . $this->host;
+            }
+            if ($this->database) {
+                $parts[] = 'dbname=' . $this->database;
             }
             if ($this->port) {
                 $parts[] = 'port=' . $this->port;
             }
+            if ($this->sslmode) {
+                $parts[] = 'sslmode=' . $this->sslmode;
+            }
+        }
+        else if ($this->type === 'oracle') {
+            $dbname = '';
+
+            if ($this->host) {
+                $dbname .= '//' . $this->host;
+            }
+            if ($this->port) {
+                $dbname .= ':' . $this->port;
+            }
+
+            if ($dbname) {
+                $dbname .= '/';
+            }
+
+            $dbname .= $this->database;
+
+            $parts[] = 'dbname=' . $dbname;
+
+            if ($this->character_set) {
+                $parts[] = 'charset=' . $this->character_set;
+            }
+        }
+        else if ($this->type === 'sqlite') {
+            $parts[] = $this->database;
+        }
+        else {
+            throw new InvalidArgumentException('Unknown db type: ' . $this->type);
         }
 
         return $type . ':' . implode(';', $parts);
