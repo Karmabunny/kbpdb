@@ -7,6 +7,7 @@
 namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
 use PDOException;
@@ -107,6 +108,7 @@ class PdbCondition
      * @param string|int $key
      * @param PdbCondition|array|string|int|float|null $item
      * @return PdbCondition
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
     public static function fromShorthand($key, $item)
@@ -228,6 +230,7 @@ class PdbCondition
      * Validate this condition.
      *
      * @return void
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
     public function validate()
@@ -238,30 +241,44 @@ class PdbCondition
         }
 
         if (!is_scalar($this->operator)) {
-            throw new InvalidArgumentException('Invalid operator: ' . gettype($this->operator));
+            $message = 'Invalid operator: ' . gettype($this->operator);
+                throw (new InvalidConditionException($message))
+                    ->withCondition($this);
         }
 
         if ($this->column !== null) {
             if (!in_array($this->operator, self::OPERATORS)) {
-                throw new InvalidArgumentException("Unknown operator: '{$this->operator}'");
+                $message = "Unknown operator: '{$this->operator}'";
+                throw (new InvalidConditionException($message))
+                    ->withCondition($this);
             }
         }
         else {
             if (!in_array($this->operator, self::COMPOUNDS)) {
-                throw new InvalidArgumentException("Unknown compound operator: '{$this->operator}'");
+                $message = "Unknown compound operator: '{$this->operator}'";
+                throw (new InvalidConditionException($message))
+                    ->withCondition($this);
             }
         }
 
         // Skip the rest for a nested condition.
-        if ($this->column === null) return;
+        if ($this->column === null) {
+            return;
+        }
 
         if (!is_scalar($this->column)) {
-            throw new InvalidArgumentException('Column name must be scalar, not: ' . gettype($this->column));
+            $message = 'Column name must be scalar';
+            throw (new InvalidConditionException($message))
+                ->withActual($this->column)
+                ->withCondition($this);
         }
 
         // For some reason this is ok?
         if (is_numeric($this->column) and !in_array($this->column, [0, 1])) {
-            throw new InvalidArgumentException('Column name cannot be numeric (except for 0 or 1)');
+            $message = 'Column name cannot be numeric (except for 0 or 1)';
+            throw (new InvalidConditionException($message))
+                ->withActual($this->column)
+                ->withCondition($this);
         }
 
         Pdb::validateIdentifierExtended($this->column, true);
@@ -269,9 +286,12 @@ class PdbCondition
         // If the value is a field type, then we should do validation there too.
         if ($this->bind_type === Pdb::QUOTE_FIELD) {
             if (is_iterable($this->value)) {
-                foreach ($this->value as $value) {
+                foreach ($this->value as $index => $value) {
                     if (!is_scalar($value)) {
-                        throw new InvalidArgumentException('Column array must be scalar');
+                        $message = "Column array must be scalar (index {$index})";
+                        throw (new InvalidConditionException($message))
+                            ->withActual($value)
+                            ->withCondition($this);
                     }
                     Pdb::validateIdentifierExtended((string) $value, true);
                 }
@@ -293,7 +313,7 @@ class PdbCondition
      * @param array $values
      * @return string
      * @throws PDOException
-     * @throws InvalidArgumentException
+     * @throws InvalidConditionException
      */
     public function build(Pdb $pdb, array &$values): string
     {
@@ -357,8 +377,10 @@ class PdbCondition
             case self::LESS_THAN:
             case self::GREATER_THAN:
                 if (!is_scalar($this->value)) {
-                    $err = "Operator {$this->operator} needs a scalar value";
-                    throw new InvalidArgumentException($err);
+                    $message = "Operator {$this->operator} needs a scalar value";
+                    throw (new InvalidConditionException($message))
+                        ->withActual($this->value)
+                        ->withCondition($this);
                 }
 
                 if (!$this->bind_type) {
@@ -385,8 +407,10 @@ class PdbCondition
                 }
 
                 if ($value === false) {
-                    $err = "Operator IS value must be NULL or NOT NULL";
-                    throw new InvalidArgumentException($err);
+                    $message = "Operator IS value must be NULL or NOT NULL";
+                    throw (new InvalidConditionException($message))
+                        ->withActual($this->value)
+                        ->withCondition($this);
                 }
 
                 return "{$column} {$this->operator} {$value}";
@@ -409,23 +433,37 @@ class PdbCondition
                 }
 
                 if ($value === false) {
-                    $err = "Operator IS NOT value must be NULL";
-                    throw new InvalidArgumentException($err);
+                    $message = "Operator IS NOT value must be NULL";
+                    throw (new InvalidConditionException($message))
+                        ->withActual($this->value)
+                        ->withCondition($this);
                 }
 
                 return "{$column} {$this->operator} NULL";
 
             case self::BETWEEN:
-                $err = "Operator BETWEEN value must be an array of two scalars";
+                if (!is_array($this->value)) {
+                    $message = "Operator BETWEEN value must be an array of two scalars";
+                    throw (new InvalidConditionException($message))
+                        ->withActual($this->value)
+                        ->withCondition($this);
+                }
 
-                if (!is_array($this->value) or count($this->value) != 2) {
-                    throw new InvalidArgumentException($err);
+                if (count($this->value) != 2) {
+                    $message = "Operator BETWEEN value must be an array of two scalars";
+                    throw (new InvalidConditionException($message))
+                        ->withActual(count($this->value))
+                        ->withCondition($this);
                 }
 
                 [$low, $high] = array_values($this->value);
 
                 if (!is_scalar($low) or !is_scalar($high)) {
-                    throw new InvalidArgumentException($err);
+                    $message = "Operator BETWEEN value must be an array of two scalars";
+                    $actual = gettype($low) . ' and ' . gettype($high);
+                    throw (new InvalidConditionException($message))
+                        ->withActual($actual)
+                        ->withCondition($this);
                 }
 
                 if (!$this->bind_type) {
@@ -443,15 +481,21 @@ class PdbCondition
             case self::IN:
             case self::NOT_IN:
                 $items = $this->value;
-                $err = "Operator {$this->operator} value must be an array of scalars";
 
                 if (!is_array($items)) {
-                    throw new InvalidArgumentException($err);
+                    $message = "Operator {$this->operator} value must be an array of scalars";
+
+                    throw (new InvalidConditionException($message))
+                        ->withActual($items)
+                        ->withCondition($this);
                 }
 
                 foreach ($items as $index => $item) {
                     if (!is_scalar($item)) {
-                        throw new InvalidArgumentException($err . " (index {$index})");
+                        $message = "Operator {$this->operator} value must be an array of scalars";
+                        throw (new InvalidConditionException($message))
+                            ->withActual(gettype($items) . " (index {$index})")
+                            ->withCondition($this);
                     }
                 }
 
@@ -488,8 +532,9 @@ class PdbCondition
                 return "FIND_IN_SET({$bind}, {$column}) > 0";
 
             default:
-                $err = "Operator not implemented: {$this->operator}";
-                throw new InvalidArgumentException($err);
+                $message = "Operator not implemented: {$this->operator}";
+                throw (new InvalidConditionException($message))
+                    ->withCondition($this);
         }
     }
 
@@ -502,12 +547,67 @@ class PdbCondition
         }
         else {
             if (!is_scalar($this->value)) {
-                throw new InvalidArgumentException("Operator {$this->operator} value must be scalar");
+                $message = "Operator {$this->operator} value must be scalar";
+                throw (new InvalidConditionException($message))
+                    ->withActual($this->value)
+                    ->withCondition($this);
             }
 
             $value = PdbHelpers::likeEscape($this->value);
             $value = $pdb->quote($value, $this->bind_type);
             return $value;
         }
+    }
+
+
+    public function getPreviewSql(): string
+    {
+        switch ($this->operator) {
+            case self::EQUAL:
+            case self::NOT_EQUAL;
+            case self::NOT_EQUAL_ALT;
+            case self::GREATER_THAN_EQUAL:
+            case self::LESS_THAN_EQUAL:
+            case self::LESS_THAN:
+            case self::GREATER_THAN:
+            case self::IS:
+            case self::IS_NOT:
+                return "{$this->column} {$this->operator} ?";
+
+            case self::BETWEEN:
+                return "{$this->column} BETWEEN ? AND ?";
+
+            case self::IN:
+            case self::NOT_IN:
+                return "{$this->column} {$this->operator} (...)";
+
+            case self::CONTAINS:
+                return "{$this->column} LIKE CONCAT('%', ?, '%')";
+
+            case self::BEGINS:
+                return "{$this->column} LIKE CONCAT(?, '%')";
+
+            case self::ENDS:
+                return "{$this->column} LIKE CONCAT('%', ?)";
+
+            case self::IN_SET:
+                return "FIND_IN_SET(?, {$this->column}) > 0";
+        }
+
+        return '';
+    }
+
+
+    /** @inheritdoc */
+    public function __toString()
+    {
+        $preview = $this->getPreviewSql();
+
+        if ($preview) {
+            return $preview;
+        }
+
+        $type = gettype($this->value);
+        return "[{$this->column}, {$this->operator}, {$type}]";
     }
 }
