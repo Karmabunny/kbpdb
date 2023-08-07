@@ -82,6 +82,17 @@ class PdbConfig extends Collection
     public $database;
 
     /**
+     * Treat the host as a unix socket for MySQL connections.
+     *
+     * Note, if this is set `true` (default) then 'localhost' is treated as a socket.
+     *
+     * Otherwise if a string this is used as the socket path and overrides the `host` setting.
+     *
+     * @var string|bool
+     */
+    public $socket = true;
+
+    /**
      * Port number, or null for default.
      *
      * @var int|null
@@ -283,9 +294,26 @@ class PdbConfig extends Collection
         else {
             $parts = [];
 
-            if ($this->host) {
-                $parts[] = 'host=' . $this->host;
+            if (is_string($this->socket)) {
+                $parts[] = 'unix_socket=' . $this->socket;
             }
+            else if ($this->host) {
+                // https://www.php.net/manual/en/ref.pdo-mysql.connection.php#refsect1-ref.pdo-mysql.connection-notes
+                // php-mysql cheats when given localhost and instead opens
+                // a socket. However, IP addresses still work - so if the config
+                // specifies 'socket=false' we're going respect that.
+                if (
+                    $this->socket === false
+                    and $this->type === self::TYPE_MYSQL
+                    and $this->host === 'localhost'
+                ) {
+                    $parts[] = 'host=127.0.0.1';
+                }
+                else {
+                    $parts[] = 'host=' . $this->host;
+                }
+            }
+
             if ($this->database) {
                 $parts[] = 'dbname=' . $this->database;
             }
