@@ -7,7 +7,7 @@
 namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
-use karmabunny\kb\Configure;
+use karmabunny\kb\Configurable;
 use karmabunny\kb\DataObject;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Pdb;
@@ -337,14 +337,31 @@ class PdbReturn extends DataObject implements PdbReturnInterface
     public function buildClass($result)
     {
         if ($class = $this->class) {
+            if (is_subclass_of($class, Configurable::class)) {
+                $create = function($item) use ($class) {
+                    $object = new $class();
+                    $object->update($item);
+                    return $object;
+                };
+            }
+            else {
+                $create = function($item) use ($class) {
+                    $object = new $class();
+                    foreach ($item as $key => $value) {
+                        $object->$key = $value;
+                    }
+                    return $object;
+                };
+            }
+
             switch ($this->type) {
                 case 'row':
                 case 'row?':
-                    return Configure::configure($result, $class, false);
+                    return $create($result);
 
                 case 'arr':
                 case 'map-arr':
-                    return Configure::all($result, $class, false);
+                    return array_map($create, $result);
                 ;;
             }
         }
