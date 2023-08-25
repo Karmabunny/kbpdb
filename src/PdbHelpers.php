@@ -284,6 +284,7 @@ class PdbHelpers
      *
      * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
      * @return array Numerically indexed
+     * @throws InvalidArgumentException
      */
     public static function convertEnumArr($enum_defn)
     {

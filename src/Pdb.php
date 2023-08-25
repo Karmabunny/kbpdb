@@ -1212,6 +1212,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $table non-prefixed
      * @param string $column
      * @return string[]
+     * @throws InvalidArgumentException
      */
     public abstract function extractEnumArr(string $table, string $column);
 
