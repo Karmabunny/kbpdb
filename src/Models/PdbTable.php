@@ -106,4 +106,21 @@ class PdbTable extends Collection
 
         return $errors;
     }
+
+
+    /**
+     * Calculate the row size in bytes.
+     *
+     * @return int
+     */
+    public function getRowSize(): int
+    {
+        $size = 0;
+
+        foreach ($this->columns as $column) {
+            $size += $column->getByteSize();
+        }
+
+        return $size;
+    }
 }

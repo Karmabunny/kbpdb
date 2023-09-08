@@ -95,4 +95,16 @@ class PdbColumn extends Collection
 
         return $type;
     }
+
+
+    /**
+     * Mysql specific.
+     *
+     * @return int
+     */
+    public function getByteSize(): int
+    {
+        $charset = $this->attributes['charset'] ?? 'utf8';
+        return PdbHelpers::getColumnSize($this->type, $charset);
+    }
 }

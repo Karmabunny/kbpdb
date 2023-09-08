@@ -311,6 +311,160 @@ class PdbHelpers
 
 
     /**
+     *
+     * @param string $charset
+     * @return int
+     */
+    public static function getCharsetSize(string $charset): int
+    {
+        switch ($charset) {
+            case 'latin1':
+            default:
+                return 1;
+
+            case 'ucs2':
+            case 'utf16':
+            case 'utf16le':
+                return 2;
+
+            case 'utf8':
+            case 'utf8mb3':
+                return 3;
+
+            case 'utf8mb4':
+            case 'utf32':
+                return 4;
+        }
+    }
+
+
+    /**
+     *
+     * https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html#data-types-storage-reqs-date-time
+     *
+     * @param string $type
+     * @param string $charset
+     * @return int
+     * @throws InvalidArgumentException
+     */
+    public static function getColumnSize(string $type, string $charset = 'utf8'): int
+    {
+        $pattern = '/
+            (tinyint)|
+            (smallint)|
+            (mediumint)|
+            (bigint)|
+            (int)|
+            (float)|
+            (double|real)|
+            (dec|fixed|numeric)|
+            (char|varchar)|
+            (binary|varbinary)|
+            (enum)|
+            (set)|
+            (year)|
+            (datetime)|
+            (timestamp)|
+            (date|time)
+        /ix';
+
+        $matches = [];
+
+        if (!preg_match($pattern, $type, $matches)) {
+            return 0;
+        }
+
+        // tinyint
+        if (!empty($matches[1])) return 1;
+        // smallint
+        if (!empty($matches[2])) return 2;
+        // mediumint
+        if (!empty($matches[3])) return 3;
+        // bigint
+        if (!empty($matches[4])) return 8;
+        // int
+        if (!empty($matches[5])) return 4;
+
+        // float
+        if (!empty($matches[6])) {
+            $size = (int) preg_replace('/^.*?(\d+).*?$/', '$1', $type);
+            return $size > 25 ? 8 : 4;
+        }
+
+        // double
+        if (!empty($matches[7])) {
+            return 8;
+        }
+
+        // decimals
+        if (!empty($matches[8])) {
+            $matches = [];
+
+            if (preg_match('/(\d+),(\d+)?/', $type, $matches)) {
+                [, $scale, $precision] = $matches;
+
+                $size = 0;
+                $size += (($precision - $scale) / 9) * 4;
+                $size += ceil($precision - $scale % 9 / 2);
+                $size += ($scale / 9) * 4;
+                $size += ceil($scale % 9 / 2);
+
+                return $size;
+            }
+
+            return 0;
+        }
+
+        // char + varchar
+        if (!empty($matches[9])) {
+            $size = (int) preg_replace('/^.*?(\d+).*?$/', '$1', $type);
+            $char_size = self::getCharsetSize($charset);
+            return ($size * $char_size) + 1;
+        }
+
+        // binary varbinary
+        if (!empty($matches[10])) {
+            $size = (int) preg_replace('/^.*?(\d+).*?$/', '$1', $type);
+            return $size + 1;
+        }
+
+        // enum
+        if (!empty($matches[11])) {
+            $enum = self::convertEnumArr($type);
+            return count($enum) > 255 ? 2 : 1;
+        }
+
+        // set
+        if (!empty($matches[12])) {
+            $set = self::convertEnumArr($type);
+            $size = count($set) + 7 / 8;
+
+            if ($size > 4) return 8;
+            if ($size > 3) return 4;
+            if ($size > 2) return 3;
+            if ($size > 1) return 2;
+            return 1;
+        }
+
+        // TODO support for fractional seconds.
+        // time: 3 - 6 bytes
+        // datetime: 5 - 8 bytes
+        // timestamp: 4 - 7 bytes
+
+        // year
+        if (!empty($matches[13])) return 1;
+        // datetime
+        if (!empty($matches[14])) return 8;
+        // timestamp
+        if (!empty($matches[15])) return 4;
+        // date + time
+        if (!empty($matches[16])) return 3;
+
+        return 0;
+    }
+
+
+    /**
      * Create a bunch of placeholder bind thingos.
      *
      * This accepts a number or an array of keys.
