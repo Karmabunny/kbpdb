@@ -164,6 +164,9 @@ class PdbParser
                 'auto_increment' => $auto_increment,
                 'default' => $default,
                 'previous_names' => $previous_names,
+                'attributes' => [
+                    'charset' => $table->attributes['charset'],
+                ],
             ]));
         }
 

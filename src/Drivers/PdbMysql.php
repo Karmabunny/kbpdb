@@ -132,6 +132,7 @@ class PdbMysql extends Pdb
                 IS_NULLABLE,
                 COLUMN_KEY,
                 COLUMN_DEFAULT,
+                CHARACTER_SET_NAME,
                 EXTRA
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = ?
@@ -181,6 +182,9 @@ class PdbMysql extends Pdb
                 'default' => $default,
                 'auto_increment' => $autoinc,
                 'extra' => $row['EXTRA'],
+                'attributes' => [
+                    'charset' => $row['CHARACTER_SET_NAME'],
+                ],
             ]);
         }
 
