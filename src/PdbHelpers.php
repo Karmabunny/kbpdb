@@ -409,7 +409,7 @@ class PdbHelpers
                 $size += ($scale / 9) * 4;
                 $size += ceil($scale % 9 / 2);
 
-                return $size;
+                return (int) $size;
             }
 
             return 0;

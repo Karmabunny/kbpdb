@@ -137,7 +137,7 @@ class PdbConfig extends Collection
     /**
      * Connection timeout.
      *
-     * @var string
+     * @var int
      */
     public $timeout = 0;
 

@@ -147,6 +147,7 @@ abstract class StaticPdb
         else if ($name instanceof PdbConfig) {
             $config = $name;
         }
+        // @phpstan-ignore-next-line
         else {
             throw new InvalidArgumentException("Invalid config name");
         }

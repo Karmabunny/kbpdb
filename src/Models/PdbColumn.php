@@ -41,7 +41,7 @@ class PdbColumn extends Collection
     /** @var string */
     public $extra = '';
 
-    /** @var string */
+    /** @var array */
     public $attributes = [];
 
 
