@@ -55,7 +55,13 @@ Finally, the object is simply validated as an appropriate subclass and passed th
 
 ### MySQL Character sets
 
-Character sets for MySQL are a tortured story. Since at least 2002 the default has been 'utf8' which is an alias for 'utf8mb3' - this uses up to 3 bytes per character. Fortunately, MySQL has since supported 'utf8mb4' since version v5.7 and the default 'utf8' has been re-aliased to 'utf8mb4' since v8.0 and MariaDB v10.5.
+Character sets for MySQL are a tortured story. Since at least 2002 the default has been 'utf8' for which 'utf8mb3' is an alias - this uses up to 3 bytes per character. Fortunately, MySQL has since supported 'utf8mb4' since version v5.7 (MariaDB 10.2).
+
+Since MariaDB 10.6 has swapped the alias (utf8 -> utf8mb3) however this is _configurable_ and will eventually be a permanent change to alias as 'utf8mb4'.
+
+https://mariadb.com/docs/server/release-notes/mariadb-enterprise-server-10-6/10-6-4-1/#Operational_Enhancements
+
+It's recommended to avoid aliases and shorthands altogether. Use the full names (i.e. utf8mb3 or utf8mb4).
 
 
 ### Hacks
