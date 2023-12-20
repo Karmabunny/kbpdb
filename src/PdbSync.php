@@ -223,8 +223,7 @@ class PdbSync
 
             // TODO Super naive. Total hack. Do better.
             if (!isset($table->attributes['collate'])) {
-                $collation = $table->attributes['charset'] . '_general_ci';
-                $table->attributes['collate'] = $collation;
+                $table->attributes['collate'] = $this->pdb->config->collation;
             }
 
             if ($do['create']) {

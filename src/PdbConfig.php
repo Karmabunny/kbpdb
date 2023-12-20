@@ -135,6 +135,13 @@ class PdbConfig extends Collection
     public $character_set = 'utf8';
 
     /**
+     * Default collation, default utf8.
+     *
+     * @var string
+     */
+    public $collation = 'utf8_unicode_ci';
+
+    /**
      * Connection timeout.
      *
      * @var int
