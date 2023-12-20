@@ -333,13 +333,16 @@ class PdbMysql extends Pdb
     public function getTableAttributes(string $table)
     {
         $q = "SELECT
-                CREATE_TIME,
-                UPDATE_TIME,
-                ENGINE,
-                TABLE_COLLATION,
-                TABLE_COMMENT,
-                AUTO_INCREMENT
-            FROM INFORMATION_SCHEMA.TABLES
+                T.CREATE_TIME,
+                T.UPDATE_TIME,
+                T.ENGINE,
+                T.TABLE_COLLATION,
+                T.TABLE_COMMENT,
+                T.AUTO_INCREMENT,
+                C.CHARACTER_SET_NAME
+            FROM INFORMATION_SCHEMA.TABLES AS T
+            INNER JOIN INFORMATION_SCHEMA.COLLATION_CHARACTER_SET_APPLICABILITY AS C
+                ON T.TABLE_COLLATION = C.COLLATION_NAME
             WHERE TABLE_SCHEMA = ?
             AND TABLE_NAME = ?
         ";
