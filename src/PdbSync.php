@@ -488,6 +488,17 @@ class PdbSync
             $engine = $table->attributes['engine'];
             $collate = $table->attributes['collate'];
 
+            $old_mode = $this->pdb->query('SELECT @@old_mode', [], 'val?');
+            if ($old_mode == 'UTF8_IS_UTF8MB3') {
+                if ($charset == 'utf8') {
+                    $charset = 'utf8mb3';
+                }
+
+                if (strpos($collate, 'utf8_') === 0) {
+                    $collate = 'utf8mb3' . substr($collate, 4);
+                }
+            }
+
             $bad_engine = false;
             if ($attributes['engine'] != $engine) {
                 $bad_engine = true;
