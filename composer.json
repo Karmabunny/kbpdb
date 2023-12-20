@@ -22,7 +22,7 @@
         "karmabunny/rdb": "^1.16",
         "phpcompatibility/php-compatibility": "^9.3",
         "phpstan/phpstan": "^1.8",
-        "phpunit/phpunit": "^9.5"
+        "phpunit/phpunit": "^9"
     },
     "suggest": {
         "karmabunny/rdb": "For persistent caching - using the PdbCacheRedis class"
