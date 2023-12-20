@@ -343,7 +343,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
                     $object = new $class();
                     $object->update($item);
 
-                    if (is_subclass_of($class, ConfigurableInit::class)) {
+                    if ($object instanceof ConfigurableInit) {
                         $object->init();
                     }
 
