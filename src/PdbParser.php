@@ -138,6 +138,8 @@ class PdbParser
 
             $is_nullable = (bool) (XML::attr($node, 'allownull') ?? true);
             $auto_increment = (bool) (XML::attr($node, 'autoinc') ?? false);
+            $computed = (string) (XML::attr($node, 'as') ?? false);
+            $is_stored = (bool) (XML::attr($node, 'stored') ?? false);
 
             $default = XML::attr($node, 'default');
 
@@ -162,6 +164,8 @@ class PdbParser
                 'type' => $type,
                 'is_nullable' => $is_nullable,
                 'auto_increment' => $auto_increment,
+                'computed' => $computed,
+                'is_stored' => $is_stored,
                 'default' => $default,
                 'previous_names' => $previous_names,
                 'attributes' => [
