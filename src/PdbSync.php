@@ -1185,6 +1185,9 @@ class PdbSync
             }
         }
 
+        if (!empty($column->computed)) $spec .= " GENERATED ALWAYS AS ({$column->computed})";
+        if (!empty($column->computed)) $spec .= $column->is_stored ? ' STORED' : ' VIRTUAL';
+
         if (!$column->is_nullable) {
             $spec .= ' NOT NULL';
         }
