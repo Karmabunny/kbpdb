@@ -23,6 +23,12 @@ class PdbColumn extends Collection
     /** @var bool */
     public $is_primary = false;
 
+    /** @var string|bool */
+    public $computed = false;
+
+    /** @var bool */
+    public $is_stored = false;
+
     /**
      * This controls whether the field is auto incrementing.
      *
