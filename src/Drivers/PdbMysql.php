@@ -211,7 +211,7 @@ class PdbMysql extends Pdb
     {
         $q = "SELECT
                 INDEX_NAME,
-                NON_UNIQUE,
+                sum(NON_UNIQUE) AS NON_UNIQUE,
                 group_concat(COLUMN_NAME) as COLUMNS
             FROM INFORMATION_SCHEMA.STATISTICS
             WHERE TABLE_SCHEMA = ?
