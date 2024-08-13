@@ -488,7 +488,14 @@ class PdbSync
             $engine = $table->attributes['engine'];
             $collate = $table->attributes['collate'];
 
-            $old_mode = $this->pdb->query('SELECT @@old_mode', [], 'val?');
+            if ($this->pdb->isMariadb()) {
+                $old_mode = $this->pdb->query('SELECT @@old_mode', [], 'val?');
+            }
+            else {
+                // TODO can we detect this behaviour for MySQL?
+                $old_mode = 'UTF8_IS_UTF8MB3';
+            }
+
             if ($old_mode == 'UTF8_IS_UTF8MB3') {
                 if ($charset == 'utf8') {
                     $charset = 'utf8mb3';
