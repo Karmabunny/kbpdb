@@ -54,6 +54,19 @@ class PdbMysql extends Pdb
     }
 
 
+    /**
+     * Is this a MariaDB connection?
+     *
+     * @return bool
+     * @throws ConnectionException
+     */
+    public function isMariadb(): bool
+    {
+        $version = $this->getServerVersion();
+        return str_contains(strtolower($version), 'mariadb');
+    }
+
+
     /** @inheritdoc */
     public function getPermissions()
     {
