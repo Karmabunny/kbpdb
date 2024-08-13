@@ -160,7 +160,7 @@ abstract class DatabaseSync
                     $title = Enc::html($title);
                     $body = Enc::html($body);
 
-                    echo "<p class='heading'><b>{$title}</b>";
+                    echo "<p class='heading'><b>{$title} </b>";
                     if (!empty($body)) echo $body;
                     echo "</p>\n";
                     break;
