@@ -318,6 +318,20 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     }
 
 
+    /**
+     * Get the server version string.
+     *
+     * @return string
+     * @throws ConnectionException
+     */
+    public function getServerVersion(): string
+    {
+        $pdo = $this->getConnection();
+        $version = $pdo->getAttribute(PDO::ATTR_SERVER_VERSION);
+        return $version;
+    }
+
+
     // ===========================================================
     //     Settings and stuff
     // ===========================================================

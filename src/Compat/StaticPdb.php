@@ -25,6 +25,7 @@ use PDOStatement;
  *
  * Extend this class and implement the `getConfig()` method.
  *
+ * @method static string getServerVersion()
  * @method static void setFormatter(string $class_name, callable $func)
  * @method static void removeFormatter(string $class_name)
  * @method static void setTablePrefixOverride(string $table, string $prefix)
