@@ -16,7 +16,7 @@ use PDOException;
  *
  * @package karmabunny\pdb
  */
-class PdbCondition
+class PdbCondition implements PdbConditionInterface
 {
 
     const EQUAL = '=';
@@ -115,18 +115,18 @@ class PdbCondition
      * 2. [operator, column => value]
      * 3. [column => value]
      *
-     * The third is only for equality or IS NULL conditions.
+     * The third is only for equality, IN, IS NULL conditions.
      *
      * @param string|int $key
-     * @param PdbCondition|array|string|int|float|null $item
-     * @return PdbCondition
+     * @param PdbConditionInterface|array|string|int|float|null $item
+     * @return PdbConditionInterface
      * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
     public static function fromShorthand($key, $item)
     {
         // Pass-through.
-        if ($item instanceof static) {
+        if ($item instanceof PdbConditionInterface) {
             return clone $item;
         }
 
@@ -223,7 +223,7 @@ class PdbCondition
      * shorthand arrays.
      *
      * @param array $clauses
-     * @return PdbCondition[]
+     * @return PdbConditionInterface[]
      * @throws InvalidArgumentException
      */
     public static function fromArray(array $clauses)
