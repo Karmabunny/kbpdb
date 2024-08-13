@@ -28,17 +28,18 @@ use PDOStatement;
  * @method static void setFormatter(string $class_name, callable $func)
  * @method static void removeFormatter(string $class_name)
  * @method static void setTablePrefixOverride(string $table, string $prefix)
- * @method static string getPrefix()
+ * @method static string getPrefix(string $table = '*')
  * @method static PDOStatement prepare(string $query)
  * @method static array|string|int|null|PDOStatement execute(PDOStatement $st, array $params, string|array|PdbReturn $config)
  * @method static array|string|int|null formatRs(PDOStatement $rs, string $type)
- * @method static void validateIdentifier(string $name)
- * @method static void validateIdentifierExtended(string $name)
+ * @method static void validateIdentifier(string $name, bool $loose = false)
+ * @method static void validateIdentifierExtended(string $name, bool $loose = false)
  * @method static int insert(string $table, array $data)
  * @method static int getLastInsertId()
  * @method static string buildClause(array $conditions, array &$values, string $combine = 'AND')
  * @method static int update(string $table, array $data, array $conditions)
  * @method static int delete(string $table, array $conditions)
+ * @method static int upsert(string $table, array $data, array $conditions)
  * @method static PdbQuery find(string $table, array $conditions = [])
  * @method static bool inTransaction()
  * @method static void transact()
@@ -60,7 +61,6 @@ use PDOStatement;
  * @method static string likeEscape(string $str)
  * @method static array convertEnumArr(string $enum_defn)
  *
- * @method static bool upsert(string $table, array $data, array $conditions)
  * @method static string quote(string $field, string $type)
  * @method static string[] quoteAll(string $field, string $type)
  * @method static string quoteValue(string $value)
@@ -71,7 +71,7 @@ use PDOStatement;
  * @method static string generateUid(string $table, int $id)
  * @method static void validateReturnType(string $name)
  * @method static void validateDirection(string $name)
- * @method static void validateAlias(string $name)
+ * @method static void validateAlias(string $name, bool $loose = false)
  *
  * @package karmabunny\pdb\Compat
  */
