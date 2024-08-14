@@ -67,12 +67,18 @@ use PDOStatement;
  * @method static string quoteValue(string $value)
  * @method static string quoteField(string $field, bool $prefixes = false)
  * @method static string quoteIdentifiers(string $query, array|null $tables = null, bool $prefixes = false)
- * @method static PdbIndex[] indexList(string $table)
- * @method static PdbColumn[] fieldList(string $table)
  * @method static string generateUid(string $table, int $id)
  * @method static void validateReturnType(string $name)
  * @method static void validateDirection(string $name)
  * @method static void validateAlias(string $name, bool $loose = false)
+ *
+ * @method static PdbSchema getSchema()
+ * @method static PdbTable[] tableList()
+ * @method static PdbTable|null getTable(string $table)
+ * @method static bool tableExists(string $table)
+ * @method static string[] getTableNames(string $prefix = '*')
+ * @method static PdbIndex[] indexList(string $table)
+ * @method static PdbColumn[] fieldList(string $table)
  *
  * @package karmabunny\pdb\Compat
  */
