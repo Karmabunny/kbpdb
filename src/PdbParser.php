@@ -13,11 +13,13 @@ use Exception;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
 use karmabunny\kb\XMLException;
+use karmabunny\pdb\Exceptions\PdbParserException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbStruct;
 use karmabunny\pdb\Models\PdbTable;
+use Throwable;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -95,6 +97,35 @@ class PdbParser
             }
 
             $this->views[$view_name] = $this->parseView($view_node);
+        }
+    }
+
+
+    /**
+     * Load an XML file
+     *
+     * @param string|DOMDocument $dom DOMDocument or filename to load.
+     * @return PdbSchemaInterface
+     * @throws PdbParserException
+     */
+    public function parseSchema($dom): PdbSchemaInterface
+    {
+        try {
+            $parser = new PdbParser();
+            $parser->loadXml($dom);
+
+            if ($errors = $parser->getErrors()) {
+                throw (new PdbParserException())->withErrors($errors);
+            }
+
+            return $parser->getSchema();
+        }
+        catch (Throwable $exception) {
+            if ($exception instanceof PdbParserException) {
+                throw $exception;
+            }
+
+            throw new PdbParserException($exception->getMessage(), $exception->getCode(), $exception);
         }
     }
 
