@@ -16,6 +16,7 @@ class SqliteFunctions
      */
     public static function dateFormat($date, $format)
     {
+        // TODO https://github.com/alphp/strftime
         return strftime($format, strtotime($date));
     }
 }
