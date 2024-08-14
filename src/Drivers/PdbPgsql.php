@@ -32,7 +32,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function listTables()
+    public function getTableNames(string $prefix = '*')
     {
         $q = "SELECT TABLE_NAME
             FROM INFORMATION_SCHEMA.TABLES
@@ -42,12 +42,24 @@ class PdbPgsql extends Pdb
         $params = [$this->config->schema];
         $res = $this->query($q, $params, 'col');
 
-        foreach ($res as &$row) {
-            $row = $this->stripPrefix($row);
+        if (!empty($prefix)) {
+            $prefix = $this->getPrefix($prefix);
+            $length = strlen($prefix);
         }
-        unset($row);
 
-        return $res;
+        $tables = [];
+
+        foreach ($res as $row) {
+            if (!empty($prefix)) {
+                if (strpos($prefix, $row) !== 0) continue;
+                $tables[] = substr($row, $length);
+            }
+            else {
+                $tables[] = $this->stripPrefix($row);
+            }
+        }
+
+        return $tables;
     }
 
 
