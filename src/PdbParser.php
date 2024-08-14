@@ -28,7 +28,7 @@ use Throwable;
 * together before the sync is done.
 * Contains code that may be MySQL specific.
 **/
-class PdbParser
+class PdbParser implements PdbSchemaInterface
 {
     /**
      * MySQL names for the foreign key actions.
@@ -379,6 +379,13 @@ class PdbParser
             'tables' => $this->tables,
             'views' => $this->views,
         ]);
+    }
+
+
+    /** @inheritdoc */
+    public function getTableNames(): array
+    {
+        return array_keys($this->tables);
     }
 
 
