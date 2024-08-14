@@ -1,6 +1,7 @@
 <?php
 
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbSimpleCondition;
 use karmabunny\pdb\Pdb;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +14,7 @@ class PdbConditionTest extends TestCase
     {
         $pdb = Database::getConnection();
 
-        $condition = new PdbCondition('=', 'abc.def', 1234);
+        $condition = new PdbSimpleCondition('=', 'abc.def', 1234);
 
         $values = [];
         $clause = $condition->build($pdb, $values);
@@ -150,8 +151,8 @@ class PdbConditionTest extends TestCase
         $pdb = Database::getConnection();
         if (!Database::isConnected()) $this->markTestSkipped();
 
-        $condition = new PdbCondition(
-            PdbCondition::NOT_IN,
+        $condition = new PdbSimpleCondition(
+            PdbSimpleCondition::NOT_IN,
             'what.total',
             ['bollocks', 'mouth protection'],
             Pdb::QUOTE_VALUE
@@ -170,8 +171,8 @@ class PdbConditionTest extends TestCase
         $pdb = Database::getConnection();
         if (!Database::isConnected()) $this->markTestSkipped();
 
-        $condition = new PdbCondition(
-            PdbCondition::NOT_IN,
+        $condition = new PdbSimpleCondition(
+            PdbSimpleCondition::NOT_IN,
             'what.total',
             ['bollocks', 'mouth_protection'],
             Pdb::QUOTE_FIELD
