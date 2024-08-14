@@ -374,7 +374,7 @@ class PdbParser implements PdbSchemaInterface
      *
      * @return PdbSchemaInterface
      */
-    public function getSchema(): PdbStruct
+    public function getSchema(): PdbSchemaInterface
     {
         return new PdbStruct([
             'tables' => $this->tables,
