@@ -19,6 +19,7 @@ use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbStruct;
 use karmabunny\pdb\Models\PdbTable;
+use karmabunny\pdb\Models\PdbView;
 use Throwable;
 
 /**
@@ -415,11 +416,21 @@ class PdbParser implements PdbSchemaInterface
     /**
      * Get a list of parsed views.
      *
-     * @return string[] [ name => sql ]
+     * @return PdbView[] [ name => table ]
      */
     public function getViews(): array
     {
-        return $this->views;
+        $views = [];
+
+        foreach ($this->views as $name => $sql) {
+            $views[$name] = new PdbView([
+                'name' => $name,
+                'sql' => $sql,
+                'checksum' => sha1($sql),
+            ]);
+        }
+
+        return $views;
     }
 
 
