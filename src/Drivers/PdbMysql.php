@@ -128,12 +128,13 @@ class PdbMysql extends Pdb
         $params = [$this->config->database];
         $res = $this->query($q, $params, 'col');
 
+        $tables = [];
+        $length = 0;
+
         if (!empty($prefix)) {
             $prefix = $this->getPrefix($prefix);
             $length = strlen($prefix);
         }
-
-        $tables = [];
 
         foreach ($res as $row) {
             if (!empty($prefix)) {
