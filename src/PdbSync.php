@@ -113,7 +113,7 @@ class PdbSync
      * This returns a 'pdb log' that can be converted to whichever format you
      * please. The {@see PdbLog::print} method has a sample implementation.
      *
-     * @param PdbParser $parser
+     * @param PdbSchemaInterface $schema
      * @param SyncActions|array $do
      *   - `'create'`      - create table, update table attributes
      *   - `'primary'`     - update primary key
@@ -126,9 +126,9 @@ class PdbSync
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public function updateDatabase(PdbParser $parser, $do = null)
+    public function updateDatabase(PdbSchemaInterface $schema, $do = null)
     {
-        $this->migrate($parser, $do);
+        $this->migrate($schema, $do);
         return $this->execute();
     }
 
@@ -146,7 +146,7 @@ class PdbSync
      * Optionally limit the migration actions with the 'do' parameter.
      * {@see SyncActions}
      *
-     * @param PdbParser $parser
+     * @param PdbSchemaInterface $schema
      * @param SyncActions|array|null $do
      *   - `'create'`      - create table, update table attributes
      *   - `'primary'`     - update primary key
@@ -160,7 +160,7 @@ class PdbSync
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function migrate(PdbParser $parser, $do = null)
+    public function migrate(PdbSchemaInterface $schema, $do = null)
     {
         // Mush it.
         if (is_array($do)) {
@@ -171,10 +171,10 @@ class PdbSync
             $do = new SyncActions();
         }
 
-        $this->migrateTables($parser->tables, $do);
+        $this->migrateTables($schema->getTables(), $do);
 
         if ($do->views) {
-            $this->migrateViews($parser->views);
+            $this->migrateViews($schema->getViews());
         }
     }
 
