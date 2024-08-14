@@ -18,6 +18,7 @@ use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\SyncActions;
 use karmabunny\pdb\Models\PdbTable;
+use karmabunny\pdb\Models\PdbView;
 use karmabunny\pdb\Models\SyncFix;
 use karmabunny\pdb\Models\SyncQuery;
 use Throwable;
@@ -274,14 +275,21 @@ class PdbSync
     /**
      * Prepare queries for creating (or replacing) views.
      *
-     * @param string[] $views [name => SQL]
+     * @param (string|PdbView)[] $views [name => SQL]
      * @return void
      * @throws InvalidArgumentException
      */
     public function migrateViews(array $views)
     {
         foreach ($views as $view_name => $view_def) {
-            $this->createView($view_name, $view_def);
+            if (!$view_def instanceof PdbView) {
+                $view_def = new PdbView([
+                    'name' => $view_name,
+                    'sql' => $view_def,
+                ]);
+            }
+
+            $this->createView($view_def);
         }
     }
 
@@ -1061,14 +1069,13 @@ class PdbSync
     /**
      * Create or update a view
      *
-     * @param string $view_name
-     * @param string $view_def
+     * @param PdbView $view
      * @return void
      */
-    private function createView(string $view_name, string $view_def)
+    private function createView(PdbView $view)
     {
-        $view_name = trim($view_name);
-        $view_def = trim($view_def);
+        $view_name = trim($view->name);
+        $view_def = trim($view->sql);
 
         $q = "DROP VIEW IF EXISTS ~{$view_name}";
         $this->storeQuery('views', $q);
