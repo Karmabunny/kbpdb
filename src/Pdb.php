@@ -31,6 +31,8 @@ use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbReturn;
+use karmabunny\pdb\Models\PdbSchema;
+use karmabunny\pdb\Models\PdbTable;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -1160,6 +1162,17 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
+     *
+     * @return PdbSchema
+     */
+    public function getSchema(): PdbSchema
+    {
+        $schema = new PdbSchema($this);
+        return $schema;
+    }
+
+
+    /**
      * Fetches the current list of tables.
      *
      * @deprecated use getTableNames()
@@ -1188,6 +1201,58 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @return bool
      */
     public abstract function tableExists(string $table);
+
+
+    /**
+     *
+     * @param string $table non-prefixed
+     * @return PdbTable|null
+     */
+    public function getTable(string $table)
+    {
+        if (!$this->tableExists($table)) {
+            return null;
+        }
+
+        $columns = $this->fieldList($table);
+        $indexes = $this->indexList($table);
+        $foreign_keys = $this->getForeignKeys($table);
+        $attributes = $this->getTableAttributes($table);
+
+        $primary_keys = [];
+
+        foreach ($columns as $column) {
+            if ($column->is_primary) {
+                $primary_keys[] = $column->name;
+            }
+        }
+
+        return new PdbTable([
+            'name' => $table,
+            'columns' => $columns,
+            'indexes' => $indexes,
+            'primary_keys' => $primary_keys,
+            'foreign_keys' => $foreign_keys,
+            'attributes' => $attributes,
+        ]);
+    }
+
+
+    /**
+     *
+     * @return PdbTable[]
+     */
+    public function tableList()
+    {
+        $tables = $this->getTableNames();
+        $list = [];
+
+        foreach ($tables as $table) {
+            $list[$table] = $this->getTable($table);
+        }
+
+        return $list;
+    }
 
 
     /**
