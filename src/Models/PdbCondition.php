@@ -62,9 +62,13 @@ abstract class PdbCondition implements PdbConditionInterface
             // Modified key-style condition.
             // :: [OPERATOR, COLUMN => VALUE]
             if ($count == 2) {
-                // TODO this isn't a safe assumption.
-                /** @var string $operator */
                 $operator = array_shift($item);
+
+                if (!is_string($operator)) {
+                    $type = gettype($operator);
+                    throw new InvalidArgumentException("Operator must be a string, got: {$type} [array]");
+                }
+
                 $operator = trim(strtoupper($operator));
 
                 $column = key($item);
