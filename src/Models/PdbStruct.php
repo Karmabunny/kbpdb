@@ -2,6 +2,8 @@
 
 namespace karmabunny\pdb\Models;
 
+use karmabunny\pdb\Exceptions\PdbParserException;
+use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSchemaInterface;
 
 /**
@@ -20,6 +22,21 @@ class PdbStruct implements PdbSchemaInterface
 
     /** @var PdbView[] name => PdbView */
     public $views;
+
+
+    /**
+     * Load an XML file
+     *
+     * @param string|DOMDocument $dom DOMDocument or filename to load.
+     * @return PdbSchemaInterface
+     * @throws PdbParserException
+     */
+    public static function parse($dom)
+    {
+        $parser = new PdbParser();
+        $schema = $parser->parseSchema($dom);
+        return $schema;
+    }
 
 
     /** @inheritdoc */

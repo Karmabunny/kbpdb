@@ -12,7 +12,7 @@ use PDOException;
 /**
  *
  */
-class PdbException extends Exception
+class PdbException extends Exception implements PdbExceptionInterface
 {
 
     /**
