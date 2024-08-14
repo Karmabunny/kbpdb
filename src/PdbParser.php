@@ -16,6 +16,7 @@ use karmabunny\kb\XMLException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbStruct;
 use karmabunny\pdb\Models\PdbTable;
 
 /**
@@ -333,6 +334,20 @@ class PdbParser
         }
 
         return $log;
+    }
+
+
+    /**
+     * Get the parsed schema struct.
+     *
+     * @return PdbSchemaInterface
+     */
+    public function getSchema(): PdbStruct
+    {
+        return new PdbStruct([
+            'tables' => $this->tables,
+            'views' => $this->views,
+        ]);
     }
 
 
