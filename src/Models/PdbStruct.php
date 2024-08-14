@@ -2,6 +2,8 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use karmabunny\kb\Collection;
 use karmabunny\pdb\Exceptions\PdbParserException;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSchemaInterface;
@@ -11,13 +13,13 @@ use karmabunny\pdb\PdbSchemaInterface;
  *
  * @package karmabunny\pdb
  */
-class PdbStruct implements PdbSchemaInterface
+class PdbStruct extends Collection implements PdbSchemaInterface
 {
 
     /** @var string */
     public $name;
 
-    /** @var PdbTables[] name => PdbTable */
+    /** @var PdbTable[] name => PdbTable */
     public $tables;
 
     /** @var PdbView[] name => PdbView */
