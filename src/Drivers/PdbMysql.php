@@ -118,6 +118,38 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
+    public function getTableNames(string $prefix = '*')
+    {
+        $q = "SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = ?
+        ";
+
+        $params = [$this->config->database];
+        $res = $this->query($q, $params, 'col');
+
+        if (!empty($prefix)) {
+            $prefix = $this->getPrefix($prefix);
+            $length = strlen($prefix);
+        }
+
+        $tables = [];
+
+        foreach ($res as $row) {
+            if (!empty($prefix)) {
+                if (strpos($prefix, $row) !== 0) continue;
+                $tables[] = substr($row, $length);
+            }
+            else {
+                $tables[] = $this->stripPrefix($row);
+            }
+        }
+
+        return $tables;
+    }
+
+
+    /** @inheritdoc */
     public function tableExists(string $table)
     {
         $q = "SELECT 1
