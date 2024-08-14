@@ -42,12 +42,13 @@ class PdbPgsql extends Pdb
         $params = [$this->config->schema];
         $res = $this->query($q, $params, 'col');
 
+        $tables = [];
+        $length = 0;
+
         if (!empty($prefix)) {
             $prefix = $this->getPrefix($prefix);
             $length = strlen($prefix);
         }
-
-        $tables = [];
 
         foreach ($res as $row) {
             if (!empty($prefix)) {
