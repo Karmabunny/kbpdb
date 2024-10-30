@@ -195,6 +195,15 @@ class PdbConfig extends Collection
     public $dsn;
 
     /**
+     * Use the PHP timezone for `Pdb::now()`.
+     *
+     * This also sets the session timezone to match.
+     *
+     * @var bool
+     */
+    public $use_system_timezone = true;
+
+    /**
      * Session variables per call to `connect()`.
      *
      * These are driver specific.
