@@ -6,6 +6,8 @@
 
 namespace karmabunny\pdb;
 
+use DateTime;
+use DateTimeZone;
 use InvalidArgumentException;
 use karmabunny\kb\Configure;
 use karmabunny\kb\InflectorInterface;
@@ -157,6 +159,26 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     const RETURN_TRY_ROW_NUM = 'row-num?';
 
     /**
+     * Format for DATE types.
+     */
+    const FORMAT_DATE = 'Y-m-d';
+
+    /**
+     * Format for DATETIME types.
+     */
+    const FORMAT_DATE_TIME = 'Y-m-d H:i:s';
+
+    /**
+     * Format for DATETIME(3) types (with milliseconds).
+     */
+    const FORMAT_DATE_TIME_MS = 'Y-m-d H:i:s.v';
+
+    /**
+     * Format for DATETIME(6) types (with microseconds).
+     */
+    const FORMAT_DATE_TIME_US = 'Y-m-d H:i:s.u';
+
+    /**
      * A subset of return types that are nullable.
      */
     const RETURN_NULLABLE = [
@@ -213,6 +235,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /** @var PdbDataFormatterInterface[] */
     protected $_formatters = [];
 
+    /** @var DateTimeZone|null */
+    protected $_timezone = null;
 
     /**
      *
@@ -294,6 +318,26 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             }
 
             $pdo = new PDO($config->getDsn(), $config->user, $config->pass, $options);
+
+            // Set our system TZ on the session.
+            // The 'config.session' can still override this.
+            if ($config->use_system_timezone) {
+                $tz = date_default_timezone_get();
+                $key = null;
+
+                // Eh. We can probably make this more generic one day.
+                if ($config->type === PdbConfig::TYPE_MYSQL) {
+                    $key = 'time_zone';
+                }
+                else if ($config->type === PdbConfig::TYPE_PGSQL) {
+                    $key = 'TIME ZONE';
+                }
+
+                if ($key) {
+                    $tz = $pdo->quote($tz, PDO::PARAM_STR);
+                    $pdo->query("SET SESSION {$key} = {$tz}");
+                }
+            }
 
             // Set session variables.
             // These can be overridden by the HACKS fields.
@@ -473,6 +517,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     {
         if (!isset($this->connection)) {
             $this->connection = static::connect($this->config);
+
+            // Prep this.
+            $this->getTimezone(true);
         }
 
         return $this->connection;
@@ -1237,18 +1284,55 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     /**
-     * Gets a datetime value for the current time.
+     * Get the session timezone.
      *
-     * This is used to implement MySQL's NOW() function in PHP, but may change
-     * if the decision is made to use INT columns instead of DATETIMEs. This
-     * will probably happen at some point, so this function should only be used
-     * for generating values right before an INSERT or UPDATE query is run
+     * The 'use_session_timezone' config is enabled by default, so this should
+     * typically return the PHP system timezone.
      *
+     * @param bool $refresh
+     * @return DateTimeZone
+     */
+    public function getTimezone($refresh = false): DateTimeZone
+    {
+        if ($refresh or !$this->_timezone) {
+            if ($this->config->use_system_timezone) {
+                $this->_timezone = new DateTimeZone(date_default_timezone_get());
+            }
+            else {
+                // Is this mariadb only?
+                // TODO need tests.
+                $q = "SELECT
+                    @@session.time_zone AS session_time_zone,
+                    @@system_time_zone AS system_time_zone
+                ";
+                $tzdata = $this->query($q, [], 'row');
+
+                if ($tzdata['session_time_zone'] === 'SYSTEM') {
+                    $this->_timezone = new DateTimeZone($tzdata['system_time_zone']);
+                } else {
+                    $this->_timezone = new DateTimeZone($tzdata['session_time_zone']);
+                }
+            }
+        }
+
+        return $this->_timezone;
+    }
+
+
+    /**
+     * Gets a datetime value for the current time, relative to the session timezone.
+     *
+     * This function should only be used for generating values right before
+     * an INSERT or UPDATE query is run.
+     *
+     * @param string $format default FORMAT_DATE_TIME
      * @return string
      */
-    public static function now()
+    public function now(string $format = self::FORMAT_DATE_TIME)
     {
-        return date('Y-m-d H:i:s');
+        $tz = $this->getTimezone();
+        $date = new DateTime('now', $tz);
+        return $date->format($format);
     }
 
 
