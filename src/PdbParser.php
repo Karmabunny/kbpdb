@@ -13,10 +13,13 @@ use Exception;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
 use karmabunny\kb\XMLException;
+use karmabunny\pdb\Attributes\PdbColumn as PdbColumnAttribute;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbTable;
+use ReflectionAttribute;
+use ReflectionClass;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -95,6 +98,48 @@ class PdbParser
 
             $this->views[$view_name] = $this->parseView($view_node);
         }
+    }
+
+
+    /**
+     * Parse a table from a model.
+     *
+     * Attach {@see Attributes\PdbColumn} to properties to define their column types.
+     *
+     * Use the optional {@see PdbTableModelInterface} to define extended
+     * table properties, such as indexes, foreign keys, etc.
+     *
+     * @param class-string<PdbModelInterface> $class
+     * @return void
+     */
+    public function loadModel(string $class)
+    {
+        $reflect = new ReflectionClass($class);
+
+        $table = new PdbTable();
+        $table->name = $class::getTableName();
+
+        // Read in columns.
+        $properties = $reflect->getProperties();
+
+        foreach ($properties as $property) {
+            if ($property->isStatic()) {
+                continue;
+            }
+
+            $attribute = $property->getAttributes(PdbColumnAttribute::class, ReflectionAttribute::IS_INSTANCEOF);
+            $attribute = reset($attribute) ?: null;
+
+            if ($attribute === null) {
+                continue;
+            }
+
+            $column = $attribute->newInstance();
+            $column->name = $property->name;
+            $table->columns[$column->name] = $column;
+        }
+
+        $this->tables[$table->name] = $table;
     }
 
 
