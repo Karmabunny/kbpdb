@@ -23,4 +23,7 @@ class PdbIndex extends Collection
     /** @var string[] */
     public $columns = [];
 
+    /** @var bool */
+    public $has_fk = false;
+
 }

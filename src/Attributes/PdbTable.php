@@ -113,6 +113,7 @@ class PdbTable extends PdbBaseTable
                     $fk->from_column = $column->name;
 
                     $index = new PdbIndex([$column->name], $fk->is_unique);
+                    $index->has_fk = true;
 
                     $table->foreign_keys[] = $fk;
                     $table->indexes[] = $index;

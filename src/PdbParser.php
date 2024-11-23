@@ -222,8 +222,9 @@ class PdbParser
             $fk_node = XML::first($index_node, 'foreign-key');
             if ($fk_node) {
                 $col_node = XML::expectFirst($index_node, 'col');
-
                 $col_name = $col_node->getAttribute('name');
+
+                $index->has_fk = true;
                 $index->columns[$col_name] = $col_name;
 
                 $table->foreign_keys[] = new PdbForeignKey([
@@ -233,6 +234,7 @@ class PdbParser
                     'to_column' => $fk_node->getAttribute('column'),
                     'update_rule' => self::parseConstraintAction($fk_node->getAttribute('update')),
                     'delete_rule' => self::parseConstraintAction($fk_node->getAttribute('delete')),
+                    'unique' => $index->type === PdbIndex::TYPE_INDEX,
                 ]);
             }
             // Non-FK indexes.

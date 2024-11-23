@@ -31,6 +31,8 @@ class PdbForeignKey extends Collection
     /** @var string */
     public $delete_rule;
 
+    /** @var bool from the parent index */
+    public $is_unique = false;
 
 
     /**

@@ -13,10 +13,6 @@ use karmabunny\pdb\Models\PdbForeignKey as PdbForeignKeyModel;
 class PdbForeignKey extends PdbForeignKeyModel
 {
 
-    /** @var bool from the parent index */
-    public $is_unique = false;
-
-
     /**
      *
      * @param string $table
