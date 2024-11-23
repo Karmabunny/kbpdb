@@ -13,7 +13,7 @@ use Exception;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
 use karmabunny\kb\XMLException;
-use karmabunny\pdb\Attributes\PdbColumn as PdbColumnAttribute;
+use karmabunny\pdb\Attributes\PdbTableInterface;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
@@ -114,32 +114,23 @@ class PdbParser
      */
     public function loadModel(string $class)
     {
-        $reflect = new ReflectionClass($class);
-
-        $table = new PdbTable();
-        $table->name = $class::getTableName();
-
-        // Read in columns.
-        $properties = $reflect->getProperties();
-
-        foreach ($properties as $property) {
-            if ($property->isStatic()) {
-                continue;
-            }
-
-            $attribute = $property->getAttributes(PdbColumnAttribute::class, ReflectionAttribute::IS_INSTANCEOF);
-            $attribute = reset($attribute) ?: null;
-
-            if ($attribute === null) {
-                continue;
-            }
-
-            $column = $attribute->newInstance();
-            $column->name = $property->name;
-            $table->columns[$column->name] = $column;
+        if (!is_subclass_of($class, PdbModelInterface::class)) {
+            return;
         }
 
-        $this->tables[$table->name] = $table;
+        $reflect = new ReflectionClass($class);
+        $attributes = $reflect->getAttributes(PdbTableInterface::class, ReflectionAttribute::IS_INSTANCEOF);
+
+        foreach ($attributes as $attributes) {
+            $instance = $attributes->newInstance();
+            $instance->model = $reflect;
+
+            $tables = $instance->getTables();
+
+            foreach ($tables as $table) {
+                $this->tables[$table->name] = $table;
+            }
+        }
     }
 
 
