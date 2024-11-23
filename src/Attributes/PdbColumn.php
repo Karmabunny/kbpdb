@@ -20,6 +20,7 @@ class PdbColumn extends PdbColumnModel
     public function __construct(string $type, array $config = [])
     {
         $config['type'] = $type;
+        $config['is_nullable'] = $config['is_nullable'] ?? false;
         parent::__construct($config);
     }
 }
