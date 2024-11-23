@@ -21,6 +21,9 @@ class PdbModelParserTest extends TestCase
     public function testLoad()
     {
         $parser = $this->parse();
+
+        echo $parser->exportXML();
+
         $errors = $parser->getErrors();
         $this->assertEmpty($errors, print_r($errors, true));
     }

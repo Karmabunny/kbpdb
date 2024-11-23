@@ -2,6 +2,8 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMNode;
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 
@@ -130,4 +132,31 @@ class PdbForeignKey extends Collection
 
         return $errors;
     }
+
+
+    public function toXML(DOMDocument $doc): DOMNode
+    {
+        // Foreign keys are wrapped in indexes. Although this is a hard
+        // requirement for mysql, in practice you almost always want your
+        // FKs to have indexes.
+        $index = $doc->createElement('index');
+
+        if ($this->is_unique) {
+            $index->setAttribute('type', PdbIndex::TYPE_UNIQUE);
+        }
+
+        $node = $doc->createElement('col');
+        $node->setAttribute('name', $this->from_column);
+        $index->appendChild($node);
+
+        $node = $doc->createElement('foreign-key');
+        $node->setAttribute('table', $this->to_table);
+        $node->setAttribute('column', $this->to_column);
+        $node->setAttribute('update', $this->update_rule);
+        $node->setAttribute('delete', $this->delete_rule);
+        $index->appendChild($node);
+
+        return $index;
+    }
+
 }

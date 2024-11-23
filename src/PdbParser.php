@@ -9,6 +9,7 @@ namespace karmabunny\pdb;
 use DOMAttr;
 use DOMDocument;
 use DOMElement;
+use DOMException;
 use Exception;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
@@ -131,6 +132,32 @@ class PdbParser
                 $this->tables[$table->name] = $table;
             }
         }
+    }
+
+
+    /**
+     * Build a db_struct.xml from the loaded tables.
+     *
+     * @return string
+     * @throws DOMException
+     */
+    public function exportXML(): string
+    {
+        $doc = new DOMDocument('1.0', 'UTF-8');
+        $doc->preserveWhiteSpace = false;
+        $doc->formatOutput = true;
+
+        $database = new DOMElement('database');
+        $doc->appendChild($database);
+
+        foreach ($this->tables as $table) {
+            $node = $table->toXML($doc);
+            $database->appendChild($node);
+        }
+
+        $xml = XML::toString($doc);
+        $xml = preg_replace('/(?:^|\G)  /um', '    ', $xml);
+        return $xml;
     }
 
 

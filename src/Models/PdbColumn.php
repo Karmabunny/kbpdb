@@ -2,6 +2,9 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMElement;
+use DOMNode;
 use karmabunny\kb\Collection;
 use karmabunny\pdb\PdbHelpers;
 
@@ -106,5 +109,57 @@ class PdbColumn extends Collection
     {
         $charset = $this->attributes['charset'] ?? 'utf8';
         return PdbHelpers::getColumnSize($this->type, $charset);
+    }
+
+
+    public function toXML(DOMDocument $doc): DOMNode
+    {
+        $column = $doc->createElement('column');
+        $column->setAttribute('name', $this->name);
+
+        if ($this->previous_names) {
+            $column->setAttribute('previous-names', implode(',', $this->previous_names));
+        }
+
+        $matches = [];
+        $default = null;
+
+        if (preg_match('/^(ENUM|SET)\((.+)\)$/', $this->type, $matches)) {
+            [, $type, $values] = $matches;
+
+            $column->setAttribute('type', $type . '(xml)');
+            $values = explode(',', $values);
+
+            foreach ($values as $value) {
+                $value = trim($value, '\'');
+
+                $node = $doc->createElement('val', $value);
+                $column->appendChild($node);
+            }
+
+            if (!$this->is_nullable) {
+                $default = trim($values[0], '\'');
+            }
+        }
+        else {
+            $column->setAttribute('type', $this->type);
+        }
+
+
+        $column->setAttribute('allownull', $this->is_nullable ? '1': '0');
+
+        if ($this->auto_increment) {
+            $column->setAttribute('autoinc', '1');
+        }
+
+        if ($this->default or $default) {
+            $column->setAttribute('default', $default ?? $this->default);
+        }
+
+        foreach ($this->attributes as $name => $value) {
+            $column->setAttribute($name, $value);
+        }
+
+        return $column;
     }
 }

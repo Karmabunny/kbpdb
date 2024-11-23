@@ -2,6 +2,9 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMElement;
+use DOMNode;
 use karmabunny\kb\Collection;
 
 /**
@@ -122,5 +125,54 @@ class PdbTable extends Collection
         }
 
         return $size;
+    }
+
+
+    public function toXML(DOMDocument $doc): DOMNode
+    {
+        $table = $doc->createElement('table');
+        $table->setAttribute('name', $this->name);
+
+        if ($this->previous_names) {
+            $table->setAttribute('previous-names', implode(',', $this->previous_names));
+        }
+
+        foreach ($this->attributes as $name => $value) {
+            $table->setAttribute($name, $value);
+        }
+
+        foreach ($this->columns as $column) {
+            $node = $column->toXML($doc);
+            $table->appendChild($node);
+        }
+
+        if ($this->primary_key) {
+            $primary = $doc->createElement('primary');
+
+            foreach ($this->primary_key as $key) {
+                $node = $doc->createElement('col');
+                $node->setAttribute('name', $key);
+                $primary->appendChild($node);
+            }
+
+            $table->appendChild($primary);
+        }
+
+        foreach ($this->indexes as $index) {
+            // The index is created with the FK instead.
+            if ($index->has_fk) {
+                continue;
+            }
+
+            $node = $index->toXML($doc);
+            $table->appendChild($node);
+        }
+
+        foreach ($this->foreign_keys as $fk) {
+            $node = $fk->toXML($doc);
+            $table->appendChild($node);
+        }
+
+        return $table;
     }
 }
