@@ -2,6 +2,7 @@
 
 namespace karmabunny\pdb\Models;
 
+use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 
 /**
@@ -43,10 +44,20 @@ class PdbForeignKey extends Collection
      * @return PdbColumn|null
      */
     private static function getColumn(array $tables, string $table_name, string $column_name) {
-        /** @var PdbTable|null $table */
-        $table = $tables[$table_name] ?? null;
-        if (!$table) return null;
-        return $table->columns[$column_name] ?? null;
+
+        $table = Arrays::find($tables, function(PdbTable $table) use ($table_name) {
+            return $table->name === $table_name;
+        });
+
+        if (!$table) {
+            return null;
+        }
+
+        $column = Arrays::find($table->columns, function (PdbColumn $column) use ($column_name) {
+            return $column->name === $column_name;
+        });
+
+        return $column;
     }
 
 
