@@ -95,11 +95,11 @@ abstract class PdbCondition implements PdbConditionInterface
 
         // String-style conditions.
         // :: 'operator = value'
-        // - Particularly useful for joins.
-        // - NOT to be used for unescaped values. Stick to array or key style.
-        // - Doesn't support non-scalar values.
+        // We ask that users explicitly encode a PdbRawCondition object to
+        // declare their intent. Exception can happen further up the call chain.
+        //  e.g. in PdbQuery::join().
         if (is_numeric($key) and is_string($item)) {
-            return new PdbRawCondition($item);
+            throw new InvalidArgumentException('Cannot implicitly parse unsafe conditions, please use PdbRawCondition');
         }
 
         // Key-style conditions + nested conditions.

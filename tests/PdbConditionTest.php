@@ -1,6 +1,7 @@
 <?php
 
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbRawCondition;
 use karmabunny\pdb\Models\PdbSimpleCondition;
 use karmabunny\pdb\Pdb;
 use kbtests\Database;
@@ -113,15 +114,31 @@ class PdbConditionTest extends TestCase
     }
 
 
+    public function testBadStrings(): void
+    {
+        $pdb = Database::getConnection();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/unsafe conditions/');
+
+        $conditions = PdbCondition::fromArray([
+            'big.stuff <= little.stuff',
+        ]);
+
+        $values = [];
+        $conditions[0]->build($pdb, $values);
+    }
+
+
     public function testStrings(): void
     {
         $pdb = Database::getConnection();
 
         $conditions = PdbCondition::fromArray([
-            'big.stuff <= little.stuff',
-            'you_better_hope_you >= \'have escaped this\'',
-            'what.will <> this_do',
-            '~prefix in (~voodoo.magic, ~stuff.id)',
+            new PdbRawCondition('big.stuff <= little.stuff'),
+            new PdbRawCondition('you_better_hope_you >= \'have escaped this\''),
+            new PdbRawCondition('what.will <> this_do'),
+            new PdbRawCondition('~prefix in (~voodoo.magic, ~stuff.id)'),
         ]);
 
         $this->assertCount(4, $conditions);
