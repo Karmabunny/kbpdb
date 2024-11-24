@@ -6,6 +6,7 @@ use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\PdbView;
 
 /**
+ * An object that represents the structure of a database.
  *
  * @package karmabunny\pdb
  */
@@ -13,6 +14,7 @@ interface PdbSchemaInterface
 {
 
     /**
+     * List non-prefixed table names.
      *
      * @return string[]
      */
@@ -20,6 +22,7 @@ interface PdbSchemaInterface
 
 
     /**
+     * A list of tables models.
      *
      * @return PdbTable[]
      */
@@ -27,6 +30,7 @@ interface PdbSchemaInterface
 
 
     /**
+     * A list of views.
      *
      * @return PdbView[]
      */
