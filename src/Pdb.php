@@ -1706,7 +1706,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function format($value)
     {
-        if ($value instanceof PdbDataBinderInterface) {
+        if ($value instanceof PdbDataInterface) {
             $value = $value->getBindingValue();
         }
 
