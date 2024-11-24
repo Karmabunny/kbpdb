@@ -9,7 +9,7 @@ use karmabunny\pdb\PdbSync;
 
 final class Database
 {
-    public static function getConnection($type = 'mysql')
+    public static function getConnection($type = 'mysql'): Pdb
     {
         static $pdb;
 
