@@ -4,6 +4,7 @@ use karmabunny\kb\DataObject;
 use karmabunny\pdb\DataBinders\ConcatDataBinder;
 use karmabunny\pdb\DataBinders\DateTimeFormatter;
 use karmabunny\pdb\DataBinders\JsonLinesBinder;
+use karmabunny\pdb\PdbDataInterface;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
 
@@ -14,6 +15,30 @@ class PdbDataBinderTest extends TestCase
     public function setUp(): void
     {
         Database::sync('mysql');
+    }
+
+
+    public function testDataObject(): void
+    {
+        $pdb = Database::getConnection('mysql');
+
+        $object = new BinderObject();
+        $object->value = random_int(100, 10000);
+
+        // Initial insert.
+        $data = [
+            'date_added' => $pdb->now(),
+            'data' => $object,
+        ];
+
+        $id = $pdb->insert('logs', $data);
+        $this->assertGreaterThan(0, $id);
+
+        $data = $pdb->find('logs', ['id' => $id])->value('data');
+        $data = @unserialize($data);
+
+        $this->assertInstanceOf(BinderObject::class, $data);
+        $this->assertEquals($object->value, $data->value);
     }
 
 
@@ -179,4 +204,15 @@ class PdbDataBinderTest extends TestCase
 class FormattableObject extends DataObject
 {
     public $value;
+}
+
+
+class BinderObject extends DataObject implements PdbDataInterface
+{
+    public $value;
+
+    public function getBindingValue()
+    {
+        return serialize($this);
+    }
 }
