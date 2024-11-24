@@ -8,11 +8,11 @@ namespace karmabunny\pdb\Exceptions;
 
 
 /**
- * Exception thrown when an attempt is made to start a transaction from within an existing transaction
+ * Exception thrown when no transaction is active.
  */
-class TransactionRecursionException
+class TransactionEmptyException
     extends TransactionQueryException
     implements TransactionException
 {
-    public $state = '25001';
+    public $state = '25005';
 }
