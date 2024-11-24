@@ -15,6 +15,7 @@ use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbConditionInterface;
+use karmabunny\pdb\Models\PdbRawCondition;
 use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
@@ -293,15 +294,31 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @param string $type
      * @param string|string[] $table
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      * @throws InvalidArgumentException
      */
-    protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
+    protected function _join(string $type, $table, $conditions, string $combine = 'AND')
     {
         $table = PdbHelpers::parseAlias($table);
         Pdb::validateAlias($table);
+
+        if (is_string($conditions)) {
+            [ $conditions ] = new PdbRawCondition($conditions);
+        }
+        else if ($conditions instanceof PdbConditionInterface) {
+            $conditions = [ $conditions ];
+        }
+        // Backward compat, shallow encode raw conditions.
+        else if (is_array($conditions)) {
+            foreach ($conditions as &$item) {
+                if (is_string($item)) {
+                    $item = new PdbRawCondition($item);
+                }
+            }
+            unset($item);
+        }
 
         $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
@@ -311,11 +328,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function join($table, array $conditions, string $combine = 'AND')
+    public function join($table, $conditions, string $combine = 'AND')
     {
         return $this->innerJoin($table, $conditions, $combine);
     }
@@ -324,11 +341,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function leftJoin($table, array $conditions, string $combine = 'AND')
+    public function leftJoin($table, $conditions, string $combine = 'AND')
     {
         $this->_join('LEFT', $table, $conditions, $combine);
         return $this;
@@ -338,11 +355,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function innerJoin($table, array $conditions, string $combine = 'AND')
+    public function innerJoin($table, $conditions, string $combine = 'AND')
     {
         $this->_join('INNER', $table, $conditions, $combine);
         return $this;
@@ -351,7 +368,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
@@ -367,7 +384,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -382,7 +399,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -397,7 +414,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbConditionInterface)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
