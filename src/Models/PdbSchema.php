@@ -6,6 +6,7 @@ use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbSchemaInterface;
 
 /**
+ * A schema that comes from the database.
  *
  * @package karmabunny\pdb
  */
