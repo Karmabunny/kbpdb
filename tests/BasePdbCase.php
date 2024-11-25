@@ -110,4 +110,18 @@ abstract class BasePdbCase extends TestCase
         $expected = $table->columns;
         $this->assertEquals($expected, $columns);
     }
+
+
+    public function testTimezoneNow(): void
+    {
+        $now = $this->pdb->now();
+        $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/', $now);
+
+        $now = $this->pdb->now('Y-m-d');
+        $this->assertMatchesRegularExpression('/\d{4}-\d{2}-\d{2}/', $now);
+
+        $actual = $this->pdb->getTimezone();
+        $expected = date_default_timezone_get();
+        $this->assertEquals($expected, $actual->getName());
+    }
 }
