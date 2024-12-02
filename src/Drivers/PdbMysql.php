@@ -63,7 +63,7 @@ class PdbMysql extends Pdb
     public function isMariadb(): bool
     {
         $version = $this->getServerVersion();
-        return strpos(strtolower($version), 'mariadb') !== 0;
+        return strpos(strtolower($version), 'mariadb') !== false;
     }
 
 
