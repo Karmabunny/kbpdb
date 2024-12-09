@@ -59,4 +59,17 @@
             <col name="id"/>
         </primary>
     </table>
+
+    <table name="tx_test">
+        <column name="id" type="INT UNSIGNED" allownull="0" autoinc="1"/>
+        <column name="name" type="VARCHAR(200)" allownull="0"/>
+
+        <primary>
+            <col name="id"/>
+        </primary>
+
+        <index>
+            <col name="name" />
+        </index>
+    </table>
 </database>
