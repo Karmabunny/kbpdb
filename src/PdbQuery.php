@@ -296,7 +296,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * @param string $type
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|(array|string|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      * @throws InvalidArgumentException
@@ -307,7 +307,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         Pdb::validateAlias($table);
 
         if (is_string($conditions)) {
-            [ $conditions ] = new PdbRawCondition($conditions);
+            $conditions = [ new PdbRawCondition($conditions) ];
         }
         else if ($conditions instanceof PdbConditionInterface) {
             $conditions = [ $conditions ];
