@@ -370,14 +370,16 @@ class PdbCondition
 
                 // Gonna 'bind' this one manually. Doesn't feel great.
                 if ($this->bind_type) {
-                    if (!is_scalar($this->value)) {
+                    $value = $pdb->format($this->value);
+
+                    if (!is_scalar($value)) {
                         $message = "Operator {$this->operator} needs a scalar value";
                         throw (new InvalidConditionException($message))
                             ->withActual($this->value)
                             ->withCondition($this);
                     }
 
-                    $bind = $pdb->quote($this->value, $this->bind_type);
+                    $bind = $pdb->quote($value, $this->bind_type);
                 }
                 // Natural bindings. Good.
                 else {
@@ -462,6 +464,9 @@ class PdbCondition
                     $high = $low = '?';
                 }
                 else {
+                    $high = $pdb->format($high);
+                    $low = $pdb->format($low);
+
                     if (!is_scalar($low) or !is_scalar($high)) {
                         $message = "Operator BETWEEN value must be an array of two scalars";
                         $actual = gettype($low) . ' and ' . gettype($high);
@@ -498,16 +503,20 @@ class PdbCondition
                     }
                 }
                 else {
-                    foreach ($items as $index => $item) {
+                    foreach ($items as $index => &$item) {
+                        $item = $pdb->format($item);
+
                         if (!is_scalar($item)) {
                             $message = "Operator {$this->operator} value must be an array of scalars";
                             throw (new InvalidConditionException($message))
                                 ->withActual(gettype($items) . " (index {$index})")
                                 ->withCondition($this);
                         }
-                    }
 
-                    $items = $pdb->quoteAll($items, $this->bind_type);
+                        $item = $pdb->quote($item, $this->bind_type);
+                    }
+                    unset($item);
+
                     $binds = implode(', ', $items);
                 }
 
@@ -544,14 +553,16 @@ class PdbCondition
             return '?';
         }
         else {
-            if (!is_scalar($this->value)) {
+            $value = $pdb->format($this->value);
+
+            if (!is_scalar($value)) {
                 $message = "Operator {$this->operator} value must be scalar";
                 throw (new InvalidConditionException($message))
                     ->withActual($this->value)
                     ->withCondition($this);
             }
 
-            $value = PdbHelpers::likeEscape($this->value);
+            $value = PdbHelpers::likeEscape($value);
             $value = $pdb->quote($value, $this->bind_type);
             return $value;
         }

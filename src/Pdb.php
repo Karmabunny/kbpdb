@@ -1704,7 +1704,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @return mixed The formatted value
      * @throws InvalidArgumentException
      */
-    protected function format($value)
+    public function format($value)
     {
         if ($value instanceof PdbDataInterface) {
             $value = $value->getBindingValue();
