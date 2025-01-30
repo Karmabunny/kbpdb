@@ -53,10 +53,10 @@ class PdbSimpleCondition implements PdbConditionInterface
         self::IN_SET,
     ];
 
-    /** @var string|null */
+    /** @var string */
     public $operator;
 
-    /** @var string|null */
+    /** @var string */
     public $column;
 
     /** @var mixed */
@@ -151,41 +151,6 @@ class PdbSimpleCondition implements PdbConditionInterface
     /** @inheritdoc */
     public function build(Pdb $pdb, array &$values): string
     {
-        // String conditions are a lawless world.
-        if ($this->operator === null) {
-            return $this->value;
-        }
-
-        // Nested conditions!
-        if (
-            $this->column === null and
-            is_array($this->value)
-        ) {
-            $operator = $this->operator;
-            $compound = '';
-
-            // Special 'not' operator will perform a nested 'and'.
-            if ($operator === 'NOT') {
-                $operator = 'AND';
-                $compound .= 'NOT ';
-            }
-
-            $compound .= '(';
-            $first = true;
-
-            foreach ($this->value as $condition) {
-                if (!$first) {
-                    $compound .= " {$operator} ";
-                }
-
-                $compound .= $condition->build($pdb, $values);
-                $first = false;
-            }
-
-            $compound .= ')';
-            return $compound;
-        }
-
         $column = $this->column;
 
         // I'm not smart enough to auto-quote this.
