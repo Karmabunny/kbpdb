@@ -16,8 +16,14 @@ use karmabunny\pdb\Pdb;
 class PdbCompoundCondition implements PdbConditionInterface
 {
 
-    const COMPOUNDS = [
+    const OPERATORS = [
         'NOT',
+        'OR',
+        'AND',
+        'XOR',
+    ];
+
+    const COMPOUNDS = [
         'OR',
         'AND',
         'XOR',
@@ -47,7 +53,7 @@ class PdbCompoundCondition implements PdbConditionInterface
     /** @inheritdoc */
     public function validate()
     {
-        if (!in_array($this->compound, self::COMPOUNDS)) {
+        if (!in_array($this->compound, self::OPERATORS)) {
             $message = "Unknown compound operator: '{$this->compound}'";
             throw (new InvalidConditionException($message))
                 ->withCondition($this);

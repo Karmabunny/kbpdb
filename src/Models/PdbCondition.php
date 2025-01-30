@@ -113,7 +113,7 @@ abstract class PdbCondition implements PdbConditionInterface
 
             if (is_array($item)) {
                 // Support for nested conditions.
-                if (in_array($modifier, PdbCompoundCondition::COMPOUNDS)) {
+                if (in_array($modifier, PdbCompoundCondition::OPERATORS)) {
                     $conditions = self::fromArray($item);
                     return new PdbCompoundCondition($modifier, $conditions);
                 }
