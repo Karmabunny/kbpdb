@@ -1,5 +1,6 @@
 <?php
 
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbRawCondition;
 use karmabunny\pdb\Models\PdbSimpleCondition;
@@ -160,6 +161,36 @@ class PdbConditionTest extends TestCase
         // - 'bad == operators',
         // - 'escapes``in = bad_places',
         // - oh_look != spaces in things',
+    }
+
+
+    public function testBadNestedSql(): void
+    {
+        $condition = PdbCondition::fromShorthand(
+            null,
+            [ 'abc', 'IS', new PdbRawCondition('CONCAT(?, RAND())', [ 123 ]) ],
+        );
+
+        $this->expectException(InvalidConditionException::class);
+        $condition->validate();
+    }
+
+
+    public function testNestedSql(): void
+    {
+        $pdb = Database::getConnection();
+
+        $condition = PdbCondition::fromShorthand(
+            null,
+            [ 'abc', '>=', new PdbRawCondition('CONCAT(?, RAND())', [ 123 ]) ],
+        );
+
+        $values = [];
+        $sql = $condition->build($pdb, $values);
+
+        $this->assertEquals('`abc` >= CONCAT(?, RAND())', $sql);
+        $this->assertCount(1, $values);
+        $this->assertEquals(123, $values[0]);
     }
 
 
