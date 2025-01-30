@@ -359,15 +359,6 @@ class PdbCondition
             $column = $pdb->quoteField($column);
         }
 
-        // Gonna 'bind' this one manually. Doesn't feel great.
-        if ($this->bind_type and is_scalar($this->value)) {
-            $bind = $pdb->quote($this->value, $this->bind_type);
-        }
-        // Natural bindings. Good.
-        else {
-            $bind = '?';
-        }
-
         switch ($this->operator) {
             case self::EQUAL:
             case self::NOT_EQUAL;
@@ -376,15 +367,22 @@ class PdbCondition
             case self::LESS_THAN_EQUAL:
             case self::LESS_THAN:
             case self::GREATER_THAN:
-                if (!is_scalar($this->value)) {
-                    $message = "Operator {$this->operator} needs a scalar value";
-                    throw (new InvalidConditionException($message))
-                        ->withActual($this->value)
-                        ->withCondition($this);
-                }
 
-                if (!$this->bind_type) {
+                // Gonna 'bind' this one manually. Doesn't feel great.
+                if ($this->bind_type) {
+                    if (!is_scalar($this->value)) {
+                        $message = "Operator {$this->operator} needs a scalar value";
+                        throw (new InvalidConditionException($message))
+                            ->withActual($this->value)
+                            ->withCondition($this);
+                    }
+
+                    $bind = $pdb->quote($this->value, $this->bind_type);
+                }
+                // Natural bindings. Good.
+                else {
                     $values[] = $this->value;
+                    $bind = '?';
                 }
 
                 return "{$column} {$this->operator} {$bind}";
@@ -458,20 +456,20 @@ class PdbCondition
 
                 [$low, $high] = array_values($this->value);
 
-                if (!is_scalar($low) or !is_scalar($high)) {
-                    $message = "Operator BETWEEN value must be an array of two scalars";
-                    $actual = gettype($low) . ' and ' . gettype($high);
-                    throw (new InvalidConditionException($message))
-                        ->withActual($actual)
-                        ->withCondition($this);
-                }
-
                 if (!$this->bind_type) {
                     $values[] = $low;
                     $values[] = $high;
                     $high = $low = '?';
                 }
                 else {
+                    if (!is_scalar($low) or !is_scalar($high)) {
+                        $message = "Operator BETWEEN value must be an array of two scalars";
+                        $actual = gettype($low) . ' and ' . gettype($high);
+                        throw (new InvalidConditionException($message))
+                            ->withActual($actual)
+                            ->withCondition($this);
+                    }
+
                     $low = $pdb->quoteValue($low);
                     $high = $pdb->quoteValue($high);
                 }
@@ -490,15 +488,6 @@ class PdbCondition
                         ->withCondition($this);
                 }
 
-                foreach ($items as $index => $item) {
-                    if (!is_scalar($item)) {
-                        $message = "Operator {$this->operator} value must be an array of scalars";
-                        throw (new InvalidConditionException($message))
-                            ->withActual(gettype($items) . " (index {$index})")
-                            ->withCondition($this);
-                    }
-                }
-
                 if (empty($items)) return '';
 
                 if (!$this->bind_type) {
@@ -509,6 +498,15 @@ class PdbCondition
                     }
                 }
                 else {
+                    foreach ($items as $index => $item) {
+                        if (!is_scalar($item)) {
+                            $message = "Operator {$this->operator} value must be an array of scalars";
+                            throw (new InvalidConditionException($message))
+                                ->withActual(gettype($items) . " (index {$index})")
+                                ->withCondition($this);
+                        }
+                    }
+
                     $items = $pdb->quoteAll($items, $this->bind_type);
                     $binds = implode(', ', $items);
                 }
