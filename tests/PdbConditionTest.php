@@ -194,6 +194,41 @@ class PdbConditionTest extends TestCase
     }
 
 
+    public function testNestedQuery(): void
+    {
+        $pdb = Database::getConnection();
+        $now = $pdb->now();
+
+        $subQuery = $pdb
+            ->find('other_table', [
+                'active' => true,
+                'date_added' => $now,
+            ])
+            ->select('id');
+
+        $subSql = 'SELECT `id` FROM `pdb_other_table` WHERE `active` = ? AND `date_added` = ?';
+        [$actual, $params] = $subQuery->build();
+
+        $this->assertEquals($subSql, $actual);
+        $this->assertCount(2, $params);
+
+        // Now subbed into a condition.
+        $condition = PdbCondition::fromShorthand(
+            null, [ 'IN', 'abc_id' => $subQuery ],
+        );
+
+        $values = [];
+        $actual = $condition->build($pdb, $values);
+
+        $sql = "`abc_id` IN ({$subSql})";
+        $this->assertEquals($sql, $actual);
+
+        $this->assertCount(2, $values);
+        $this->assertEquals('1', $values[0]);
+        $this->assertEquals($now, $values[1]);
+    }
+
+
     public function testNoBindValue(): void
     {
         $pdb = Database::getConnection();
