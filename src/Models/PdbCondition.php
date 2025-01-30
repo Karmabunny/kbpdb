@@ -30,7 +30,7 @@ abstract class PdbCondition implements PdbConditionInterface
      *
      * The third is only for equality, IN, IS NULL conditions.
      *
-     * @param string|int $key
+     * @param string|int|null $key
      * @param PdbConditionInterface|array|string|int|float|null $item
      * @return PdbConditionInterface
      * @throws InvalidConditionException
@@ -44,7 +44,10 @@ abstract class PdbCondition implements PdbConditionInterface
         }
 
         // Value-style conditions.
-        if (is_numeric($key) and is_array($item)) {
+        if (
+            ($key === null or is_numeric($key))
+            and is_array($item)
+        ) {
             $count = count($item);
 
             // key-style conditions + nested conditions.
