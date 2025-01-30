@@ -72,7 +72,19 @@ class PdbCondition
     /** @var mixed */
     public $value;
 
-    /** @var string|null Pdb::QUOTE_FIELD|QUOTE_VALUE|null */
+    /**
+     * This controls the bind method of the 'value'.
+     *
+     * - Given `null` this uses parametric binding. This is the safest method.
+     *
+     * - Use the `FIELD` type to treat the 'value' as a column/table type.
+     * This will apply the appropriate quoting method.
+     *
+     * - The `VALUE` type will use the PDO driver's 'quote()' method.
+     * However this is still not as safe as using natural bindings.
+     *
+     * @var string|null Pdb::QUOTE_FIELD|QUOTE_VALUE|null
+     **/
     public $bind_type;
 
     /**
