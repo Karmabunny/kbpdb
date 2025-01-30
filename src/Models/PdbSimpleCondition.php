@@ -130,9 +130,8 @@ class PdbSimpleCondition implements PdbConditionInterface
 
         // Validate nested conditions.
         if ($this->value instanceof PdbConditionInterface) {
-            $this->value->validate();
 
-            // Also double check what operator we've paired it with.
+            // But first check what operator we've paired it with.
             switch ($this->operator) {
                 case self::IS:
                 case self::IS_NOT:
@@ -141,6 +140,8 @@ class PdbSimpleCondition implements PdbConditionInterface
                     throw (new InvalidConditionException($message))
                         ->withCondition($this);
             }
+
+            $this->value->validate();
         }
 
         // If the value is a field type, then we should do validation there too.
