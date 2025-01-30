@@ -16,6 +16,9 @@ use InvalidArgumentException;
 class PdbModelQuery extends PdbQuery
 {
 
+    /** @var class-string<PdbModelInterface> */
+    protected $_model;
+
     /** @var bool|string */
     public $_inflect = false;
 
@@ -25,7 +28,7 @@ class PdbModelQuery extends PdbQuery
 
     /**
      *
-     * @param string $model
+     * @param class-string<PdbModelInterface> $model
      * @throws InvalidArgumentException
      */
     public function __construct(string $model, array $config = [])
@@ -41,6 +44,8 @@ class PdbModelQuery extends PdbQuery
         parent::__construct($pdb, $config);
         $this->from($table);
         $this->as($model);
+
+        $this->_model = $model;
     }
 
 
