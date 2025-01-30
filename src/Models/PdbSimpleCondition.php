@@ -9,7 +9,7 @@ namespace karmabunny\pdb\Models;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
-use karmabunny\pdb\PdbQuery;
+use karmabunny\pdb\PdbQueryInterface;
 
 /**
  *
@@ -146,7 +146,7 @@ class PdbSimpleCondition implements PdbConditionInterface
         }
 
         // Pre-validate the query, we'll turn of validation later to save effort.
-        if ($this->value instanceof PdbQuery) {
+        if ($this->value instanceof PdbQueryInterface) {
             switch ($this->operator) {
                 case self::IS:
                 case self::IS_NOT:
@@ -223,7 +223,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                     $bind = $value->build($pdb, $values);
                 }
                 // Some nested queries.
-                else if ($value instanceof PdbQuery) {
+                else if ($value instanceof PdbQueryInterface) {
                     [$bind, $subValues] = $value->build(false);
                     $values = array_merge($values, $subValues);
                 }
@@ -345,7 +345,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                 if (
                     !is_array($value)
                     and !$value instanceof PdbConditionInterface
-                    and !$value instanceof PdbQuery
+                    and !$value instanceof PdbQueryInterface
                 ) {
                     $message = "Operator {$this->operator} value must be an array of scalars";
 
@@ -359,7 +359,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                 if ($value instanceof PdbConditionInterface) {
                     $binds = $value->build($pdb, $values);
                 }
-                else if ($value instanceof PdbQuery) {
+                else if ($value instanceof PdbQueryInterface) {
                     [$binds, $subValues] = $value->build(false);
                     $values = array_merge($values, $subValues);
                 }

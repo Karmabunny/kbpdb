@@ -73,7 +73,7 @@ use ReturnTypeWillChange;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery implements Arrayable, JsonSerializable
+class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 {
 
     /** @var Pdb */
