@@ -6,7 +6,7 @@
 
 namespace karmabunny\pdb;
 
-use InvalidArgumentException;
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 
 /**
  *
@@ -27,8 +27,6 @@ interface PdbQueryInterface
      *
      * @param bool $validate
      * @return array [ sql, params ]
-     * @throws InvalidConditionException
-     * @throws InvalidArgumentException
      */
     public function build(bool $validate = true): array;
 

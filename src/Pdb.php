@@ -25,6 +25,7 @@ use karmabunny\pdb\Drivers\PdbNoDriver;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;

@@ -13,6 +13,7 @@ use JsonSerializable;
 use karmabunny\kb\Arrayable;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbConditionInterface;
