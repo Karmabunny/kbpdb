@@ -201,6 +201,7 @@ class PdbSimpleCondition implements PdbConditionInterface
     public function build(Pdb $pdb, array &$values): string
     {
         $column = $this->column;
+        $value = $this->value;
 
         // I'm not smart enough to auto-quote this.
         if (!preg_match(PdbHelpers::RE_FUNCTION, $column)) {
@@ -218,19 +219,19 @@ class PdbSimpleCondition implements PdbConditionInterface
 
                 // This is a nested condition, we can't force the bind mode so
                 // we just go with whatever it does.
-                if ($this->value instanceof PdbConditionInterface) {
-                    $bind = $this->value->build($pdb, $values);
+                if ($value instanceof PdbConditionInterface) {
+                    $bind = $value->build($pdb, $values);
                 }
                 // Some nested queries.
-                else if ($this->value instanceof PdbQuery) {
-                    [$bind, $subValues] = $this->value->build(false);
+                else if ($value instanceof PdbQuery) {
+                    [$bind, $subValues] = $value->build(false);
                     $values = array_merge($values, $subValues);
                 }
                 // Gonna 'bind' this one manually. Doesn't feel great.
                 else if ($this->bind_type) {
-                    $value = $this->bind_type === Pdb::QUOTE_VALUE
-                        ? $pdb->format($this->value)
-                        : $this->value;
+                    if ($this->bind_type === Pdb::QUOTE_VALUE) {
+                        $value = $pdb->format($value);
+                    }
 
                     if (!is_scalar($value)) {
                         $message = "Operator {$this->operator} needs a scalar value";
@@ -250,8 +251,6 @@ class PdbSimpleCondition implements PdbConditionInterface
                 return "{$column} {$this->operator} {$bind}";
 
             case self::IS:
-                $value = $this->value;
-
                 if (is_string($value)) {
                     $value = strtoupper($value);
 
@@ -276,8 +275,6 @@ class PdbSimpleCondition implements PdbConditionInterface
                 return "{$column} {$this->operator} {$value}";
 
             case self::IS_NOT:
-                $value = $this->value;
-
                 if (is_string($value)) {
                     $value = strtoupper($value);
 
@@ -302,21 +299,21 @@ class PdbSimpleCondition implements PdbConditionInterface
                 return "{$column} {$this->operator} NULL";
 
             case self::BETWEEN:
-                if (!is_array($this->value)) {
+                if (!is_array($value)) {
                     $message = "Operator BETWEEN value must be an array of two scalars";
                     throw (new InvalidConditionException($message))
                         ->withActual($this->value)
                         ->withCondition($this);
                 }
 
-                if (count($this->value) != 2) {
+                if (count($value) != 2) {
                     $message = "Operator BETWEEN value must be an array of two scalars";
                     throw (new InvalidConditionException($message))
                         ->withActual(count($this->value))
                         ->withCondition($this);
                 }
 
-                [$low, $high] = array_values($this->value);
+                [$low, $high] = array_values($value);
 
                 if (!$this->bind_type) {
                     $values[] = $low;
@@ -345,38 +342,36 @@ class PdbSimpleCondition implements PdbConditionInterface
 
             case self::IN:
             case self::NOT_IN:
-                $items = $this->value;
-
                 if (
-                    !is_array($items)
-                    and !$items instanceof PdbConditionInterface
-                    and !$items instanceof PdbQuery
+                    !is_array($value)
+                    and !$value instanceof PdbConditionInterface
+                    and !$value instanceof PdbQuery
                 ) {
                     $message = "Operator {$this->operator} value must be an array of scalars";
 
                     throw (new InvalidConditionException($message))
-                        ->withActual($items)
+                        ->withActual($this->value)
                         ->withCondition($this);
                 }
 
-                if (empty($items)) return '';
+                if (empty($value)) return '';
 
-                if ($items instanceof PdbConditionInterface) {
-                    $binds = $items->build($pdb, $values);
+                if ($value instanceof PdbConditionInterface) {
+                    $binds = $value->build($pdb, $values);
                 }
-                else if ($items instanceof PdbQuery) {
-                    [$binds, $subValues] = $items->build(false);
+                else if ($value instanceof PdbQuery) {
+                    [$binds, $subValues] = $value->build(false);
                     $values = array_merge($values, $subValues);
                 }
                 else if (!$this->bind_type) {
-                    $binds = PdbHelpers::bindPlaceholders(count($items));
+                    $binds = PdbHelpers::bindPlaceholders(count($value));
 
-                    foreach ($items as $item) {
+                    foreach ($value as $item) {
                         $values[] = $item;
                     }
                 }
                 else {
-                    foreach ($items as $index => &$item) {
+                    foreach ($value as $index => &$item) {
                         if ($this->bind_type === Pdb::QUOTE_VALUE) {
                             $item = $pdb->format($item);
                         }
@@ -384,7 +379,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                         if (!is_scalar($item)) {
                             $message = "Operator {$this->operator} value must be an array of scalars";
                             throw (new InvalidConditionException($message))
-                                ->withActual(gettype($items) . " (index {$index})")
+                                ->withActual(gettype($this->value) . " (index {$index})")
                                 ->withCondition($this);
                         }
 
@@ -392,7 +387,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                     }
                     unset($item);
 
-                    $binds = implode(', ', $items);
+                    $binds = implode(', ', $value);
                 }
 
                 return "{$column} {$this->operator} ({$binds})";
@@ -423,17 +418,19 @@ class PdbSimpleCondition implements PdbConditionInterface
 
     private function quoteLike(Pdb $pdb, array &$values)
     {
-        if ($this->value instanceof PdbConditionInterface) {
-            return $this->value->build($pdb, $values);
+        $value = $this->value;
+
+        if ($value instanceof PdbConditionInterface) {
+            return $value->build($pdb, $values);
         }
         else if (!$this->bind_type) {
-            $values[] = PdbHelpers::likeEscape($this->value);
+            $values[] = PdbHelpers::likeEscape($value);
             return '?';
         }
         else {
-            $value = $this->bind_type === Pdb::QUOTE_VALUE
-                ? $pdb->format($this->value)
-                : $this->value;
+            if ($this->bind_type === Pdb::QUOTE_VALUE) {
+                $value = $pdb->format($value);
+            }
 
             if (!is_scalar($value)) {
                 $message = "Operator {$this->operator} value must be scalar";
