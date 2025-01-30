@@ -14,6 +14,7 @@ use karmabunny\kb\Arrayable;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
+use karmabunny\pdb\Models\PdbCondition;
 use karmabunny\pdb\Models\PdbConditionInterface;
 use karmabunny\pdb\Models\PdbRawCondition;
 use karmabunny\pdb\Models\PdbReturn;
@@ -665,14 +666,16 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param bool $validate
      * @return array [ sql, params ]
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
-    public function build(): array
+    public function build(bool $validate = true): array
     {
         $query = clone $this;
         $this->_beforeBuild($query);
-        [$sql, $params] = $query->_build();
+        [$sql, $params] = $query->_build($validate);
         $this->_afterBuild($sql, $params);
         return [$sql, $params];
     }
@@ -705,10 +708,12 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param bool $validate
      * @return array [ sql, params ]
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
-    protected function _build(): array
+    protected function _build(bool $validate = true): array
     {
         $sql = '';
         $params = [];
@@ -777,7 +782,8 @@ class PdbQuery implements Arrayable, JsonSerializable
                 $sql .= ' ';
             }
 
-            $sql .= 'ON ' . $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= 'ON ';
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             $sql .= ' ';
         }
 
@@ -791,7 +797,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
             $sql .= $type . ' ';
             if ($type !== 'WHERE') $sql .= '(';
-            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             if ($type !== 'WHERE') $sql .= ')';
             $sql .= ' ';
         }
@@ -820,7 +826,7 @@ class PdbQuery implements Arrayable, JsonSerializable
             }
 
             $sql .= $type . ' ';
-            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             $sql .= ' ';
         }
 
