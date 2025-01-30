@@ -37,7 +37,6 @@ interface PdbConditionInterface
      *
      * @return void
      * @throws InvalidConditionException
-     * @throws InvalidArgumentException
      */
     public function validate();
 

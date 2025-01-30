@@ -36,7 +36,6 @@ abstract class PdbCondition implements PdbConditionInterface
      * @param PdbConditionInterface|array|string|int|float|null $item
      * @return PdbConditionInterface
      * @throws InvalidConditionException
-     * @throws InvalidArgumentException
      */
     public static function fromShorthand($key, $item)
     {
@@ -71,7 +70,7 @@ abstract class PdbCondition implements PdbConditionInterface
 
                 if (!is_string($operator)) {
                     $type = gettype($operator);
-                    throw new InvalidArgumentException("Operator must be a string, got: {$type} [array]");
+                    throw new InvalidConditionException("Operator must be a string, got: {$type} [array]");
                 }
 
                 $operator = trim(strtoupper($operator));
@@ -95,7 +94,7 @@ abstract class PdbCondition implements PdbConditionInterface
                 return new PdbSimpleCondition($operator, $column, $value);
             }
 
-            throw new InvalidArgumentException('Conditions must have 1, 2 or 3 items, not: ' . $count);
+            throw new InvalidConditionException('Conditions must have 1, 2 or 3 items, not: ' . $count);
         }
 
         // String-style conditions.
@@ -104,7 +103,7 @@ abstract class PdbCondition implements PdbConditionInterface
         // declare their intent. Exception can happen further up the call chain.
         //  e.g. in PdbQuery::join().
         if (is_numeric($key) and is_string($item)) {
-            throw new InvalidArgumentException('Cannot implicitly parse unsafe conditions, please use PdbRawCondition');
+            throw new InvalidConditionException('Cannot implicitly parse unsafe conditions, please use PdbRawCondition');
         }
 
         // Key-style conditions + nested conditions.
@@ -135,7 +134,7 @@ abstract class PdbCondition implements PdbConditionInterface
         }
 
         $type = gettype($item);
-        throw new InvalidArgumentException("Invalid condition: {$key} => {$type}");
+        throw new InvalidConditionException("Invalid condition: {$key} => {$type}");
     }
 
 
