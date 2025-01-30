@@ -60,7 +60,7 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param string $operator one of `self::OPERATORS`
-     * @param bool $invoice swap the operation: `{value} X {column}`
+     * @param bool $inverse swap the operation: `{value} X {column}`
      */
     public function __construct($value, string $operator, bool $inverse)
     {
