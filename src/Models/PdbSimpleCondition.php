@@ -9,6 +9,7 @@ namespace karmabunny\pdb\Models;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbHelpers;
+use karmabunny\pdb\PdbQuery;
 
 /**
  *
@@ -200,6 +201,11 @@ class PdbSimpleCondition implements PdbConditionInterface
                 if ($this->value instanceof PdbConditionInterface) {
                     $bind = $this->value->build($pdb, $values);
                 }
+                // Some nested queries.
+                else if ($this->value instanceof PdbQuery) {
+                    [$bind, $subValues] = $this->value->build();
+                    $values = array_merge($values, $subValues);
+                }
                 // Gonna 'bind' this one manually. Doesn't feel great.
                 else if ($this->bind_type) {
                     $value = $this->bind_type === Pdb::QUOTE_VALUE
@@ -321,7 +327,11 @@ class PdbSimpleCondition implements PdbConditionInterface
             case self::NOT_IN:
                 $items = $this->value;
 
-                if (!is_array($items) and !$items instanceof PdbConditionInterface) {
+                if (
+                    !is_array($items)
+                    and !$items instanceof PdbConditionInterface
+                    and !$items instanceof PdbQuery
+                ) {
                     $message = "Operator {$this->operator} value must be an array of scalars";
 
                     throw (new InvalidConditionException($message))
@@ -333,6 +343,10 @@ class PdbSimpleCondition implements PdbConditionInterface
 
                 if ($items instanceof PdbConditionInterface) {
                     $binds = $items->build($pdb, $values);
+                }
+                else if ($items instanceof PdbQuery) {
+                    [$binds, $subValues] = $items->build();
+                    $values = array_merge($values, $subValues);
                 }
                 else if (!$this->bind_type) {
                     $binds = PdbHelpers::bindPlaceholders(count($items));
@@ -418,6 +432,8 @@ class PdbSimpleCondition implements PdbConditionInterface
     /** @inheritdoc */
     public function getPreviewSql(): string
     {
+        // TODO generate preview for nested conditions + queries.
+
         switch ($this->operator) {
             case self::EQUAL:
             case self::NOT_EQUAL;
