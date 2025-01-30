@@ -758,6 +758,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param array $values Array of bind parameters. Additional parameters will be appended to this array
      * @param string $combine String to be placed between the conditions. Must be one of: 'AND', 'OR', 'XOR'
      * @return string A clause which is safe to use in a prepared SQL statement
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      * @example
      * $conditions = ['active' => 1, ['date_added', 'BETWEEN', ['2015-01-01', '2016-01-01']]];
@@ -777,23 +778,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function buildClause(array $conditions, array &$values, $combine = 'AND')
     {
-        if ($combine != 'AND' and $combine != 'OR' and $combine != 'XOR') {
-            throw new InvalidArgumentException('Combine parameter must be of of: "AND", "OR", "XOR"');
-        }
-
-        $conditions = PdbCondition::fromArray($conditions);
-        $combine = " {$combine} ";
-        $where = '';
-
-        foreach ($conditions as $condition) {
-            $clause = $condition->build($this, $values);
-            if (!$clause) continue;
-
-            if ($where) $where .= $combine;
-            $where .= $clause;
-        }
-
-        return $where;
+        return PdbCondition::buildClause($this, $conditions, $values, $combine, true);
     }
 
 

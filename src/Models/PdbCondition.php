@@ -8,6 +8,8 @@ namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
+use karmabunny\pdb\Pdb;
+use PDOException;
 
 /**
  * This is a helper for building conditions from the array syntax.
@@ -142,18 +144,60 @@ abstract class PdbCondition implements PdbConditionInterface
      * shorthand arrays.
      *
      * @param array $clauses
+     * @param bool $validate
      * @return PdbConditionInterface[]
-     * @throws InvalidArgumentException
+     * @throws InvalidConditionException
      */
-    public static function fromArray(array $clauses)
+    public static function fromArray(array $clauses, bool $validate = true)
     {
         $conditions = [];
         foreach ($clauses as $key => $item) {
             $item = self::fromShorthand($key, $item);
-            $item->validate();
+
+            if ($validate) {
+                $item->validate();
+            }
+
             $conditions[] = $item;
         }
         return $conditions;
     }
 
+
+    /**
+     * Build a set of conditions into SQL.
+     *
+     * @see Pdb::buildClause()
+     *
+     * @param Pdb $pdb
+     * @param array $conditions
+     * @param array &$values
+     * @param string $combine
+     * @param bool $validate
+     * @return string
+     * @throws InvalidArgumentException
+     * @throws InvalidConditionException
+     * @throws PDOException
+     */
+    public static function buildClause(Pdb $pdb, array $conditions, array &$values, $combine = 'AND', $validate = true)
+    {
+        if ($validate and !in_array($combine, PdbCompoundCondition::COMPOUNDS)) {
+            $compounds = implode(', ', PdbCompoundCondition::COMPOUNDS);
+            throw new InvalidArgumentException('Combine parameter must be one of: ' . $compounds);
+        }
+
+        $conditions = self::fromArray($conditions, $validate);
+        $combine = " {$combine} ";
+        $where = '';
+
+        foreach ($conditions as $condition) {
+            $clause = $condition->build($pdb, $values);
+            if (!$clause) continue;
+
+            if ($where) $where .= $combine;
+            $where .= $clause;
+        }
+
+        return $where;
+    }
 }
