@@ -128,9 +128,27 @@ class PdbSimpleCondition implements PdbConditionInterface
 
         Pdb::validateIdentifierExtended($this->column, true);
 
+        // Validate nested conditions.
+        if ($this->value instanceof PdbConditionInterface) {
+            $this->value->validate();
+
+            // Also double check what operator we've paired it with.
+            switch ($this->operator) {
+                case self::IS:
+                case self::IS_NOT:
+                case self::BETWEEN:
+                    $message = "Nested conditions cannot be used with operator: {$this->operator}";
+                    throw (new InvalidConditionException($message))
+                        ->withCondition($this);
+            }
+        }
+
         // If the value is a field type, then we should do validation there too.
         if ($this->bind_type === Pdb::QUOTE_FIELD) {
-            if (is_iterable($this->value)) {
+            if (
+                is_iterable($this->value)
+                and !($this->value instanceof PdbConditionInterface)
+            ) {
                 foreach ($this->value as $index => $value) {
                     if (!is_scalar($value)) {
                         $message = "Column array must be scalar (index {$index})";
@@ -141,8 +159,17 @@ class PdbSimpleCondition implements PdbConditionInterface
                     Pdb::validateIdentifierExtended((string) $value, true);
                 }
             }
-            else {
+            else if (is_scalar($this->value)) {
                 Pdb::validateIdentifierExtended((string) $this->value, true);
+            }
+            else if ($this->value instanceof PdbConditionInterface) {
+                // OK, idk this just reads better.
+            }
+            else {
+                $message = 'Column must be scalar or array of scalars';
+                throw (new InvalidConditionException($message))
+                    ->withActual($this->value)
+                    ->withCondition($this);
             }
         }
     }
@@ -167,8 +194,13 @@ class PdbSimpleCondition implements PdbConditionInterface
             case self::LESS_THAN:
             case self::GREATER_THAN:
 
+                // This is a nested condition, we can't force the bind mode so
+                // we just go with whatever it does.
+                if ($this->value instanceof PdbConditionInterface) {
+                    $bind = $this->value->build($pdb, $values);
+                }
                 // Gonna 'bind' this one manually. Doesn't feel great.
-                if ($this->bind_type) {
+                else if ($this->bind_type) {
                     $value = $this->bind_type === Pdb::QUOTE_VALUE
                         ? $pdb->format($this->value)
                         : $this->value;
@@ -288,7 +320,7 @@ class PdbSimpleCondition implements PdbConditionInterface
             case self::NOT_IN:
                 $items = $this->value;
 
-                if (!is_array($items)) {
+                if (!is_array($items) and !$items instanceof PdbConditionInterface) {
                     $message = "Operator {$this->operator} value must be an array of scalars";
 
                     throw (new InvalidConditionException($message))
@@ -298,7 +330,10 @@ class PdbSimpleCondition implements PdbConditionInterface
 
                 if (empty($items)) return '';
 
-                if (!$this->bind_type) {
+                if ($items instanceof PdbConditionInterface) {
+                    $binds = $items->build($pdb, $values);
+                }
+                else if (!$this->bind_type) {
                     $binds = PdbHelpers::bindPlaceholders(count($items));
 
                     foreach ($items as $item) {
@@ -353,7 +388,10 @@ class PdbSimpleCondition implements PdbConditionInterface
 
     private function quoteLike(Pdb $pdb, array &$values)
     {
-        if (!$this->bind_type) {
+        if ($this->value instanceof PdbConditionInterface) {
+            return $this->value->build($pdb, $values);
+        }
+        else if (!$this->bind_type) {
             $values[] = PdbHelpers::likeEscape($this->value);
             return '?';
         }
