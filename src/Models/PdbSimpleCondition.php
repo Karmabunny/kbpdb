@@ -145,6 +145,26 @@ class PdbSimpleCondition implements PdbConditionInterface
             $this->value->validate();
         }
 
+        // Pre-validate the query, we'll turn of validation later to save effort.
+        if ($this->value instanceof PdbQuery) {
+            switch ($this->operator) {
+                case self::IS:
+                case self::IS_NOT:
+                case self::BETWEEN:
+                case self::CONTAINS:
+                case self::BEGINS:
+                case self::ENDS:
+                case self::IN_SET:
+                    $message = "Nested conditions cannot be used with operator: {$this->operator}";
+                    throw (new InvalidConditionException($message))
+                        ->withCondition($this);
+            }
+
+            // TODO This is still a tad expensive because we're building the
+            // condition sets twice.
+            $this->value->validate();
+        }
+
         // If the value is a field type, then we should do validation there too.
         if ($this->bind_type === Pdb::QUOTE_FIELD) {
             if (
@@ -203,7 +223,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                 }
                 // Some nested queries.
                 else if ($this->value instanceof PdbQuery) {
-                    [$bind, $subValues] = $this->value->build();
+                    [$bind, $subValues] = $this->value->build(false);
                     $values = array_merge($values, $subValues);
                 }
                 // Gonna 'bind' this one manually. Doesn't feel great.
@@ -345,7 +365,7 @@ class PdbSimpleCondition implements PdbConditionInterface
                     $binds = $items->build($pdb, $values);
                 }
                 else if ($items instanceof PdbQuery) {
-                    [$binds, $subValues] = $items->build();
+                    [$binds, $subValues] = $items->build(false);
                     $values = array_merge($values, $subValues);
                 }
                 else if (!$this->bind_type) {
