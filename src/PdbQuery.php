@@ -644,6 +644,27 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @return void
+     * @throws InvalidConditionException
+     */
+    public function validate()
+    {
+        foreach ($this->_joins as $item) {
+            PdbCondition::fromArray($item[2], true);
+        }
+
+        foreach ($this->_where as $item) {
+            PdbCondition::fromArray($item[1], true);
+        }
+
+        foreach ($this->_having as $item) {
+            PdbCondition::fromArray($item[1], true);
+        }
+    }
+
+
+    /**
+     *
      * @return array [ sql, params ]
      * @throws InvalidArgumentException
      */
