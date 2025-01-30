@@ -382,7 +382,9 @@ class PdbCondition
 
                 // Gonna 'bind' this one manually. Doesn't feel great.
                 if ($this->bind_type) {
-                    $value = $pdb->format($this->value);
+                    $value = $this->bind_type === Pdb::QUOTE_VALUE
+                        ? $pdb->format($this->value)
+                        : $this->value;
 
                     if (!is_scalar($value)) {
                         $message = "Operator {$this->operator} needs a scalar value";
@@ -476,8 +478,10 @@ class PdbCondition
                     $high = $low = '?';
                 }
                 else {
-                    $high = $pdb->format($high);
-                    $low = $pdb->format($low);
+                    if ($this->bind_type === Pdb::QUOTE_VALUE) {
+                        $high = $pdb->format($high);
+                        $low = $pdb->format($low);
+                    }
 
                     if (!is_scalar($low) or !is_scalar($high)) {
                         $message = "Operator BETWEEN value must be an array of two scalars";
@@ -516,7 +520,9 @@ class PdbCondition
                 }
                 else {
                     foreach ($items as $index => &$item) {
-                        $item = $pdb->format($item);
+                        if ($this->bind_type === Pdb::QUOTE_VALUE) {
+                            $item = $pdb->format($item);
+                        }
 
                         if (!is_scalar($item)) {
                             $message = "Operator {$this->operator} value must be an array of scalars";
@@ -565,7 +571,9 @@ class PdbCondition
             return '?';
         }
         else {
-            $value = $pdb->format($this->value);
+            $value = $this->bind_type === Pdb::QUOTE_VALUE
+                ? $pdb->format($this->value)
+                : $this->value;
 
             if (!is_scalar($value)) {
                 $message = "Operator {$this->operator} value must be scalar";
