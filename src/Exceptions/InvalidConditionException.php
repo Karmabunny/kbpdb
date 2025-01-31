@@ -30,8 +30,9 @@ class InvalidConditionException extends InvalidArgumentException
     {
         $this->condition = $condition;
 
-        $preview = $this->condition->getPreviewSql() ?: '???';
-        $this->message .= " \"{$preview}\"";
+        if ($preview = $this->condition->getPreviewSql()) {
+            $this->message .= " \"{$preview}\"";
+        }
 
         return $this;
     }
