@@ -103,7 +103,7 @@ abstract class PdbCondition implements PdbConditionInterface
         // declare their intent. Exception can happen further up the call chain.
         //  e.g. in PdbQuery::join().
         if (is_numeric($key) and is_string($item)) {
-            throw new InvalidConditionException('Cannot implicitly parse unsafe conditions, please use PdbRawCondition');
+            throw new InvalidConditionException('Invalid string condition');
         }
 
         // Key-style conditions + nested conditions.
