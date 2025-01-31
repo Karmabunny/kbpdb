@@ -30,6 +30,7 @@ class PdbSimpleCondition implements PdbConditionInterface
     const BETWEEN = 'BETWEEN';
     const IN = 'IN';
     const NOT_IN = 'NOT IN';
+    const LIKE = 'LIKE';
     const CONTAINS = 'CONTAINS';
     const BEGINS = 'BEGINS';
     const ENDS = 'ENDS';
@@ -48,6 +49,7 @@ class PdbSimpleCondition implements PdbConditionInterface
         self::BETWEEN,
         self::IN,
         self::NOT_IN,
+        self::LIKE,
         self::CONTAINS,
         self::BEGINS,
         self::ENDS,
@@ -391,6 +393,10 @@ class PdbSimpleCondition implements PdbConditionInterface
                 }
 
                 return "{$column} {$this->operator} ({$binds})";
+
+            case self::LIKE:
+                $bind = $this->quoteLike($pdb, $values);
+                return "{$column} LIKE {$bind}";
 
             case self::CONTAINS:
                 $bind = $this->quoteLike($pdb, $values);
