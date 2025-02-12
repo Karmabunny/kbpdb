@@ -1134,8 +1134,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Wrap a function in a transaction. This will commit or rollback
      * automatically after the function is complete.
      *
-     * This supports nesting, so if the connetion is already within a
-     * transaction (and nesting is enabled) this will create savepoints instead.
+     * IMPORTANT: if `TX_ENABLE_NESTED` is not enabled and there is a transaction
+     * already in process, this will not create a savepoint nor commit/rollback
+     * on the parent transaction.
+     *
+     * Otherwise with nesting enabled, this will create savepoints instead
+     * with automatic commit/rollback behaviour.
      *
      * @param callable(Pdb): mixed $callback
      * @return mixed the callback result
@@ -1144,17 +1148,25 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function withTransaction(callable $callback)
     {
-        $transaction = $this->transact();
+        if (
+            ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED)
+            or !$this->inTransaction()
+        ) {
+            $transaction = $this->transact();
+        }
 
         try {
             return $callback($this);
         }
         catch (Throwable $error) {
-            $transaction->rollback();
+            if (isset($transaction)) {
+                $transaction->rollback();
+            }
+
             throw $error;
         }
         finally {
-            if (!isset($error)) {
+            if (isset($transaction) and !isset($error)) {
                 $transaction->commit();
             }
         }
