@@ -1136,7 +1136,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * This supports nesting, so if the connetion is already within a
      * transaction (and nesting is enabled) this will create savepoints instead.
      *
-     * @param callable $callback
+     * @param callable(Pdb): mixed $callback
      * @return mixed the callback result
      * @throws TransactionRecursionException
      * @throws ConnectionException
@@ -1146,7 +1146,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         $transaction = $this->transact();
 
         try {
-            return $callback();
+            return $callback($this);
         }
         catch (Throwable $error) {
             $transaction->rollback();
