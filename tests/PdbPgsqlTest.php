@@ -13,8 +13,6 @@ class PdbPgsqlTest extends BasePdbCase
 {
     public function setUp(): void
     {
-        parent::setUp();
-
         $this->pdb = Pdb::create([
             'type' => PdbConfig::TYPE_PGSQL,
             'host' => 'postgres',
@@ -29,5 +27,7 @@ class PdbPgsqlTest extends BasePdbCase
         catch (ConnectionException $error) {
             $this->markTestSkipped('No DB connection');
         }
+
+        parent::setUp();
     }
 }

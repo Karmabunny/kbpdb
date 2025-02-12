@@ -12,8 +12,7 @@ class PdbMysqlTest extends BasePdbCase
 {
     public function setUp(): void
     {
-        parent::setUp();
-        $this->pdb = Pdb::create(require __DIR__ . '/config.php');
+        $this->pdb ??= Pdb::create(require __DIR__ . '/config.php');
 
         try {
             $this->pdb->getConnection();
@@ -21,5 +20,7 @@ class PdbMysqlTest extends BasePdbCase
         catch (ConnectionException $error) {
             $this->markTestSkipped('No DB connection');
         }
+
+        parent::setUp();
     }
 }
