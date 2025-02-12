@@ -1124,6 +1124,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
         return new PdbTransaction([
             'pdb' => $this,
+            'parent' => $this->transaction_key,
             'key' => $key,
         ]);
     }

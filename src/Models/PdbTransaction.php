@@ -17,7 +17,21 @@ class PdbTransaction extends DataObject
     public $pdb;
 
     /** @var string|false */
+    public $parent;
+
+    /** @var string|false */
     public $key;
+
+
+    /**
+     * Is this a savepoint?
+     *
+     * @return bool
+     */
+    public function isSavepoint(): bool
+    {
+        return $this->parent !== $this->key;
+    }
 
 
     /**
@@ -30,6 +44,11 @@ class PdbTransaction extends DataObject
         if (!$this->key) return;
 
         $this->pdb->commit($this->key);
+
+        if ($this->key === $this->parent) {
+            $this->parent = false;
+        }
+
         $this->key = false;
     }
 
@@ -44,6 +63,11 @@ class PdbTransaction extends DataObject
         if (!$this->key) return;
 
         $this->pdb->rollback($this->key);
+
+        if ($this->key === $this->parent) {
+            $this->parent = false;
+        }
+
         $this->key = false;
     }
 }
