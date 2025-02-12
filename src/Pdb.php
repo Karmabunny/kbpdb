@@ -1212,14 +1212,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * This forces the user to maintain the transaction key through their
      * control flow and encourages one to properly clean up after themselves.
      *
-     * @param string|null $name a transaction key
+     * @param PdbTransaction|string|null $name a transaction key
      * @return void
      * @throws InvalidArgumentException An invalid transaction key
      * @throws ConnectionException If the connection fails
      * @throws TransactionNameException The transaction/savepoint doesn't exist
      * @throws TransactionEmptyException If there's no active transaction
      */
-    public function commit(string $name = null)
+    public function commit($name = null)
     {
         $pdo = $this->getConnection();
 
@@ -1231,6 +1231,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
             // Skip over inactive transactions.
             return;
+        }
+
+        if ($name instanceof PdbTransaction) {
+            $name = $name->key;
         }
 
         if ($name === null) {
@@ -1271,14 +1275,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Given the transaction key or empty it'll rollback to while transaction
      * and all savepoints.
      *
-     * @param string|null $name a transaction key
+     * @param PdbTransaction|string|null $name a transaction key
      * @return void
      * @throws InvalidArgumentException An invalid transaction key
      * @throws TransactionNameException The transaction/savepoint doesn't exist
      * @throws TransactionEmptyException No active transaction
      * @throws ConnectionException If the connection fails
      */
-    public function rollback(string $name = null)
+    public function rollback($name = null)
     {
         $pdo = $this->getConnection();
 
@@ -1292,6 +1296,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
             // Skip over inactive transactions.
             return;
+        }
+
+        if ($name instanceof PdbTransaction) {
+            $name = $name->key;
         }
 
         if (!$name or $name === $this->transaction_key) {
