@@ -17,7 +17,7 @@ use karmabunny\pdb\Exceptions\PdbParserException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
-use karmabunny\pdb\Models\PdbStruct;
+use karmabunny\pdb\Models\PdbSchema;
 use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\PdbView;
 use Throwable;
@@ -376,7 +376,7 @@ class PdbParser implements PdbSchemaInterface
      */
     public function getSchema(): PdbSchemaInterface
     {
-        return new PdbStruct([
+        return new PdbSchema([
             'tables' => $this->tables,
             'views' => $this->views,
         ]);

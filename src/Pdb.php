@@ -1167,8 +1167,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function getSchema(): PdbSchema
     {
-        $schema = new PdbSchema($this);
-        return $schema;
+        return new PdbSchema([
+            'tables' => $this->tableList(),
+        ]);
     }
 
 

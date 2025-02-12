@@ -2,45 +2,45 @@
 
 namespace karmabunny\pdb\Models;
 
-use karmabunny\pdb\Pdb;
+use karmabunny\kb\Collection;
 use karmabunny\pdb\PdbSchemaInterface;
 
 /**
- * A schema that comes from the database.
+ * A schema that comes from the database or a `db_struct.xml` file.
  *
  * @package karmabunny\pdb
  */
-class PdbSchema implements PdbSchemaInterface
+class PdbSchema extends Collection implements PdbSchemaInterface
 {
 
-    protected $pdb;
+    /** @var string */
+    public $name;
 
+    /** @var PdbTable[] name => PdbTable */
+    public $tables = [];
 
-    public function __construct(Pdb $pdb)
-    {
-        $this->pdb = $pdb;
-    }
+    /** @var PdbView[] name => PdbView */
+    public $views = [];
 
 
     /** @inheritdoc */
     public function getTableNames(): array
     {
-        return $this->pdb->getTableNames();
+        return array_keys($this->tables);
     }
 
 
     /** @inheritdoc */
     public function getTables(): array
     {
-        return $this->pdb->tableList();
+        return $this->tables;
     }
 
 
     /** @inheritdoc */
     public function getViews(): array
     {
-        // TODO Not so easy.
-        return [];
+        return $this->views;
     }
 
 
