@@ -36,6 +36,17 @@ final class Database
     }
 
 
+    public static function drop(string $type)
+    {
+        $pdb = self::getConnection($type);
+        $tables = $pdb->getTableNames('', false);
+
+        foreach ($tables as $table) {
+            $pdb->query("DROP TABLE IF EXISTS {$table}", [], 'null');
+        }
+    }
+
+
     public static function isConnected(): bool
     {
         $pdb = self::getConnection();
