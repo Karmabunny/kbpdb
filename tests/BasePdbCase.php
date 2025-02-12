@@ -140,6 +140,59 @@ abstract class BasePdbCase extends TestCase
     }
 
 
+    /**
+     * Test that withTransaction() properly handles transactions.
+     */
+    public function testWithTransaction(): void
+    {
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block
+        $result = $this->pdb->withTransaction(function($pdb) {
+            $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+            $this->assertEquals(1, $ok);
+            return 'success';
+        });
+
+        $this->assertEquals('success', $result);
+
+        // Verify both inserts committed
+        $expected = ['abc1', 'abc2'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+    }
+
+
+    /**
+     * Test that withTransaction() rolls back on exceptions.
+     */
+    public function testWithTransactionRollback(): void
+    {
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block that throws
+        try {
+            $this->pdb->withTransaction(function($pdb) {
+                $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+                $this->assertEquals(1, $ok);
+                throw new \Exception('Test exception');
+            });
+        }
+        catch (\Exception $error) {
+            $this->assertEquals('Test exception', $error->getMessage());
+        }
+
+        // Verify only initial insert remains
+        $expected = ['abc1'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+    }
+
+
     public function testNestedTransactions()
     {
         $this->pdb->config->transaction_mode = 0
