@@ -1141,8 +1141,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Otherwise with nesting enabled, this will create savepoints instead
      * with automatic commit/rollback behaviour.
      *
-     * @param callable(Pdb): mixed $callback
-     * @return mixed the callback result
+     * @template T
+     * @param callable(Pdb,PdbTransaction): T $callback
+     * @return T the callback result
      * @throws TransactionRecursionException
      * @throws ConnectionException
      */
@@ -1156,7 +1157,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         try {
-            return $callback($this);
+            // Without a nested transaction, send through the parent transaction.
+            // But we're not going to commit or rollback. However, the user is
+            // free to do that using this object (if they wish to make a mess).
+            return $callback($this, $transaction ?? new PdbTransaction([
+                'pdb' => $this,
+                'parent' => $this->transaction_key,
+                'key' => $this->transaction_key,
+            ]));
         }
         catch (Throwable $error) {
             if (isset($transaction)) {
