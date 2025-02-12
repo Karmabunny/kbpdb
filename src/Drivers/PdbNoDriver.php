@@ -39,7 +39,7 @@ class PdbNoDriver extends Pdb
     }
 
 
-    public function getTableNames(string $prefix = '*')
+    public function getTableNames(string $filter = '*', bool $strip = true)
     {
         throw new Exception('Not implemented: ' . __METHOD__);
     }

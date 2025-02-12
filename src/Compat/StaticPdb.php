@@ -76,7 +76,7 @@ use PDOStatement;
  * @method static PdbTable[] tableList()
  * @method static PdbTable|null getTable(string $table)
  * @method static bool tableExists(string $table)
- * @method static string[] getTableNames(string $prefix = '*')
+ * @method static string[] getTableNames(string $filter = '*', bool $strip = true)
  * @method static PdbIndex[] indexList(string $table)
  * @method static PdbColumn[] fieldList(string $table)
  *

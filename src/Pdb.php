@@ -1180,19 +1180,21 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     public function listTables()
     {
-        return $this->getTableNames('');
+        return $this->getTableNames('', true);
     }
 
 
     /**
      * Fetches the current list of tables.
      *
-     * @param string $prefix
+     * @param string $filter
      *   - `''` - (empty) to return all tables
      *   - `'*'` - to return only tables with the default prefix
-     * @return string[] non-prefixed
+     *   - other - filter on this prefix
+     * @param bool $strip remove the prefix from the table names
+     * @return string[]
      */
-    public abstract function getTableNames(string $prefix = '*');
+    public abstract function getTableNames(string $filter = '*', bool $strip = true);
 
 
     /**
