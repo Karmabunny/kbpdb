@@ -330,7 +330,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
                     $key = 'time_zone';
                 }
                 else if ($config->type === PdbConfig::TYPE_PGSQL) {
-                    $key = 'TIME ZONE';
+                    $key = 'TIMEZONE';
                 }
 
                 if ($key) {
@@ -1298,9 +1298,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             if ($this->config->use_system_timezone) {
                 $this->_timezone = new DateTimeZone(date_default_timezone_get());
             }
-            else {
-                // Is this mariadb only?
-                // TODO need tests.
+            else if ($this instanceof PdbMysql) {
                 $q = "SELECT
                     @@session.time_zone AS session_time_zone,
                     @@system_time_zone AS system_time_zone
@@ -1312,6 +1310,14 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
                 } else {
                     $this->_timezone = new DateTimeZone($tzdata['session_time_zone']);
                 }
+            }
+            else if ($this instanceof PdbPgsql) {
+                $q = "SELECT current_setting('TIMEZONE')";
+                $tzdata = $this->query($q, [], 'val');
+                $this->_timezone = new DateTimeZone($tzdata);
+            }
+            else {
+                $this->_timezone = new DateTimeZone('UTC');
             }
         }
 
