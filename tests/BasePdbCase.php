@@ -3,6 +3,7 @@
 namespace kbtests;
 
 use karmabunny\pdb\Drivers\PdbMysql;
+use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbLog;
@@ -124,4 +125,66 @@ abstract class BasePdbCase extends TestCase
         $expected = date_default_timezone_get();
         $this->assertEquals($expected, $actual->getName());
     }
+
+
+    public function testTimezoneSystem(): void
+    {
+        date_default_timezone_set('UTC');
+        $pdb = Pdb::create($this->pdb->config);
+        $pdb->config->use_system_timezone = true;
+
+        $tz = $pdb->getTimezone(true);
+        $this->assertEquals('UTC', $tz->getName());
+
+        $now = date('Y-m-d H:i:s');
+        $this->assertEquals($now, $pdb->now());
+
+        // Change the PHP timezone.
+        date_default_timezone_set('Australia/Adelaide');
+        $pdb = Pdb::create($this->pdb->config);
+        $pdb->config->use_system_timezone = true;
+
+        $tz = $pdb->getTimezone(true);
+        $this->assertEquals('Australia/Adelaide', $tz->getName());
+
+        $utc = gmdate('Y-m-d H:i:s');
+        $this->assertNotEquals($utc, $pdb->now());
+
+        $now = date('Y-m-d H:i:s');
+        $this->assertEquals($now, $pdb->now());
+    }
+
+
+    public function testTimezoneDb(): void
+    {
+        // Let the DB decide.
+        $pdb = Pdb::create($this->pdb->config);
+        $pdb->config->use_system_timezone = false;
+
+        if ($this->pdb instanceof PdbSqlite) {
+            $tz = $pdb->getTimezone(true);
+            $this->assertEquals('UTC', $tz->getName());
+        }
+        else {
+            // Force it's hand a bit.
+            if ($this->pdb instanceof PdbPgsql) {
+                $pdb->query("SET timezone = 'America/New_York'", [], 'null');
+            }
+            else {
+                $pdb->query('SET time_zone = ?', ['America/New_York'], 'null');
+            }
+
+            $tz = $pdb->getTimezone(true);
+            $this->assertEquals('America/New_York', $tz->getName());
+
+            date_default_timezone_set('Australia/Adelaide');
+            $now = date('Y-m-d H:i:s');
+            $this->assertNotEquals($now, $pdb->now());
+
+            date_default_timezone_set('America/New_York');
+            $now = date('Y-m-d H:i:s');
+            $this->assertEquals($now, $pdb->now());
+        }
+    }
+
 }
