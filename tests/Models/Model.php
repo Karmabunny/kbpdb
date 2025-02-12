@@ -31,7 +31,7 @@ abstract class Model extends Record
     public function getSaveData(): array
     {
         $data = parent::getSaveData();
-        $now = Pdb::now();
+        $now = $this->getConnection()->now();
 
         if (!$this->id) {
             $data['date_added'] = $now;

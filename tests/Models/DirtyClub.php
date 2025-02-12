@@ -33,7 +33,7 @@ class DirtyClub extends Model
         $data = $this->getChecksums()->getAllDirty();
         unset($data['id']);
 
-        $now = Pdb::now();
+        $now = $this->getConnection()->now();
 
         if (!$this->id) {
             $data['date_added'] = $now;
