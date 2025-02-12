@@ -2,6 +2,7 @@
 
 namespace kbtests;
 
+use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbLog;
@@ -46,6 +47,10 @@ abstract class BasePdbCase extends TestCase
 
     public function sync()
     {
+        if (!$this->pdb instanceof PdbMysql) {
+            $this->markTestSkipped('Skipping sync test for non-mysql driver');
+        }
+
         // Load up.
         $sync = new PdbSync($this->pdb);
         $sync->migrate($this->struct);
@@ -58,11 +63,6 @@ abstract class BasePdbCase extends TestCase
         // Do it again - should be empty.
         $sync = new PdbSync($this->pdb);
         $sync->migrate($this->struct);
-
-        // Not sure why this is broken.
-        if ($this->pdb instanceof PdbSqlite) {
-            return;
-        }
 
         $queries = '';
         foreach ($sync->getQueries() as $query) {
