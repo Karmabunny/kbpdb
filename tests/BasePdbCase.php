@@ -143,21 +143,36 @@ abstract class BasePdbCase extends TestCase
 
     /**
      * Test that withTransaction() properly handles transactions.
+     *
+     * @dataProvider dataActive
      */
-    public function testWithTransaction(): void
+    public function testWithTransaction($active): void
     {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        // Ensure that withTransaction() within a transaction uses savepoints.
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
+        $transaction = $this->pdb->transact();
+
         // Create initial data
         $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
         $this->assertEquals(1, $ok);
 
         // Run transaction block
-        $result = $this->pdb->withTransaction(function($pdb) {
+        $result = $this->pdb->withTransaction(function($pdb, $transaction) use ($active) {
+            $this->assertEquals($active, $transaction->isSavepoint());
+
             $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
             $this->assertEquals(1, $ok);
             return 'success';
         });
 
         $this->assertEquals('success', $result);
+
+        $transaction->commit();
 
         // Verify both inserts committed
         $expected = ['abc1', 'abc2'];
@@ -168,16 +183,29 @@ abstract class BasePdbCase extends TestCase
 
     /**
      * Test that withTransaction() rolls back on exceptions.
+     *
+     * Without a wrapped nested transaction it should behave the same with both
+     * nested queries enabled and without.
+     *
+     * @dataProvider dataActive
      */
-    public function testWithTransactionRollback(): void
+    public function testWithTransactionRollback($active): void
     {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
         // Create initial data
         $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
         $this->assertEquals(1, $ok);
 
         // Run transaction block that throws
         try {
-            $this->pdb->withTransaction(function($pdb) {
+            $this->pdb->withTransaction(function($pdb, $transaction) {
+                $this->assertFalse($transaction->isSavepoint());
+
                 $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
                 $this->assertEquals(1, $ok);
                 throw new \Exception('Test exception');
@@ -191,6 +219,56 @@ abstract class BasePdbCase extends TestCase
         $expected = ['abc1'];
         $actual = $this->pdb->find('tx_test')->column('name');
         $this->assertEquals($expected, $actual);
+    }
+
+    /**
+     * Test behaviour of withTransaction() when nested queries are enabled.
+     *
+     * @dataProvider dataActive
+     */
+    public function testWithTransactionRollbackNested($active): void
+    {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        // Without nested queries withTransaction() is severely nerfed.
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
+        $transaction = $this->pdb->transact();
+
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block that throws
+        try {
+            $this->pdb->withTransaction(function($pdb, $transaction) use ($active) {
+                $this->assertEquals($active, $transaction->isSavepoint());
+
+                $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+                $this->assertEquals(1, $ok);
+                throw new \Exception('Test exception');
+            });
+        }
+        catch (\Exception $error) {
+            $this->assertEquals('Test exception', $error->getMessage());
+        }
+
+        $transaction->commit();
+
+        $actual = $this->pdb->find('tx_test')->column('name');
+
+        if ($active) {
+            // Verify only initial insert remains
+            $expected = ['abc1'];
+            $this->assertEquals($expected, $actual);
+        }
+        else {
+            // Without nested queries, the nested block is still committed.
+            $expected = ['abc1', 'abc2'];
+            $this->assertEquals($expected, $actual);
+        }
     }
 
 
