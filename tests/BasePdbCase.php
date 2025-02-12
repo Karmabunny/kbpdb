@@ -5,6 +5,7 @@ namespace kbtests;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
 use karmabunny\pdb\Exceptions\TransactionEmptyException;
+use karmabunny\pdb\Exceptions\TransactionNameException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbLog;
@@ -281,4 +282,79 @@ abstract class BasePdbCase extends TestCase
         $tx3->commit();
     }
 
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionStrictCommit($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_STRICT_COMMIT : 0;
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT));
+
+        if ($active) {
+            $this->expectException(TransactionEmptyException::class);
+        }
+
+        $this->pdb->commit();
+    }
+
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionStrictRollback($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_STRICT_ROLLBACK : 0;
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK));
+
+        if ($active) {
+            $this->expectException(TransactionEmptyException::class);
+        }
+
+        $this->pdb->rollback();
+    }
+
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionCommitKeys($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_FORCE_COMMIT_KEYS : 0;
+
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_FORCE_COMMIT_KEYS));
+
+        // Create initial data.
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Start transaction.
+        $tx1 = $this->pdb->transact();
+
+        // Insert more data.
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Verify data.
+        $expected = ['abc1', 'abc2'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        if ($active) {
+            $this->expectException(TransactionNameException::class);
+            $this->pdb->commit();
+        }
+        else {
+            $this->pdb->commit($tx1);
+        }
+    }
+
+
+    public function dataActive(): array
+    {
+        return [
+            'active' => [true],
+            'NOT active' => [false],
+        ];
+    }
 }
