@@ -2,6 +2,7 @@
 
 namespace kbtests;
 
+use DOMDocument;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbLog;
@@ -123,6 +124,50 @@ class PdbSchemaTest extends TestCase
 
     public function testSchemaWrite()
     {
-        // TODO I did write an XML writer. But I've lost it.
+        $doc = new DOMDocument();
+        $doc->preserveWhiteSpace = false;
+        $doc->load(__DIR__ . '/db_struct.xml');
+        $doc->firstElementChild->removeAttribute('xsi:noNamespaceSchemaLocation');
+
+        // $doc->formatOutput = true;
+        // $xml1 = $doc->saveXML();
+
+        $struct = $this->sync();
+
+        $schema = $struct->getSchema();
+        $xml2 = $schema->writeXml();
+        $this->assertNotEmpty($xml2);
+
+        // This fails because the OG doc has comments + implicit attributes.
+        // $this->assertEquals($xml1, $xml2);
+
+        // We can however parse + compare the PHP objects.
+        $doc = new DOMDocument();
+        $doc->loadXML($xml2);
+
+        $struct2 = new PdbParser();
+        $struct2->parseSchema($doc);
+
+        $this->assertSchema($struct, $struct2);
+
+        $schema = $this->pdb->getSchema();
+        $xml3 = $schema->writeXml();
+        $this->assertNotEmpty($xml3);
+
+        // echo $xml1, "\n\n";
+        // echo $xml2, "\n\n";
+        // echo $xml3, "\n\n";
+
+        // Fails in the same way.
+        // $this->assertEquals($xml1, $xml3);
+        // $this->assertEquals($xml2, $xml3);
+
+        $doc = new DOMDocument();
+        $doc->loadXML($xml3);
+
+        $struct3 = new PdbParser();
+        $struct3->parseSchema($doc);
+
+        $this->assertSchema($struct, $struct3);
     }
 }
