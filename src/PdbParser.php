@@ -106,20 +106,19 @@ class PdbParser implements PdbSchemaInterface
      * Load an XML file
      *
      * @param string|DOMDocument $dom DOMDocument or filename to load.
-     * @return PdbSchemaInterface
+     * @return PdbSchema
      * @throws PdbParserException
      */
-    public function parseSchema($dom): PdbSchemaInterface
+    public function parseSchema($dom): PdbSchema
     {
         try {
-            $parser = new PdbParser();
-            $parser->loadXml($dom);
+            $this->loadXml($dom);
 
-            if ($errors = $parser->getErrors()) {
+            if ($errors = $this->getErrors()) {
                 throw (new PdbParserException())->withErrors($errors);
             }
 
-            return $parser->getSchema();
+            return $this->getSchema();
         }
         catch (Throwable $exception) {
             if ($exception instanceof PdbParserException) {
@@ -372,9 +371,9 @@ class PdbParser implements PdbSchemaInterface
     /**
      * Get the parsed schema struct.
      *
-     * @return PdbSchemaInterface
+     * @return PdbSchema
      */
-    public function getSchema(): PdbSchemaInterface
+    public function getSchema(): PdbSchema
     {
         return new PdbSchema([
             'tables' => $this->tables,
