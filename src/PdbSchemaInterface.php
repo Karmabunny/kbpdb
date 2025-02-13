@@ -24,7 +24,7 @@ interface PdbSchemaInterface
     /**
      * A list of tables models.
      *
-     * @return PdbTable[]
+     * @return PdbTable[] [ name => table ]
      */
     public function getTables(): array;
 
@@ -32,7 +32,7 @@ interface PdbSchemaInterface
     /**
      * A list of views.
      *
-     * @return PdbView[]
+     * @return PdbView[] [ name => view ]
      */
     public function getViews(): array;
 
