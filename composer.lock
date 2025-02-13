@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "87496d3192ec56d81d6a7f5786ccfde5",
+    "content-hash": "584522f4a59c640482569e9a96049d4e",
     "packages": [
         {
             "name": "karmabunny/kb",
-            "version": "v3.36.21",
+            "version": "v3.55.32",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbphp.git",
-                "reference": "0bb9707e277ed5d632a0244c70a1a64c9e179629"
+                "reference": "ddc408e30959b1012d1a7dc7960b8ba491232f4b"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/0bb9707e277ed5d632a0244c70a1a64c9e179629",
-                "reference": "0bb9707e277ed5d632a0244c70a1a64c9e179629",
+                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/ddc408e30959b1012d1a7dc7960b8ba491232f4b",
+                "reference": "ddc408e30959b1012d1a7dc7960b8ba491232f4b",
                 "shasum": ""
             },
             "require": {
@@ -55,9 +55,9 @@
             ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbphp/issues",
-                "source": "https://github.com/Karmabunny/kbphp/tree/v3.36.21"
+                "source": "https://github.com/Karmabunny/kbphp/tree/v3.55.32"
             },
-            "time": "2023-05-01T06:46:25+00:00"
+            "time": "2025-02-12T10:43:34+00:00"
         },
         {
             "name": "symfony/polyfill-php73",
