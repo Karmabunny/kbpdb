@@ -6,6 +6,7 @@ use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
+use karmabunny\pdb\PdbSchemaInterface;
 use karmabunny\pdb\PdbSync;
 use PHPUnit\Framework\TestCase;
 
@@ -50,22 +51,19 @@ class PdbSchemaTest extends TestCase
     }
 
 
-    public function testSchemaExtraction()
+    public function assertSchema(PdbSchemaInterface $expected, PdbSchemaInterface $actual)
     {
-        $struct = $this->sync();
+        $actualTables = $actual->getTables();
+        $expectedTables = $expected->getTables();
 
-        // Get the schema.
-        $schema = $this->pdb->getSchema();
-        $tables = $schema->getTables();
+        if (!empty($expectedTables)) {
+            $this->assertNotEmpty($actualTables);
+        }
 
-        // Basic assertions.
-        $this->assertNotEmpty($tables, 'No tables found.');
-        $this->assertEquals($struct->getTableNames(), $schema->getTableNames());
+        $this->assertEquals($expected->getTableNames(), $actual->getTableNames());
 
-        // Detailed assertions.
-        foreach ($tables as $name => $table) {
-            $original = $struct->getTable($name);
-
+        foreach ($actualTables as $name => $table) {
+            $original = $expectedTables[$name] ?? null;
             $this->assertNotNull($original);
 
             // Compare columns.
@@ -92,6 +90,14 @@ class PdbSchemaTest extends TestCase
     }
 
 
+    public function testSchemaExtraction()
+    {
+        $struct = $this->sync();
+        $schema = $this->pdb->getSchema();
+        $this->assertSchema($struct, $schema);
+    }
+
+
     public function testSchemaReapply()
     {
         $struct = $this->sync();
@@ -111,37 +117,7 @@ class PdbSchemaTest extends TestCase
         // PdbLog::print($log);
 
         $schema3 = $this->pdb->getSchema();
-        $this->assertEquals($schema1->getTableNames(), $schema3->getTableNames());
-
-        $tables = $schema3->getTables();
-
-        // Detailed assertions.
-        foreach ($tables as $name => $table) {
-            $original = $struct->getTable($name);
-
-            $this->assertNotNull($original);
-
-            // Compare columns.
-            $this->assertEquals(
-                array_keys($original->columns),
-                array_keys($table->columns),
-                "Column mismatch for table: {$name}.",
-            );
-
-            // Compare indexes.
-            $this->assertEquals(
-                array_keys($original->indexes),
-                array_keys($table->indexes),
-                "Index mismatch for table: {$name}.",
-            );
-
-            // Compare foreign keys.
-            $this->assertEquals(
-                array_keys($original->foreign_keys),
-                array_keys($table->foreign_keys),
-                "Foreign key mismatch for table: {$name}.",
-            );
-        }
+        $this->assertSchema($struct, $schema3);
     }
 
 
