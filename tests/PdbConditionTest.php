@@ -120,7 +120,7 @@ class PdbConditionTest extends TestCase
         $pdb = Database::getConnection();
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/unsafe conditions/');
+        $this->expectExceptionMessageMatches('/Invalid string condition/i');
 
         $conditions = PdbCondition::fromArray([
             'big.stuff <= little.stuff',
