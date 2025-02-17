@@ -51,7 +51,7 @@ class PdbModelTest extends TestCase
         $model = new Club();
         $model->name = 'thingo';
         $model->status = 'new';
-        $model->founded = Pdb::now();
+        $model->founded = $model->getConnection()->now();
 
         $expected = [
             'active',
@@ -122,7 +122,7 @@ class PdbModelTest extends TestCase
         $model = new DirtyClub();
         $model->name = 'thingo';
         $model->status = 'new';
-        $model->founded = Pdb::now();
+        $model->founded = $model->getConnection()->now();
 
         $expected = [
             'active',

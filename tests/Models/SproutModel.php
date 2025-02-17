@@ -20,7 +20,7 @@ abstract class SproutModel extends Record
 
         $pdb = static::getConnection();
         $table = static::getTableName();
-        $now = Pdb::now();
+        $now = $pdb->now();
 
         // Include the uuid if it's not already set.
         // This may return NIL, that's OK - we do an insert + update later.
