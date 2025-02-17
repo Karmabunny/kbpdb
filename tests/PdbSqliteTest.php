@@ -12,12 +12,12 @@ class PdbSqliteTest extends BasePdbCase
 {
     public function setUp(): void
     {
-        parent::setUp();
-
-        $this->pdb = Pdb::create([
+        $this->pdb ??= Pdb::create([
             'type' => PdbConfig::TYPE_SQLITE,
             'dsn' => __DIR__ . '/db.sqlite',
         ]);
+
+        parent::setUp();
 
         // Hack because sqlite doesn't support enums.
         // PdbSync handles this naturally.

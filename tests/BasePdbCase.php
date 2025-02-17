@@ -5,7 +5,10 @@ namespace kbtests;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Exceptions\TransactionEmptyException;
+use karmabunny\pdb\Exceptions\TransactionNameException;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
@@ -21,12 +24,33 @@ abstract class BasePdbCase extends TestCase
     /** @var PdbParser */
     public $struct;
 
+    public $tx_mode = 0;
+
 
     public function setUp(): void
     {
-        $this->struct = new PdbParser();
-        $this->struct->loadXml(__DIR__ . '/db_struct.xml');
-        $this->struct->sanityCheck();
+        if (!$this->struct) {
+            $this->struct = new PdbParser();
+            $this->struct->loadXml(__DIR__ . '/db_struct.xml');
+            $this->struct->sanityCheck();
+        }
+
+        $this->drop();
+        $this->sync();
+
+        $this->tx_mode = $this->pdb->config->transaction_mode;
+
+        $this->assertFalse($this->pdb->inTransaction(), 'transaction exists, did we break a test somewhere?');
+    }
+
+
+    public function tearDown(): void
+    {
+        $this->pdb->config->transaction_mode = $this->tx_mode;
+
+        if ($this->pdb->inTransaction()) {
+            $this->pdb->rollback();
+        }
     }
 
 
@@ -48,7 +72,8 @@ abstract class BasePdbCase extends TestCase
 
     public function sync()
     {
-        if (!$this->pdb instanceof PdbMysql) {
+        // Can't run a sync on postgres at all yet.
+        if ($this->pdb instanceof PdbPgsql) {
             $this->markTestSkipped('Skipping sync test for non-mysql driver');
         }
 
@@ -59,11 +84,17 @@ abstract class BasePdbCase extends TestCase
 
         // Run the sync.
         $log = $sync->execute();
-        PdbLog::print($log);
+        // PdbLog::print($log);
 
         // Do it again - should be empty.
         $sync = new PdbSync($this->pdb);
         $sync->migrate($this->struct);
+
+        // Our assertions are wonky, but the migration does work.
+        // It's enough at least to run dependent tests.
+        if ($this->pdb instanceof PdbSqlite) {
+            return;
+        }
 
         $queries = '';
         foreach ($sync->getQueries() as $query) {
@@ -71,21 +102,12 @@ abstract class BasePdbCase extends TestCase
         }
 
         $this->assertEmpty($queries, $queries);
-    }
-
-
-    public function testSync()
-    {
-        $this->drop();
-        $this->sync();
+        $this->assertFalse($sync->hasQueries());
     }
 
 
     public function testTables()
     {
-        $this->drop();
-        $this->sync();
-
         $actual = $this->pdb->listTables();
         $this->assertNotEmpty($actual);
 
@@ -93,6 +115,13 @@ abstract class BasePdbCase extends TestCase
 
         sort($actual);
         sort($expected);
+        $expected = array_keys($this->struct->tables);
+
+        $actual = $this->pdb->listTables();
+        $this->assertNotEmpty($actual);
+
+        sort($expected);
+        sort($actual);
 
         $this->assertEquals($expected, $actual);
     }
@@ -187,4 +216,298 @@ abstract class BasePdbCase extends TestCase
         }
     }
 
+    /**
+     * Test that withTransaction() properly handles transactions.
+     *
+     * @dataProvider dataActive
+     */
+    public function testWithTransaction($active): void
+    {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        // Ensure that withTransaction() within a transaction uses savepoints.
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
+        $transaction = $this->pdb->transact();
+
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block
+        $result = $this->pdb->withTransaction(function($pdb, $transaction) use ($active) {
+            $this->assertEquals($active, $transaction->isSavepoint());
+
+            $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+            $this->assertEquals(1, $ok);
+            return 'success';
+        });
+
+        $this->assertEquals('success', $result);
+
+        $transaction->commit();
+
+        // Verify both inserts committed
+        $expected = ['abc1', 'abc2'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+    }
+
+
+    /**
+     * Test that withTransaction() rolls back on exceptions.
+     *
+     * Without a wrapped nested transaction it should behave the same with both
+     * nested queries enabled and without.
+     *
+     * @dataProvider dataActive
+     */
+    public function testWithTransactionRollback($active): void
+    {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block that throws
+        try {
+            $this->pdb->withTransaction(function($pdb, $transaction) {
+                $this->assertFalse($transaction->isSavepoint());
+
+                $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+                $this->assertEquals(1, $ok);
+                throw new \Exception('Test exception');
+            });
+        }
+        catch (\Exception $error) {
+            $this->assertEquals('Test exception', $error->getMessage());
+        }
+
+        // Verify only initial insert remains
+        $expected = ['abc1'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+    }
+
+    /**
+     * Test behaviour of withTransaction() when nested queries are enabled.
+     *
+     * @dataProvider dataActive
+     */
+    public function testWithTransactionRollbackNested($active): void
+    {
+        $this->pdb->config->transaction_mode = PdbConfig::TX_STRICT_COMMIT | PdbConfig::TX_STRICT_ROLLBACK;
+
+        // Without nested queries withTransaction() is severely nerfed.
+        if ($active) {
+            $this->pdb->config->transaction_mode |= PdbConfig::TX_ENABLE_NESTED;
+        }
+
+        $transaction = $this->pdb->transact();
+
+        // Create initial data
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Run transaction block that throws
+        try {
+            $this->pdb->withTransaction(function($pdb, $transaction) use ($active) {
+                $this->assertEquals($active, $transaction->isSavepoint());
+
+                $ok = $pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+                $this->assertEquals(1, $ok);
+                throw new \Exception('Test exception');
+            });
+        }
+        catch (\Exception $error) {
+            $this->assertEquals('Test exception', $error->getMessage());
+        }
+
+        $transaction->commit();
+
+        $actual = $this->pdb->find('tx_test')->column('name');
+
+        if ($active) {
+            // Verify only initial insert remains
+            $expected = ['abc1'];
+            $this->assertEquals($expected, $actual);
+        }
+        else {
+            // Without nested queries, the nested block is still committed.
+            $expected = ['abc1', 'abc2'];
+            $this->assertEquals($expected, $actual);
+        }
+    }
+
+
+    public function testNestedTransactions()
+    {
+        $this->pdb->config->transaction_mode = 0
+            | PdbConfig::TX_ENABLE_NESTED
+            | PdbConfig::TX_STRICT_COMMIT
+            | PdbConfig::TX_STRICT_ROLLBACK;
+
+        $this->pdb->query('DELETE FROM ~tx_test', [], 'null');
+
+        // Real transaction (1).
+        $tx1 = $this->pdb->transact();
+
+        $this->assertTrue($this->pdb->inTransaction());
+
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // savepoint (2).
+        $tx2 = $this->pdb->transact();
+
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // savepoint (3).
+        $tx3 = $this->pdb->transact();
+
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc3'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Check data at 3.
+        $expected = ['abc1', 'abc2', 'abc3'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        // savepoint (4).
+        $tx4 = $this->pdb->transact();
+
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc4'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Check data at 4.
+        $expected = ['abc1', 'abc2', 'abc3', 'abc4'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        // Undo some things.
+        $this->assertTrue($this->pdb->inTransaction());
+        $tx4->rollback();
+
+        // Check data at 3.
+        $expected = ['abc1', 'abc2', 'abc3'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        // Rollback both 2 and 3.
+        $tx2->rollback();
+
+        // Check data at 1.
+        $expected = ['abc1'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc5'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // savepoint (5).
+        $tx5 = $this->pdb->transact();
+
+        // This doesn't actually do much.
+        $tx5->commit();
+
+        // Check data at 5.
+        $expected = ['abc1', 'abc5'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        $tx1->rollback();
+
+        // No more data.
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEmpty($actual);
+
+        // Try committing something that doesn't exist anymore.
+        // This assumes strict-mode commits.
+        $this->expectException(TransactionEmptyException::class);
+        $tx3->commit();
+    }
+
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionStrictCommit($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_STRICT_COMMIT : 0;
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT));
+
+        if ($active) {
+            $this->expectException(TransactionEmptyException::class);
+        }
+
+        $this->pdb->commit();
+    }
+
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionStrictRollback($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_STRICT_ROLLBACK : 0;
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK));
+
+        if ($active) {
+            $this->expectException(TransactionEmptyException::class);
+        }
+
+        $this->pdb->rollback();
+    }
+
+
+    /**
+     * @dataProvider dataActive
+     */
+    public function testTransactionCommitKeys($active): void
+    {
+        $this->pdb->config->transaction_mode = $active ? PdbConfig::TX_FORCE_COMMIT_KEYS : 0;
+
+        $this->assertEquals($active, (bool) ($this->pdb->config->transaction_mode & PdbConfig::TX_FORCE_COMMIT_KEYS));
+
+        // Create initial data.
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc1'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Start transaction.
+        $tx1 = $this->pdb->transact();
+
+        // Insert more data.
+        $ok = $this->pdb->query('INSERT INTO ~tx_test (name) VALUES (?)', ['abc2'], 'count');
+        $this->assertEquals(1, $ok);
+
+        // Verify data.
+        $expected = ['abc1', 'abc2'];
+        $actual = $this->pdb->find('tx_test')->column('name');
+        $this->assertEquals($expected, $actual);
+
+        if ($active) {
+            $this->expectException(TransactionNameException::class);
+            $this->pdb->commit();
+        }
+        else {
+            $this->pdb->commit($tx1);
+        }
+    }
+
+
+    public function dataActive(): array
+    {
+        return [
+            'active' => [true],
+            'NOT active' => [false],
+        ];
+    }
 }
