@@ -13,10 +13,14 @@ use Exception;
 use karmabunny\kb\XML;
 use karmabunny\kb\XMLAssertException;
 use karmabunny\kb\XMLException;
+use karmabunny\pdb\Exceptions\PdbParserException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
+use karmabunny\pdb\Models\PdbSchema;
 use karmabunny\pdb\Models\PdbTable;
+use karmabunny\pdb\Models\PdbView;
+use Throwable;
 
 /**
 * Provides a system for syncing a database to a database definition.
@@ -25,7 +29,7 @@ use karmabunny\pdb\Models\PdbTable;
 * together before the sync is done.
 * Contains code that may be MySQL specific.
 **/
-class PdbParser
+class PdbParser implements PdbSchemaInterface
 {
     /**
      * MySQL names for the foreign key actions.
@@ -94,6 +98,34 @@ class PdbParser
             }
 
             $this->views[$view_name] = $this->parseView($view_node);
+        }
+    }
+
+
+    /**
+     * Load an XML file
+     *
+     * @param string|DOMDocument $dom DOMDocument or filename to load.
+     * @return PdbSchema
+     * @throws PdbParserException
+     */
+    public function parseSchema($dom): PdbSchema
+    {
+        try {
+            $this->loadXml($dom);
+
+            if ($errors = $this->getErrors()) {
+                throw (new PdbParserException())->withErrors($errors);
+            }
+
+            return $this->getSchema();
+        }
+        catch (Throwable $exception) {
+            if ($exception instanceof PdbParserException) {
+                throw $exception;
+            }
+
+            throw new PdbParserException($exception->getMessage(), $exception->getCode(), $exception);
         }
     }
 
@@ -337,6 +369,27 @@ class PdbParser
 
 
     /**
+     * Get the parsed schema struct.
+     *
+     * @return PdbSchema
+     */
+    public function getSchema(): PdbSchema
+    {
+        return new PdbSchema([
+            'tables' => $this->tables,
+            'views' => $this->views,
+        ]);
+    }
+
+
+    /** @inheritdoc */
+    public function getTableNames(): array
+    {
+        return array_keys($this->tables);
+    }
+
+
+    /**
      * Get a list of parsed tables.
      *
      * @return PdbTable[] [ name => table ]
@@ -362,11 +415,21 @@ class PdbParser
     /**
      * Get a list of parsed views.
      *
-     * @return string[] [ name => sql ]
+     * @return PdbView[] [ name => table ]
      */
     public function getViews(): array
     {
-        return $this->views;
+        $views = [];
+
+        foreach ($this->views as $name => $sql) {
+            $views[$name] = new PdbView([
+                'name' => $name,
+                'sql' => $sql,
+                'checksum' => sha1($sql),
+            ]);
+        }
+
+        return $views;
     }
 
 

@@ -61,7 +61,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function listTables()
+    public function getTableNames(string $filter = '*', bool $strip = true)
     {
         $q = "SELECT name
             FROM sqlite_master
@@ -70,12 +70,30 @@ class PdbSqlite extends Pdb
         ";
         $res = $this->query($q, [], 'col');
 
-        foreach ($res as &$row) {
-            $row = $this->stripPrefix($row);
+        if ($filter === '*') {
+            $filter = $this->config->prefix;
         }
-        unset($row);
 
-        return $res;
+        $tables = [];
+        $length = strlen($filter);
+
+        foreach ($res as $row) {
+            if ($filter and strpos($row, $filter) !== 0) continue;
+
+            if ($strip) {
+                if ($length) {
+                    $tables[] = substr($row, $length);
+                }
+                else {
+                    $tables[] = $this->stripPrefix($row);
+                }
+            }
+            else {
+                $tables[] = $row;
+            }
+        }
+
+        return $tables;
     }
 
 

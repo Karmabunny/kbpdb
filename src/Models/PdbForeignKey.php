@@ -2,13 +2,16 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMNode;
 use karmabunny\kb\Collection;
+use karmabunny\pdb\PdbStructWriterInterface;
 
 /**
  *
  * @package karmabunny\pdb
  */
-class PdbForeignKey extends Collection
+class PdbForeignKey extends Collection implements PdbStructWriterInterface
 {
     /** @var string|null */
     public $constraint_name;
@@ -117,4 +120,30 @@ class PdbForeignKey extends Collection
 
         return $errors;
     }
+
+
+    /** @inheritdoc */
+    public function toXml(DOMDocument $doc, bool $wrap_index = false): DOMNode
+    {
+        $fk = $doc->createElement('foreign-key');
+
+        $fk->setAttribute('table', $this->to_table);
+        $fk->setAttribute('column', $this->to_column);
+        $fk->setAttribute('update', $this->update_rule);
+        $fk->setAttribute('delete', $this->delete_rule);
+
+        if ($wrap_index) {
+            $column = $doc->createElement('col');
+            $column->setAttribute('name', $this->from_column);
+
+            $index = $doc->createElement('index');
+            $index->appendChild($column);
+            $index->appendChild($fk);
+            return $index;
+        }
+        else {
+            return $fk;
+        }
+    }
+
 }

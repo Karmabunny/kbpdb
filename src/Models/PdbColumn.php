@@ -2,14 +2,17 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMNode;
 use karmabunny\kb\Collection;
 use karmabunny\pdb\PdbHelpers;
+use karmabunny\pdb\PdbStructWriterInterface;
 
 /**
  *
  * @package karmabunny\pdb
  */
-class PdbColumn extends Collection
+class PdbColumn extends Collection implements PdbStructWriterInterface
 {
     /** @var string */
     public $name;
@@ -106,5 +109,50 @@ class PdbColumn extends Collection
     {
         $charset = $this->attributes['charset'] ?? 'utf8';
         return PdbHelpers::getColumnSize($this->type, $charset);
+    }
+
+
+    /** @inheritdoc */
+    public function toXml(DOMDocument $doc): DOMNode
+    {
+        $node = $doc->createElement('column');
+        $node->setAttribute('name', $this->name);
+
+        $matches = [];
+
+        if (preg_match('/(enum|set)\((.*)\)/i', $this->type, $matches)) {
+            [$type, $values] = $matches;
+
+            $node->setAttribute('type', strtoupper($type));
+
+            $values = explode(',', $values);
+            foreach ($values as $value) {
+                $val = $doc->createElement('val');
+                $val->setAttribute('name', trim($value, ' \'\r\n\t\0'));
+            }
+        }
+        else {
+            $node->setAttribute('type', strtoupper($this->type));
+        }
+
+        if ($this->previous_names) {
+            $node->setAttribute('previous', implode(',', $this->previous_names));
+        }
+
+        if ($this->is_nullable) {
+            $node->setAttribute('allownull', '1');
+        }
+
+        if ($this->auto_increment) {
+            $node->setAttribute('autoinc', '1');
+        }
+
+        if ($this->default !== null) {
+            $node->setAttribute('default', $this->default);
+        }
+
+        // Don't write attributes.
+
+        return $node;
     }
 }

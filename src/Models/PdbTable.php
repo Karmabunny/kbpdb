@@ -2,14 +2,25 @@
 
 namespace karmabunny\pdb\Models;
 
+use DOMDocument;
+use DOMElement;
+use DOMNode;
 use karmabunny\kb\Collection;
+use karmabunny\pdb\PdbStructWriterInterface;
 
 /**
  *
  * @package karmabunny\pdb
  */
-class PdbTable extends Collection
+class PdbTable extends Collection implements PdbStructWriterInterface
 {
+
+    const ATTRIBUTES = [
+        'engine',
+        'charset',
+        'collate',
+    ];
+
     /** @var string non-prefixed */
     public $name;
 
@@ -122,5 +133,77 @@ class PdbTable extends Collection
         }
 
         return $size;
+    }
+
+
+    /** @inheritdoc */
+    public function toXml(DOMDocument $doc): DOMNode
+    {
+        $table = $doc->createElement('table');
+        $table->setAttribute('name', $this->name);
+
+        if ($this->previous_names) {
+            $table->setAttribute('previous', implode(',', $this->previous_names));
+        }
+
+        foreach (self::ATTRIBUTES as $name) {
+            if (!empty($this->attributes[$name])) {
+                $table->setAttribute($name, $this->attributes[$name]);
+            }
+        }
+
+        foreach ($this->columns as $column) {
+            $node = $column->toXml($doc);
+            $table->appendChild($node);
+        }
+
+        // These are actually indexes because our db_struct is built around the
+        // mysql assumption that all FKs must have an index. Which is actually
+        // totally fair and obvious for performance but troublesome otherwise.
+        $fks = [];
+
+        foreach ($this->foreign_keys as $fk) {
+            $node = $fk->toXml($doc, true);
+            $table->appendChild($node);
+
+            $fks[$fk->from_column] = $node;
+        }
+
+        foreach ($this->indexes as $index) {
+            // We've got a matching index + FK.
+            if (
+                count($index->columns) == 1
+                and ($first = reset($index->columns))
+                and ($fk = $fks[$first] ?? null)
+            ) {
+                // Modify the type if we can.
+                if ($fk instanceof DOMElement and $index->type !== 'index') {
+                    $fk->setAttribute('type', $index->type);
+                }
+
+                // Don't add another index.
+                continue;
+            }
+
+            $node = $index->toXml($doc);
+            $table->appendChild($node);
+        }
+
+        if ($this->default_records) {
+            $node = $doc->createElement('default_records');
+            $table->appendChild($node);
+
+            foreach ($this->default_records as $record) {
+                $node = $doc->createElement('record');
+
+                foreach ($record as $name => $value) {
+                    $node->setAttribute($name, $value);
+                }
+
+                $table->appendChild($node);
+            }
+        }
+
+        return $table;
     }
 }

@@ -118,6 +118,45 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
+    public function getTableNames(string $filter = '*', bool $strip = true)
+    {
+        $q = "SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_SCHEMA = ?
+        ";
+
+        $params = [$this->config->database];
+        $res = $this->query($q, $params, 'col');
+
+        if ($filter === '*') {
+            $filter = $this->config->prefix;
+        }
+
+        $tables = [];
+        $length = strlen($filter);
+
+
+        foreach ($res as $row) {
+            if ($filter and strpos($row, $filter) !== 0) continue;
+
+            if ($strip) {
+                if ($length) {
+                    $tables[] = substr($row, $length);
+                }
+                else {
+                    $tables[] = $this->stripPrefix($row);
+                }
+            }
+            else {
+                $tables[] = $row;
+            }
+        }
+
+        return $tables;
+    }
+
+
+    /** @inheritdoc */
     public function tableExists(string $table)
     {
         $q = "SELECT 1
@@ -216,6 +255,7 @@ class PdbMysql extends Pdb
             FROM INFORMATION_SCHEMA.STATISTICS
             WHERE TABLE_SCHEMA = ?
                 AND TABLE_NAME = ?
+                AND INDEX_NAME != 'PRIMARY'
             GROUP BY INDEX_NAME
         ";
 
