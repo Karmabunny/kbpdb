@@ -1,6 +1,9 @@
 <?php
 
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbRawCondition;
+use karmabunny\pdb\Models\PdbSimpleCondition;
 use karmabunny\pdb\Pdb;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
@@ -13,7 +16,7 @@ class PdbConditionTest extends TestCase
     {
         $pdb = Database::getConnection();
 
-        $condition = new PdbCondition('=', 'abc.def', 1234);
+        $condition = new PdbSimpleCondition('=', 'abc.def', 1234);
 
         $values = [];
         $clause = $condition->build($pdb, $values);
@@ -112,15 +115,31 @@ class PdbConditionTest extends TestCase
     }
 
 
+    public function testBadStrings(): void
+    {
+        $pdb = Database::getConnection();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/Invalid string condition/i');
+
+        $conditions = PdbCondition::fromArray([
+            'big.stuff <= little.stuff',
+        ]);
+
+        $values = [];
+        $conditions[0]->build($pdb, $values);
+    }
+
+
     public function testStrings(): void
     {
         $pdb = Database::getConnection();
 
         $conditions = PdbCondition::fromArray([
-            'big.stuff <= little.stuff',
-            'you_better_hope_you >= \'have escaped this\'',
-            'what.will <> this_do',
-            '~prefix in (~voodoo.magic, ~stuff.id)',
+            new PdbRawCondition('big.stuff <= little.stuff'),
+            new PdbRawCondition('you_better_hope_you >= \'have escaped this\''),
+            new PdbRawCondition('what.will <> this_do'),
+            new PdbRawCondition('~prefix in (~voodoo.magic, ~stuff.id)'),
         ]);
 
         $this->assertCount(4, $conditions);
@@ -145,13 +164,78 @@ class PdbConditionTest extends TestCase
     }
 
 
+    public function testBadNestedSql(): void
+    {
+        $condition = PdbCondition::fromShorthand(
+            null,
+            [ 'abc', 'IS', new PdbRawCondition('CONCAT(?, RAND())', [ 123 ]) ],
+        );
+
+        $this->expectException(InvalidConditionException::class);
+        $condition->validate();
+    }
+
+
+    public function testNestedSql(): void
+    {
+        $pdb = Database::getConnection();
+
+        $condition = PdbCondition::fromShorthand(
+            null,
+            [ 'abc', '>=', new PdbRawCondition('CONCAT(?, RAND())', [ 123 ]) ],
+        );
+
+        $values = [];
+        $sql = $condition->build($pdb, $values);
+
+        $this->assertEquals('`abc` >= CONCAT(?, RAND())', $sql);
+        $this->assertCount(1, $values);
+        $this->assertEquals(123, $values[0]);
+    }
+
+
+    public function testNestedQuery(): void
+    {
+        $pdb = Database::getConnection();
+        $now = $pdb->now();
+
+        $subQuery = $pdb
+            ->find('other_table', [
+                'active' => true,
+                'date_added' => $now,
+            ])
+            ->select('id');
+
+        $subSql = 'SELECT `id` FROM `pdb_other_table` WHERE `active` = ? AND `date_added` = ?';
+        [$actual, $params] = $subQuery->build();
+
+        $this->assertEquals($subSql, $actual);
+        $this->assertCount(2, $params);
+
+        // Now subbed into a condition.
+        $condition = PdbCondition::fromShorthand(
+            null, [ 'IN', 'abc_id' => $subQuery ],
+        );
+
+        $values = [];
+        $actual = $condition->build($pdb, $values);
+
+        $sql = "`abc_id` IN ({$subSql})";
+        $this->assertEquals($sql, $actual);
+
+        $this->assertCount(2, $values);
+        $this->assertEquals('1', $values[0]);
+        $this->assertEquals($now, $values[1]);
+    }
+
+
     public function testNoBindValue(): void
     {
         $pdb = Database::getConnection();
         if (!Database::isConnected()) $this->markTestSkipped();
 
-        $condition = new PdbCondition(
-            PdbCondition::NOT_IN,
+        $condition = new PdbSimpleCondition(
+            PdbSimpleCondition::NOT_IN,
             'what.total',
             ['bollocks', 'mouth protection'],
             Pdb::QUOTE_VALUE
@@ -170,8 +254,8 @@ class PdbConditionTest extends TestCase
         $pdb = Database::getConnection();
         if (!Database::isConnected()) $this->markTestSkipped();
 
-        $condition = new PdbCondition(
-            PdbCondition::NOT_IN,
+        $condition = new PdbSimpleCondition(
+            PdbSimpleCondition::NOT_IN,
             'what.total',
             ['bollocks', 'mouth_protection'],
             Pdb::QUOTE_FIELD

@@ -13,8 +13,11 @@ use JsonSerializable;
 use karmabunny\kb\Arrayable;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbConditionInterface;
+use karmabunny\pdb\Models\PdbRawCondition;
 use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
@@ -71,7 +74,7 @@ use ReturnTypeWillChange;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery implements Arrayable, JsonSerializable
+class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 {
 
     /** @var Pdb */
@@ -293,15 +296,31 @@ class PdbQuery implements Arrayable, JsonSerializable
      *
      * @param string $type
      * @param string|string[] $table
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param string|PdbConditionInterface|(array|string|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      * @throws InvalidArgumentException
      */
-    protected function _join(string $type, $table, array $conditions, string $combine = 'AND')
+    protected function _join(string $type, $table, $conditions, string $combine = 'AND')
     {
         $table = PdbHelpers::parseAlias($table);
         Pdb::validateAlias($table);
+
+        if (is_string($conditions)) {
+            $conditions = [ new PdbRawCondition($conditions) ];
+        }
+        else if ($conditions instanceof PdbConditionInterface) {
+            $conditions = [ $conditions ];
+        }
+        // Backward compat, shallow encode raw conditions.
+        else if (is_array($conditions)) {
+            foreach ($conditions as &$item) {
+                if (is_string($item)) {
+                    $item = new PdbRawCondition($item);
+                }
+            }
+            unset($item);
+        }
 
         $this->_joins[] = [$type, $table, $conditions, $combine];
         return $this;
@@ -311,11 +330,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function join($table, array $conditions, string $combine = 'AND')
+    public function join($table, $conditions, string $combine = 'AND')
     {
         return $this->innerJoin($table, $conditions, $combine);
     }
@@ -324,11 +343,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function leftJoin($table, array $conditions, string $combine = 'AND')
+    public function leftJoin($table, $conditions, string $combine = 'AND')
     {
         $this->_join('LEFT', $table, $conditions, $combine);
         return $this;
@@ -338,11 +357,11 @@ class PdbQuery implements Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
-    public function innerJoin($table, array $conditions, string $combine = 'AND')
+    public function innerJoin($table, $conditions, string $combine = 'AND')
     {
         $this->_join('INNER', $table, $conditions, $combine);
         return $this;
@@ -351,7 +370,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
@@ -367,7 +386,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -382,7 +401,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -397,7 +416,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|string|PdbCondition)[] $conditions
+     * @param (array|PdbConditionInterface)[] $conditions
      * @param string $combine
      * @return static
      */
@@ -627,14 +646,37 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @return void
+     * @throws InvalidConditionException
+     */
+    public function validate()
+    {
+        foreach ($this->_joins as $item) {
+            PdbCondition::fromArray($item[2], true);
+        }
+
+        foreach ($this->_where as $item) {
+            PdbCondition::fromArray($item[1], true);
+        }
+
+        foreach ($this->_having as $item) {
+            PdbCondition::fromArray($item[1], true);
+        }
+    }
+
+
+    /**
+     *
+     * @param bool $validate
      * @return array [ sql, params ]
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
-    public function build(): array
+    public function build(bool $validate = true): array
     {
         $query = clone $this;
         $this->_beforeBuild($query);
-        [$sql, $params] = $query->_build();
+        [$sql, $params] = $query->_build($validate);
         $this->_afterBuild($sql, $params);
         return [$sql, $params];
     }
@@ -667,10 +709,12 @@ class PdbQuery implements Arrayable, JsonSerializable
 
     /**
      *
+     * @param bool $validate
      * @return array [ sql, params ]
+     * @throws InvalidConditionException
      * @throws InvalidArgumentException
      */
-    protected function _build(): array
+    protected function _build(bool $validate = true): array
     {
         $sql = '';
         $params = [];
@@ -739,7 +783,8 @@ class PdbQuery implements Arrayable, JsonSerializable
                 $sql .= ' ';
             }
 
-            $sql .= 'ON ' . $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= 'ON ';
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             $sql .= ' ';
         }
 
@@ -753,7 +798,7 @@ class PdbQuery implements Arrayable, JsonSerializable
 
             $sql .= $type . ' ';
             if ($type !== 'WHERE') $sql .= '(';
-            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             if ($type !== 'WHERE') $sql .= ')';
             $sql .= ' ';
         }
@@ -782,7 +827,7 @@ class PdbQuery implements Arrayable, JsonSerializable
             }
 
             $sql .= $type . ' ';
-            $sql .= $this->pdb->buildClause($conditions, $params, $combine);
+            $sql .= PdbCondition::buildClause($this->pdb, $conditions, $params, $combine, $validate);
             $sql .= ' ';
         }
 

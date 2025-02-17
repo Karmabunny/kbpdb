@@ -7,14 +7,14 @@
 namespace karmabunny\pdb\Exceptions;
 
 use InvalidArgumentException;
-use karmabunny\pdb\Models\PdbCondition;
+use karmabunny\pdb\Models\PdbConditionInterface;
 
 /**
  *
  */
 class InvalidConditionException extends InvalidArgumentException
 {
-    /** @var PdbCondition|null */
+    /** @var PdbConditionInterface|null */
     public $condition = null;
 
     /** @var string|null */
@@ -23,15 +23,16 @@ class InvalidConditionException extends InvalidArgumentException
 
     /**
      *
-     * @param PdbCondition $condition
+     * @param PdbConditionInterface $condition
      * @return static
      */
-    public function withCondition(PdbCondition $condition)
+    public function withCondition(PdbConditionInterface $condition)
     {
         $this->condition = $condition;
 
-        $preview = $this->condition->getPreviewSql() ?: '???';
-        $this->message .= " \"{$preview}\"";
+        if ($preview = $this->condition->getPreviewSql()) {
+            $this->message .= " \"{$preview}\"";
+        }
 
         return $this;
     }
