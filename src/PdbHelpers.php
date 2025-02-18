@@ -228,8 +228,15 @@ class PdbHelpers
 
         // Convert 'column as alias' to [ column, alias ]
         $field = trim($field);
-        $field = preg_split('/\s+AS\s+|\s+/i', $field, 2) ?: [];
-        return $field + [null, null];
+
+        $matches = [];
+
+        if (preg_match('/^(.+?)\s+(?:AS\s+)?([a-z_][a-z_0-9]+)$/', $field, $matches)) {
+            [, $field, $alias] = $matches;
+            return [$field, $alias];
+        }
+
+        return [$field, null];
     }
 
 
