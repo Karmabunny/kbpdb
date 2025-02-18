@@ -231,7 +231,7 @@ class PdbHelpers
 
         $matches = [];
 
-        if (preg_match('/^(.+?)\s+(?:AS\s+)?([a-z_][a-z_0-9]+)$/', $field, $matches)) {
+        if (preg_match('/^(.+?)\s+(?:AS\s+)?([a-z_][a-z_0-9]+)$/i', $field, $matches)) {
             [, $field, $alias] = $matches;
             return [$field, $alias];
         }
