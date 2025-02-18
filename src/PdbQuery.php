@@ -232,7 +232,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      */
     public function andSelect(...$fields)
     {
-        $fields = Arrays::flatten($fields, true);
+        $fields = Arrays::flatten($fields, true, 2);
 
         foreach ($fields as $key => $value) {
             $field = is_numeric($key) ? $value : [$key => $value];
@@ -438,7 +438,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     public function groupBy(...$fields)
     {
         $fields = array_filter($fields);
-        $fields = Arrays::flatten($fields);
+        $fields = Arrays::flatten($fields, 2);
 
         foreach ($fields as $field) {
             $field = preg_split('/[, ]+/', $field);
@@ -457,7 +457,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     public function orderBy(...$fields)
     {
         $fields = array_filter($fields);
-        $fields = Arrays::flatten($fields, true);
+        $fields = Arrays::flatten($fields, true, 2);
 
         $this->_order = [];
 
