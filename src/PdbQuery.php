@@ -457,7 +457,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     public function orderBy(...$fields)
     {
         $fields = array_filter($fields);
-        $fields = Arrays::flatten($fields, true, 2);
+        $fields = Arrays::flatten($fields, true, 3);
 
         $this->_order = [];
 
