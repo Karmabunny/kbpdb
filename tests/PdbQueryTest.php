@@ -22,6 +22,28 @@ class PdbQueryTest extends TestCase
         $this->pdb->query('DROP TABLE IF EXISTS ~mmm', [], 'null');
     }
 
+    public function testSelect(): void
+    {
+        $query = $this->pdb->find('mmm')
+            ->select([
+                'person_pre_seeds.*',
+                'persons.first_name' => 'given',
+                'persons.last_name surname',
+                'persons.email' => 'email_address',
+                'persons.phone',
+                'IF(~mmm.status IS NOT NULL, ~mmm.status, \'-\') AS access_status',
+            ]);
+
+        [$sql] = $query->build();
+
+        $expected = 'SELECT "person_pre_seeds".*, "persons"."first_name" AS "given", "persons"."last_name" AS "surname", ';
+        $expected .= '"persons"."email" AS "email_address", "persons"."phone", ';
+        $expected .= 'IF("pdb_mmm"."status" IS NOT NULL, "pdb_mmm"."status", \'-\') AS "access_status" ';
+        $expected .= 'FROM "pdb_mmm"';
+
+        $this->assertEquals($expected, $sql);
+    }
+
 
     public function testBasic(): void
     {
