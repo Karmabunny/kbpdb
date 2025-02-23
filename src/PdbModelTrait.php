@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use karmabunny\kb\Configure;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
 use ReflectionException;
@@ -172,9 +173,10 @@ trait PdbModelTrait
      *
      * @see {PdbQuery::find()}
      * @param array $conditions
+     * @param bool $update If true, set 'conditions' as properties on the model.
      * @return static
      */
-    public static function findOrCreate(array $conditions)
+    public static function findOrCreate(array $conditions, bool $update = true)
     {
         try {
             $model = static::findOne($conditions);
@@ -182,6 +184,20 @@ trait PdbModelTrait
             // @phpstan-ignore-next-line : I don't care.
             $model = new static();
             $model->populateDefaults();
+
+            if ($update) {
+                // Remove numeric keys + non-scalar values.
+                foreach ($conditions as $key => $value) {
+                    if (is_numeric($key)) {
+                        unset($conditions[$key]);
+                    }
+                    else if (!is_scalar($value)) {
+                        unset($conditions[$key]);
+                    }
+                }
+
+                Configure::update($model, $conditions);
+            }
         }
 
         return $model;
