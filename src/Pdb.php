@@ -1315,8 +1315,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         else {
             try {
                 static::validateIdentifier($name, false);
+                $name = $this->quoteField($name);
                 $pdo->exec('RELEASE SAVEPOINT ' . $name);
             }
+            // TODO this never executes? Why does it exist?
             catch (TransactionNameException $exception) {
                 if ($this->config->transaction_mode & PdbConfig::TX_STRICT_COMMIT) {
                     throw $exception;
@@ -1369,8 +1371,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         else {
             try {
                 static::validateIdentifier($name, false);
+                $name = $this->quoteField($name);
                 $pdo->exec('ROLLBACK TO ' . $name);
             }
+            // TODO this never executes? Why does it exist?
             catch (TransactionNameException $exception) {
                 if ($this->config->transaction_mode & PdbConfig::TX_STRICT_ROLLBACK) {
                     throw $exception;
