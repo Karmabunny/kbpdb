@@ -33,6 +33,11 @@ class PdbMysql extends Pdb
             $config = new PdbConfig($config);
         }
 
+        if (!isset($options[PDO::MYSQL_ATTR_FOUND_ROWS])) {
+            // This makes UPDATE predictable and behave the same as other DBMS.
+            $options[PDO::MYSQL_ATTR_FOUND_ROWS] = true;
+        }
+
         $pdo = parent::connect($config, $options);
         $hacks = $config->getHacks();
 

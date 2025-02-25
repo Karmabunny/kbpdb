@@ -898,7 +898,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param string $table The table (without prefix) to insert the data into
      * @param array $data Data to update, column => value
      * @param array $conditions Conditions for updates. {@see Pdb::buildClause}
-     * @return int The number of affected rows
+     * @return int The number of matched rows
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
