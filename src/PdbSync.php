@@ -617,7 +617,7 @@ class PdbSync
 
                 switch (strtolower($val)) {
                     case 'now()':
-                        $vals[] = Pdb::now();
+                        $vals[] = $this->pdb->now();
                         break;
 
                     case 'uuid()':
