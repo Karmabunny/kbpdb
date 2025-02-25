@@ -6,9 +6,11 @@
 
 namespace karmabunny\pdb\Exceptions;
 
+use Throwable;
+
 /**
  *
  */
-interface PdbExceptionInterface
+interface PdbExceptionInterface extends Throwable
 {
 }

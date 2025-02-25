@@ -3,6 +3,7 @@
 namespace karmabunny\pdb\Models;
 
 use karmabunny\kb\DataObject;
+use karmabunny\pdb\Exceptions\TransactionException;
 use karmabunny\pdb\Pdb;
 
 /**
@@ -55,9 +56,8 @@ class PdbTransaction extends DataObject
     /**
      * Commit the transaction or savepoint.
      *
-     *
-     *
      * @return bool did it commit?
+     * @throws TransactionException
      */
     public function commit(): bool
     {
@@ -84,6 +84,7 @@ class PdbTransaction extends DataObject
      * Rollback the transaction or savepoint.
      *
      * @return bool did it rollback?
+     * @throws TransactionException
      */
     public function rollback(): bool
     {

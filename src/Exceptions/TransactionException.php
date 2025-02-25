@@ -6,10 +6,11 @@
 
 namespace karmabunny\pdb\Exceptions;
 
+use Throwable;
 
 /**
  * Just an interface to match both query and recursion type transaction errors.
  */
-interface TransactionException
+interface TransactionException extends Throwable
 {
 }
