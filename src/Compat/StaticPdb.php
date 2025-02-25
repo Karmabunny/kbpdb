@@ -409,15 +409,24 @@ abstract class StaticPdb
      * Replaces tilde placeholders with table prefixes, and quotes tables
      * according to the rules of the underlying DBMS.
      *
-     * COMPATIBILITY NOTE: The connection is _not used_ to determine the escape
-     * characters. It will use the existing database connection/config.`
+     * COMPATIBILITY NOTE: the two parameter signature `insertPrefixes(PDO, string)`
+     * is maintained only for backwards compatibility. For all new code please
+     * use the standard single parameter `insertPrefixes(string)`.
      *
-     * @param PDO $pdo The database connection, for determining table quoting rules
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
+     * @param null $compat do not use
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `sprout_pages` WHERE id = 1'
      */
-    public static function insertPrefixes(PDO $pdo, string $query): string
+    public static function insertPrefixes($query, $compat = null): string
     {
+        if (!is_string($query)) {
+            $query = $compat;
+        }
+
+        if (!is_string($query)) {
+            throw new InvalidArgumentException('Expected a string query');
+        }
+
         $pdb = static::getInstance();
         return $pdb->insertPrefixes($query);
     }
