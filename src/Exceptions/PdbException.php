@@ -26,7 +26,7 @@ class PdbException extends Exception implements PdbExceptionInterface
      *
      * @var string
      */
-    public $state;
+    public $state = '';
 
 
     /**
