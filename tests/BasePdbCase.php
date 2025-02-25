@@ -142,6 +142,33 @@ abstract class BasePdbCase extends TestCase
     }
 
 
+    public function testUpdateRows()
+    {
+        $data = [
+            'date_added' => $this->pdb->now(),
+            'data' => 'test1',
+        ];
+        $id = $this->pdb->insert('logs', $data);
+
+        $data = [
+            'date_added' => $this->pdb->now(),
+            'data' => 'test2',
+        ];
+
+        // 'affected' rows returns 1.
+        $count = $this->pdb->update('logs', $data, ['id' => $id]);
+        $this->assertEquals(1, $count);
+
+        // 'affected' returns zero, but matched still returns 1.
+        $count = $this->pdb->update('logs', $data, ['id' => $id]);
+        $this->assertEquals(1, $count);
+
+        // this row doesn't exist, so returns 0 in all scenarios.
+        $count = $this->pdb->update('logs', $data, ['id' => $id + 1]);
+        $this->assertEquals(0, $count);
+    }
+
+
     public function testTimezoneNow(): void
     {
         $now = $this->pdb->now();
