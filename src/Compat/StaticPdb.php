@@ -143,10 +143,11 @@ abstract class StaticPdb
      * You probably want getConnection() or getInstance().
      *
      * @param string|PdbConfig|array $name
+     * @param array $options PDO attributes
      * @return PDO
      * @throws PDOException If connection fails
      */
-    public static function connect($name): PDO
+    public static function connect($name, array $options = []): PDO
     {
         if (is_string($name)) {
             $config = static::getConfig($name);
@@ -162,7 +163,7 @@ abstract class StaticPdb
             throw new InvalidArgumentException("Invalid config name");
         }
 
-        return Pdb::connect($config);
+        return Pdb::connect($config, $options);
     }
 
 

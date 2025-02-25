@@ -28,16 +28,17 @@ class PdbSqlite extends Pdb
     /**
      *
      * @param PdbConfig|array $config
+     * @param array $options PDO attributes
      * @return PDO
      * @throws ConnectionException
      */
-    public static function connect($config)
+    public static function connect($config, array $options = [])
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
         }
 
-        $pdo = parent::connect($config);
+        $pdo = parent::connect($config, $options);
 
         $hacks = $config->getHacks();
         $fns = $hacks[PdbConfig::HACK_SQLITE_FUNCTIONS] ?? [];

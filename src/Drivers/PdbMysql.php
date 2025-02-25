@@ -22,17 +22,18 @@ class PdbMysql extends Pdb
     /**
      *
      * @param PdbConfig|array $config
+     * @param array $options attributes
      * @return PDO
      * @throws ConnectionException
      * @throws InvalidArgumentException
      */
-    public static function connect($config)
+    public static function connect($config, array $options = [])
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
         }
 
-        $pdo = parent::connect($config);
+        $pdo = parent::connect($config, $options);
         $hacks = $config->getHacks();
 
         if ($hacks[PdbConfig::HACK_NO_ENGINE_SUBSTITUTION] ?? false) {
