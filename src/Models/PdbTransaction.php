@@ -22,6 +22,9 @@ class PdbTransaction extends DataObject
     /** @var string|false */
     public $key;
 
+    /** @var bool */
+    public $readonly = false;
+
 
     /**
      * Is this a savepoint?
@@ -52,11 +55,17 @@ class PdbTransaction extends DataObject
     /**
      * Commit the transaction or savepoint.
      *
-     * @return bool
+     *
+     *
+     * @return bool did it commit?
      */
     public function commit(): bool
     {
         if ($this->key === false) {
+            return false;
+        }
+
+        if ($this->readonly) {
             return false;
         }
 
@@ -74,11 +83,15 @@ class PdbTransaction extends DataObject
     /**
      * Rollback the transaction or savepoint.
      *
-     * @return bool
+     * @return bool did it rollback?
      */
     public function rollback(): bool
     {
         if ($this->key === false) {
+            return false;
+        }
+
+        if ($this->readonly) {
             return false;
         }
 

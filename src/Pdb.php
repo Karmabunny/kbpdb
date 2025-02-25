@@ -1194,11 +1194,12 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         try {
             // Without a nested transaction, send through the parent transaction.
             // But we're not going to commit or rollback. However, the user is
-            // free to do that using this object (if they wish to make a mess).
+            // free to remove the 'readonly' flag and make a mess.
             return $callback($this, $transaction ?? new PdbTransaction([
                 'pdb' => $this,
                 'parent' => $this->transaction_key,
                 'key' => $this->transaction_key,
+                'readonly' => true,
             ]));
         }
         catch (Throwable $error) {
