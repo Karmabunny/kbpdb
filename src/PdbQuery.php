@@ -438,7 +438,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     public function groupBy(...$fields)
     {
         $fields = array_filter($fields);
-        $fields = Arrays::flatten($fields, 2);
+        $fields = Arrays::flatten($fields, false, 2);
 
         foreach ($fields as $field) {
             $field = preg_split('/[, ]+/', $field);
