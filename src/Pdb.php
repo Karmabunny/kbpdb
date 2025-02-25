@@ -1203,14 +1203,17 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             ]));
         }
         catch (Throwable $error) {
-            if (isset($transaction)) {
+            // This is our own transaction (not the parent).
+            // Also avoiding any strict TX rules.
+            if (isset($transaction) and $transaction->isActive()) {
                 $transaction->rollback();
             }
 
             throw $error;
         }
         finally {
-            if (isset($transaction) and !isset($error)) {
+            // No error means we're good to commit.
+            if (!isset($error) and isset($transaction) and $transaction->isActive()) {
                 $transaction->commit();
             }
         }
