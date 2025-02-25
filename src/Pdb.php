@@ -166,6 +166,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     const RETURN_TRY_ROW_NUM = 'row-num?';
 
     /**
+     * The number of rows, or if no rows exist this throws RowMissingException.
+     */
+    const RETURN_COUNT_EXISTS = 'count!';
+
+    /**
      * Format for DATE types.
      */
     const FORMAT_DATE = 'Y-m-d';
@@ -212,6 +217,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         self::RETURN_TRY_VAL,
         self::RETURN_TRY_ROW,
         self::RETURN_TRY_ROW_NUM,
+        self::RETURN_COUNT_EXISTS,
     ];
 
 

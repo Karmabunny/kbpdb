@@ -245,14 +245,27 @@ class PdbReturn extends DataObject implements PdbReturnInterface
         case 'null':
             return null;
 
+        case 'count!':
         case 'count':
+            $nullable = $this->type === 'count';
+
             // Using SQL count() is always faster than rowCount().
             if (preg_match('/^\s*SELECT\s+COUNT\([1*]\)/i', $rs->queryString)) {
                 $row = $rs->fetch(PDO::FETCH_NUM);
-                return $row[0] ?? 0;
+                $count = $row[0] ?? 0;
             }
 
-            return $rs->rowCount();
+            $count = $rs->rowCount();
+
+            if ($count) {
+                return $count;
+            }
+
+            if ($nullable) {
+                return 0;
+            }
+
+            throw new RowMissingException('Expected a row');
 
         case 'arr':
             return $rs->fetchAll(PDO::FETCH_ASSOC);
