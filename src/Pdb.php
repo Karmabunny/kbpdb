@@ -307,17 +307,17 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * Loads db config and creates a new PDO connection with it.
      *
      * @param PdbConfig|array $config
+     * @param array $options PDO attributes
      * @return PDO
      * @throws ConnectionException
      */
-    public static function connect($config)
+    public static function connect($config, array $options = [])
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
         }
 
         try {
-            $options = [];
             $options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
 
             if ($config->timeout) {
