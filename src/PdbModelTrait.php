@@ -6,6 +6,7 @@
 
 namespace karmabunny\pdb;
 
+use InvalidArgumentException;
 use karmabunny\kb\Configure;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
