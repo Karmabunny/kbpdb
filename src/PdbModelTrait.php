@@ -234,15 +234,7 @@ trait PdbModelTrait
     {
         $pdb = static::getConnection();
 
-        $transact = false;
-
-        // Start a transaction but only if there isn't one already.
-        if (!$pdb->inTransaction()) {
-            $pdb->transact();
-            $transact = true;
-        }
-
-        try {
+        return $pdb->withTransaction(function($pdb, $transaction) {
             $this->_beforeSave();
 
             $data = $this->getSaveData();
@@ -253,20 +245,13 @@ trait PdbModelTrait
 
             $this->_internalSave($data);
 
-            // Punch it.
-            if ($transact and $pdb->inTransaction()) {
-                $pdb->commit();
-            }
+            // Early commit.
+            $transaction->commit();
 
             $this->_afterSave($data);
-        }
-        finally {
-            if ($transact and $pdb->inTransaction()) {
-                $pdb->rollback();
-            }
-        }
 
-        return (bool) $this->id;
+            return (bool) $this->id;
+        });
     }
 
 
