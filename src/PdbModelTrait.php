@@ -228,6 +228,7 @@ trait PdbModelTrait
      *
      * @return bool
      * @throws InvalidArgumentException
+     * @throws RowMissingException
      * @throws QueryException
      * @throws ConnectionException
      */
@@ -279,6 +280,7 @@ trait PdbModelTrait
      *
      * @param array $data as created by {@see getSaveData()}, this is mutable
      * @return void
+     * @throws RowMissingException
      */
     protected function _internalSave(array &$data)
     {
@@ -286,7 +288,11 @@ trait PdbModelTrait
         $table = static::getTableName();
 
         if ($this->id > 0) {
-            $pdb->update($table, $data, [ 'id' => $this->id ]);
+            $count = $pdb->update($table, $data, [ 'id' => $this->id ]);
+
+            if (!$count) {
+                throw new RowMissingException("Failed to update record for '{$table}'");
+            }
         }
         else {
             $data['id'] = $pdb->insert($table, $data);
