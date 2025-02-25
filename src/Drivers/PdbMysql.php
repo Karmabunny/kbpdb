@@ -22,10 +22,14 @@ class PdbMysql extends Pdb
     /** @inheritdoc */
     protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
     {
+        if (!isset($options[PDO::MYSQL_ATTR_FOUND_ROWS])) {
+            // This makes UPDATE predictable and behave the same as other DBMS.
+            $options[PDO::MYSQL_ATTR_FOUND_ROWS] = true;
+        }
+
         if ($config->getHack(PdbConfig::HACK_NO_ENGINE_SUBSTITUTION)) {
             $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         }
-
 
         // Set our TZ on the session.
         // The 'config.session' can still override this.
