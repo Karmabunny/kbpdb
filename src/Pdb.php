@@ -2194,6 +2194,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      */
     protected function getCacheKey(string $sql, array $params, PdbReturnInterface $config): ?string
     {
+        // Only cache on SELECT queries.
+        if (!preg_match('/^(SELECT|SHOW)/', $sql)) {
+            return null;
+        }
+
         // Prevent caching if the TTL is empty.
         // More importantly - do it here because otherwise we're serializing
         // the query when we don't need to.
