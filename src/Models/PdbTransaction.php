@@ -35,13 +35,30 @@ class PdbTransaction extends DataObject
 
 
     /**
+     * Is this transaction active?
+     *
+     * @return bool
+     */
+    public function isActive(): bool
+    {
+        if (!$this->pdb->inTransaction()) {
+            return false;
+        }
+
+        return $this->key !== false;
+    }
+
+
+    /**
      * Commit the transaction or savepoint.
      *
-     * @return void
+     * @return bool
      */
-    public function commit()
+    public function commit(): bool
     {
-        if (!$this->key) return;
+        if ($this->key === false) {
+            return false;
+        }
 
         $this->pdb->commit($this->key);
 
@@ -50,17 +67,20 @@ class PdbTransaction extends DataObject
         }
 
         $this->key = false;
+        return true;
     }
 
 
     /**
      * Rollback the transaction or savepoint.
      *
-     * @return void
+     * @return bool
      */
-    public function rollback()
+    public function rollback(): bool
     {
-        if (!$this->key) return;
+        if ($this->key === false) {
+            return false;
+        }
 
         $this->pdb->rollback($this->key);
 
@@ -69,5 +89,6 @@ class PdbTransaction extends DataObject
         }
 
         $this->key = false;
+        return true;
     }
 }
