@@ -630,17 +630,18 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string $query The query to execute. Prefix a table name with a tilde (~) to automatically include the
      *        table prefix, e.g. ~pages will be converted to fwc_pages
+     * @param array $options PDO attributes
      * @return PDOStatement The prepared statement, for execution with {@see Pdb::execute}
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function prepare(string $query)
+    public function prepare(string $query, array $options = [])
     {
         $pdo = $this->getConnection();
         $query = $this->insertPrefixes($query);
 
         try {
-            return $pdo->prepare($query);
+            return $pdo->prepare($query, $options);
         } catch (PDOException $ex) {
             throw QueryException::create($ex)
                 ->setQuery($query);
