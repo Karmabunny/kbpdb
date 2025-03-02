@@ -47,7 +47,7 @@ use karmabunny\pdb\PdbConfig;
 class Pdb extends StaticPdb
 {
     /** @inheritdoc */
-    public static function getConfig(string $name = null): PdbConfig
+    public static function getConfig(?string $name = null): PdbConfig
     {
         $name = $name ?? 'default';
         $config = include __DIR__ . "/config/database.{$name}.php";

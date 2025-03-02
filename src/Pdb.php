@@ -1234,7 +1234,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @throws TransactionEmptyException If there's no active transaction
      * @throws ConnectionException If the connection fails
      */
-    public function savepoint(string $name = null)
+    public function savepoint(?string $name = null)
     {
         // Someone could have started a transaction elsewhere, you know.
         // Some DBs (sqlite) will treat an out-of-transaction savepoint as a
@@ -1812,7 +1812,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param bool $prefixes Convert prefixes, otherwise only quotes the column component
      * @return string
      */
-    public function quoteIdentifiers(string $query, array $tables = null, bool $prefixes = false): string
+    public function quoteIdentifiers(string $query, ?array $tables = null, bool $prefixes = false): string
     {
         if ($tables) {
             $tables = array_fill_keys($tables, true);

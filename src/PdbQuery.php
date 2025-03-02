@@ -253,7 +253,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function from($table, string $alias = null)
+    public function from($table, ?string $alias = null)
     {
         if ($alias) {
             if (is_array($table)) {
@@ -915,7 +915,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function value(string $field = null, bool $throw = null): ?string
+    public function value(?string $field = null, ?bool $throw = null): ?string
     {
         $query = clone $this;
 
@@ -940,7 +940,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function one(bool $throw = null)
+    public function one(?bool $throw = null)
     {
         $query = clone $this;
 
@@ -1110,7 +1110,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function column(string $field = null): array
+    public function column(?string $field = null): array
     {
         $query = clone $this;
 

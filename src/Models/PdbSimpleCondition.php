@@ -88,7 +88,7 @@ class PdbSimpleCondition implements PdbConditionInterface
      * @param mixed $value
      * @param string|null $bind
      */
-    public function __construct(string $operator, string $column, $value, string $bind = null)
+    public function __construct(string $operator, string $column, $value, ?string $bind = null)
     {
         $this->operator = trim(strtoupper($operator));
         $this->column = $column;

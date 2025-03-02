@@ -37,7 +37,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function clear(string $key = null)
+    public function clear(?string $key = null)
     {
     }
 

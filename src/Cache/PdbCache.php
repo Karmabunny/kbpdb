@@ -46,6 +46,6 @@ abstract class PdbCache
      * @param string|null $key
      * @return void
      */
-    public abstract function clear(string $key = null);
+    public abstract function clear(?string $key = null);
 }
 

@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 class Pdb extends StaticPdb
 {
-    public static function getConfig(string $name = null): PdbConfig
+    public static function getConfig(?string $name = null): PdbConfig
     {
         $config = require __DIR__ . '/config.php';
         $config['prefix'] = 'sprout_';
