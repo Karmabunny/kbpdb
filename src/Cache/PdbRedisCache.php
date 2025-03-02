@@ -94,7 +94,7 @@ class PdbRedisCache extends PdbCache implements ConfigurableInit
 
 
     /** @inheritdoc */
-    public function clear(string $key = null)
+    public function clear(?string $key = null)
     {
         if ($key) {
             $this->rdb->del($key);

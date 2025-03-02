@@ -89,7 +89,7 @@ abstract class StaticPdb
      * @param string|null $name
      * @return PdbConfig
      */
-    public static abstract function getConfig(string $name = null): PdbConfig;
+    public static abstract function getConfig(?string $name = null): PdbConfig;
 
 
     /**

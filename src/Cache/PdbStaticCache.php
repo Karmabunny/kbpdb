@@ -72,7 +72,7 @@ class PdbStaticCache extends PdbCache implements Configurable
 
 
     /** @inheritdoc */
-    public function clear(string $key = null)
+    public function clear(?string $key = null)
     {
         if ($key) {
             unset(static::$cache[$key]);

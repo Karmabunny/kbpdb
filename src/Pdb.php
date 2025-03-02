@@ -1407,7 +1407,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      * @param bool $prefixes Convert prefixes, otherwise only quotes the column component
      * @return string
      */
-    public function quoteIdentifiers(string $query, array $tables = null, bool $prefixes = false): string
+    public function quoteIdentifiers(string $query, ?array $tables = null, bool $prefixes = false): string
     {
         if ($tables) {
             $tables = array_fill_keys($tables, true);

@@ -93,8 +93,9 @@ class PdbCondition
      * @param string|null $operator
      * @param string|null $column
      * @param mixed $value
+     * @param string|null $bind
      */
-    public function __construct($operator, $column, $value, string $bind = null)
+    public function __construct($operator, $column, $value, ?string $bind = null)
     {
         if ($operator) {
             $operator = trim(strtoupper($operator));
