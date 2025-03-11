@@ -296,7 +296,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * @param string $type
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|(array|string|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|array $conditions
      * @param string $combine
      * @return static
      * @throws InvalidArgumentException
@@ -330,7 +330,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|array $conditions
      * @param string $combine
      * @return static
      */
@@ -343,7 +343,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|array $conditions
      * @param string $combine
      * @return static
      */
@@ -357,7 +357,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|(array|PdbConditionInterface)[] $conditions
+     * @param string|PdbConditionInterface|array $conditions
      * @param string $combine
      * @return static
      */
@@ -370,7 +370,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|PdbConditionInterface)[] $conditions
+     * @param array $conditions
      * @param string $combine
      * @return static
      */
@@ -386,7 +386,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|PdbConditionInterface)[] $conditions
+     * @param array $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -401,7 +401,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|PdbConditionInterface)[] $conditions
+     * @param array $conditions
      * @param string $combine AND | OR
      * @return static
      */
@@ -416,7 +416,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param (array|PdbConditionInterface)[] $conditions
+     * @param array $conditions
      * @param string $combine
      * @return static
      */
