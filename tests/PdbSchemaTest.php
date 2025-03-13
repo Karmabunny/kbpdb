@@ -61,7 +61,13 @@ class PdbSchemaTest extends TestCase
             $this->assertNotEmpty($actualTables);
         }
 
-        $this->assertEquals($expected->getTableNames(), $actual->getTableNames());
+        $expectedNames = $expected->getTableNames();
+        $actualNames = $actual->getTableNames();
+
+        sort($expectedNames);
+        sort($actualNames);
+
+        $this->assertEquals($expectedNames, $actualNames);
 
         foreach ($actualTables as $name => $table) {
             $original = $expectedTables[$name] ?? null;
