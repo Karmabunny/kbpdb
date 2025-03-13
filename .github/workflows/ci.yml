@@ -88,4 +88,7 @@ jobs:
         version: composer
         configuration: phpunit.xml
         args: '--testdox'
-
+      env:
+        SITES_DB_HOSTNAME: localhost
+        SITES_POSTGRES_HOSTNAME: localhost
+        SITES_REDIS_HOSTNAME: localhost

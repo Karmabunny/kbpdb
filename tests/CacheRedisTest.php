@@ -20,11 +20,11 @@ class CacheRedisTest extends BaseCacheCase
 
         try {
             $cache = new PdbRedisCache([
-                'host' => Env::isDocker() ? 'tcp://redis:6379' : 'localhost',
+                'host' => getenv('SITES_REDIS_HOSTNAME') ?: 'localhost',
                 'prefix' => 'pdb:',
             ]);
         }
-        catch (Exception $e) {
+        catch (\Exception $e) {
             $this->markTestSkipped('Redis not available: ' . $e->getMessage());
         }
 

@@ -15,7 +15,7 @@ class PdbPgsqlTest extends BasePdbCase
     {
         $this->pdb = Pdb::create([
             'type' => PdbConfig::TYPE_PGSQL,
-            'host' => 'postgres',
+            'host' => getenv('SITES_POSTGRES_HOSTNAME') ?: 'postgres',
             'user' => 'postgres',
             'pass' => 'password',
             'database' => 'kbpdb',

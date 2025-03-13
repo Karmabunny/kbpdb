@@ -7,7 +7,7 @@
 
 return [
     'type' => 'mysql',
-    'host' => '127.0.0.1',
+    'host' => getenv('SITES_DB_HOSTNAME') ?: '127.0.0.1',
     'user' => 'kbpdb',
     'pass' => 'password',
     'database' => 'kbpdb',
