@@ -34,6 +34,7 @@ jobs:
       mysql:
         image: mariadb:10.11
         env:
+          MARIADB_RANDOM_ROOT_PASSWORD: "yes"
           MARIADB_DATABASE: kbpdb
           MARIADB_USER: kbpdb
           MARIADB_PASSWORD: password
