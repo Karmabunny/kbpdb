@@ -357,7 +357,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
                 // We're not escaping the keys here because we're not quoting
                 // them either. For example, although MySQL has `time_zone`
                 // Postgres has instead `TIME ZONE`.
-                if (preg_match('/[^a-z \-_]/i', $key)) {
+                if (preg_match('/[^a-z _]/i', $key)) {
                     throw new ConnectionException("Invalid session key: '{$key}'");
                 }
 
