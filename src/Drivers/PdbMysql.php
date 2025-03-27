@@ -3,6 +3,7 @@
 namespace karmabunny\pdb\Drivers;
 
 use InvalidArgumentException;
+use karmabunny\kb\Time;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -57,16 +58,28 @@ class PdbMysql extends Pdb
 
     /** @inheritdoc */
     protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
-    {
+{
         // Set our TZ on the session.
         // The 'config.session' can still override this.
-        if ($config->timezone) {
-            $tz = $pdo->quote($config->timezone, PDO::PARAM_STR);
-            $pdo->query("SET SESSION time_zone = {$tz}");
+        if ($config->getHack(PdbConfig::HACK_MYSQL_TZ_NO_SESSION)) {
+            $tz = null;
+        }
+        else if ($config->timezone) {
+            $tz = $config->timezone;
         }
         else if ($config->use_system_timezone) {
             $tz = date_default_timezone_get();
-            $tz = $pdo->quote($tz, PDO::PARAM_STR);
+        }
+        else {
+            $tz = null;
+        }
+
+        if ($tz) {
+            if ($config->getHack(PdbConfig::HACK_MYSQL_TZ_OFFSET)) {
+                $tz = Time::getTimezoneOffset($tz);
+            }
+
+            $tz = $pdo->quote($config->timezone, PDO::PARAM_STR);
             $pdo->query("SET SESSION time_zone = {$tz}");
         }
 

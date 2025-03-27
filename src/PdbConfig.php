@@ -38,6 +38,12 @@ class PdbConfig extends Collection
     /** @deprecated use session: `['time_zone' => 'Country/Region']` */
     const HACK_TIME_ZONE = 'time_zone';
 
+    /** If MySQL hasn't got TZ data installed, convert any IANA zone names to an offset. */
+    const HACK_MYSQL_TZ_OFFSET = 'mysql_tz_offset';
+
+    /** Don't set the session TZ, for when the MySQL has no TZ data. */
+    const HACK_MYSQL_TZ_NO_SESSION = 'mysql_tz_no_session';
+
     /** Insert some custom functions. */
     const HACK_SQLITE_FUNCTIONS = 'sqlite_functions';
 
