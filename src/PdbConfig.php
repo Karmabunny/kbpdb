@@ -240,6 +240,14 @@ class PdbConfig extends Collection
      */
     public $session = [];
 
+
+    /**
+     * Connection attributes.
+     *
+     * @var array [ PDO::ATTR_* => value ]
+     */
+    public $attributes = [];
+
     /**
      * Driver specific hacks.
      *
