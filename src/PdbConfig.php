@@ -509,6 +509,18 @@ class PdbConfig extends Collection
 
 
     /**
+     * Is this hack enabled?
+     *
+     * @param string $name
+     * @return mixed
+     */
+    public function getHack(string $name)
+    {
+        return $this->hacks[$name] ?? in_array($name, $this->hacks);
+    }
+
+
+    /**
      * Get parameter quotes as appropriate for the underlying DBMS.
      *
      * For things like fields, tables, etc.
