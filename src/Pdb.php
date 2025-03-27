@@ -1612,7 +1612,10 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     public function getTimezone($refresh = false): DateTimeZone
     {
         if ($refresh or !$this->_timezone) {
-            if ($this->config->use_system_timezone) {
+            if ($this->config->timezone) {
+                $this->_timezone = new DateTimeZone($this->config->timezone);
+            }
+            else if ($this->config->use_system_timezone) {
                 $this->_timezone = new DateTimeZone(date_default_timezone_get());
             }
             else if ($this instanceof PdbMysql) {
