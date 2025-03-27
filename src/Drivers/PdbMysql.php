@@ -79,7 +79,7 @@ class PdbMysql extends Pdb
                 $tz = Time::getTimezoneOffset($tz);
             }
 
-            $tz = $pdo->quote($config->timezone, PDO::PARAM_STR);
+            $tz = $pdo->quote($tz, PDO::PARAM_STR);
             $pdo->query("SET SESSION time_zone = {$tz}");
         }
 
