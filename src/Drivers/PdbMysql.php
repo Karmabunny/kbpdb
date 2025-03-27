@@ -55,6 +55,21 @@ class PdbMysql extends Pdb
     }
 
 
+    /** @inheritdoc */
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    {
+        // Set our system TZ on the session.
+        // The 'config.session' can still override this.
+        if ($config->use_system_timezone) {
+            $tz = date_default_timezone_get();
+            $tz = $pdo->quote($tz, PDO::PARAM_STR);
+            $pdo->query("SET SESSION time_zone = {$tz}");
+        }
+
+        parent::afterConnect($pdo, $config, $options);
+    }
+
+
     /**
      * Is this a MariaDB connection?
      *

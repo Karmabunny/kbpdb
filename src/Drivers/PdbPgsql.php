@@ -6,6 +6,7 @@ use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
 use PDO;
 
@@ -15,6 +16,20 @@ use PDO;
  */
 class PdbPgsql extends Pdb
 {
+
+
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    {
+        // Set our system TZ on the session.
+        // The 'config.session' can still override this.
+        if ($config->use_system_timezone) {
+            $tz = date_default_timezone_get();
+            $tz = $pdo->quote($tz, PDO::PARAM_STR);
+            $pdo->query("SET SESSION TIME ZONE = {$tz}");
+        }
+
+        parent::afterConnect($pdo, $config, $options);
+    }
 
 
     /** @inheritdoc */

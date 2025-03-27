@@ -329,47 +329,44 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             }
 
             $pdo = new PDO($config->getDsn(), $config->user, $config->pass, $options);
-
-            // Set our system TZ on the session.
-            // The 'config.session' can still override this.
-            if ($config->use_system_timezone) {
-                $tz = date_default_timezone_get();
-                $key = null;
-
-                // Eh. We can probably make this more generic one day.
-                if ($config->type === PdbConfig::TYPE_MYSQL) {
-                    $key = 'time_zone';
-                }
-                else if ($config->type === PdbConfig::TYPE_PGSQL) {
-                    $key = 'TIMEZONE';
-                }
-
-                if ($key) {
-                    $tz = $pdo->quote($tz, PDO::PARAM_STR);
-                    $pdo->query("SET SESSION {$key} = {$tz}");
-                }
-            }
-
-            // Set session variables.
-            // These can be overridden by the HACKS fields.
-            // Dunno what kind of outcome that has. Just be aware I guess.
-            foreach ($config->session as $key => $value) {
-                // We're not escaping the keys here because we're not quoting
-                // them either. For example, although MySQL has `time_zone`
-                // Postgres has instead `TIME ZONE`.
-                if (preg_match('/[^a-z _]/i', $key)) {
-                    throw new ConnectionException("Invalid session key: '{$key}'");
-                }
-
-                $value = $pdo->quote($value, PDO::PARAM_STR);
-                $pdo->query("SET SESSION {$key} = {$value}");
-            }
+            static::afterConnect($pdo, $config, $options);
         }
         catch (PDOException $exception) {
             throw ConnectionException::create($exception)
                 ->setDsn($config->getDsn());
         }
         return $pdo;
+    }
+
+
+    /**
+     * Called after a new PDO connection is created.
+     *
+     * This is where session variables are set, or other connection-specific
+     * things like timezones, hacks, etc.
+     *
+     * @param PDO $pdo
+     * @param PdbConfig $config
+     * @param array $options PDO attributes
+     * @return void
+     * @throws ConnectionException
+     */
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    {
+        // Set session variables.
+        // These can be overridden by the HACKS fields.
+        // Dunno what kind of outcome that has. Just be aware I guess.
+        foreach ($config->session as $key => $value) {
+            // We're not escaping the keys here because we're not quoting
+            // them either. For example, although MySQL has `time_zone`
+            // Postgres has instead `TIME ZONE`.
+            if (preg_match('/[^a-z _]/i', $key)) {
+                throw new ConnectionException("Invalid session key: '{$key}'");
+            }
+
+            $value = $pdo->quote($value, PDO::PARAM_STR);
+            $pdo->query("SET SESSION {$key} = {$value}");
+        }
     }
 
 
