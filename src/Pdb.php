@@ -318,7 +318,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         }
 
         try {
-            $options = array_merge($config->attributes, $options);
+            // Can't do array merge here (because of integer type keys).
+            $options = $config->attributes + $options;
 
             // This is essential to how Pdb works, so it's never overridden.
             $options[PDO::ATTR_ERRMODE] = PDO::ERRMODE_EXCEPTION;
