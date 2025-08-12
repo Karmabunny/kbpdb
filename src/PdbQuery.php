@@ -71,6 +71,7 @@ use ReturnTypeWillChange;
  * - `keyed(): [key => object]`
  * - `iterator(): iterable<object>`
  * - `batch($size): iterable<object[]>`
+ * - `each($size): iterable<object>`
  *
  * @package karmabunny\pdb
  */
@@ -1046,6 +1047,24 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
             yield $results;
             $cursor += $size;
+        }
+    }
+
+
+    /**
+     *
+     * @param int $size
+     * @return Generator
+     * @throws InvalidArgumentException
+     * @throws QueryException
+     * @throws ConnectionException
+     */
+    public function each(int $size): Generator
+    {
+        foreach ($this->batch($size) as $results) {
+            foreach ($results as $result) {
+                yield $result;
+            }
         }
     }
 
