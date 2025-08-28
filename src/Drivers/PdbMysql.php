@@ -131,26 +131,6 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function listTables()
-    {
-        $q = "SELECT TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_SCHEMA = ?
-        ";
-
-        $params = [$this->config->database];
-        $res = $this->query($q, $params, 'col');
-
-        foreach ($res as &$row) {
-            $row = $this->stripPrefix($row);
-        }
-        unset($row);
-
-        return $res;
-    }
-
-
-    /** @inheritdoc */
     public function getTableNames(string $filter = '*', bool $strip = true)
     {
         $q = "SELECT TABLE_NAME
