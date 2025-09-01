@@ -50,7 +50,7 @@ use Throwable;
  *
  * @package karmabunny\pdb
  */
-abstract class Pdb implements Loggable, Serializable, NotSerializable
+abstract class Pdb implements Loggable, Serializable, NotSerializable, PdbDriverInterface
 {
     use LoggerTrait;
     use SerializeTrait;
@@ -1431,16 +1431,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
 
     // ===========================================================
-    //     Driver specific methods
+    //     Schema methods
     // ===========================================================
-
-
-    /**
-     * Get the permissions of the current connection.
-     *
-     * @return string[]
-     */
-    public abstract function getPermissions();
 
 
     /**
@@ -1465,27 +1457,6 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     {
         return $this->getTableNames('', true);
     }
-
-
-    /**
-     * Fetches the current list of tables.
-     *
-     * @param string $filter
-     *   - `''` - (empty) to return all tables
-     *   - `'*'` - to return only tables with the default prefix
-     *   - other - filter on this prefix
-     * @param bool $strip remove the prefix from the table names
-     * @return string[]
-     */
-    public abstract function getTableNames(string $filter = '*', bool $strip = true);
-
-
-    /**
-     *
-     * @param string $table non-prefixed
-     * @return bool
-     */
-    public abstract function tableExists(string $table);
 
 
     /**
@@ -1538,62 +1509,6 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
         return $list;
     }
-
-
-    /**
-     *
-     * @param string $table non-prefixed
-     * @return PdbIndex[]
-     */
-    public abstract function indexList(string $table);
-
-
-    /**
-     *
-     * @param string $table non-prefixed
-     * @return PdbColumn[] [ name => PdbColumn ]
-     */
-    public abstract function fieldList(string $table);
-
-
-    /**
-     * Gets all of the columns which have foreign key constraints in a table
-     *
-     * @param string $table non-prefixed
-     * @return PdbForeignKey[]
-     */
-    public abstract function getForeignKeys(string $table);
-
-
-
-    /**
-     * Gets all of the dependent foreign key columns (i.e. with the CASCADE delete rule) in other tables
-     * which link to the id column of a specific table
-     *
-     * @param string $table non-prefixed
-     * @return PdbForeignKey[]
-     */
-    public abstract function getDependentKeys(string $table);
-
-
-    /**
-     * Get adapter specific table information.
-     *
-     * @param string $table non-prefixed
-     * @return array [ key => value]
-     */
-    public abstract function getTableAttributes(string $table);
-
-
-    /**
-     * Returns definition list from column of type ENUM
-     *
-     * @param string $table non-prefixed
-     * @param string $column
-     * @return string[]
-     * @throws InvalidArgumentException
-     */
-    public abstract function extractEnumArr(string $table, string $column);
 
 
     // ===========================================================
