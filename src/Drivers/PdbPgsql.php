@@ -356,4 +356,46 @@ class PdbPgsql extends Pdb
         return [];
     }
 
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        [, $key] = unpack('q', sha1($name, true));
+
+        if ($timeout <= 0) {
+            $ok = (bool) $this->query("SELECT pg_try_advisory_lock(?)", [$key], 'val?');
+            return $ok;
+        }
+        else {
+            $start = microtime(true);
+            $tick = 50 * 1000;
+
+            for (;;) {
+                $ok = (bool) $this->query("SELECT pg_try_advisory_lock(?)", [$key], 'val?');
+
+                if ($ok) {
+                    return true;
+                }
+
+                // Preventing infinite loops with a timeout.
+                if (microtime(true) - $start >= $timeout) {
+                    return false;
+                }
+
+                usleep($tick);
+            }
+
+            return false;
+        }
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        [, $key] = unpack('q', sha1($name, true));
+        $ok = $this->query("SELECT pg_advisory_unlock(?)", [$key], 'val?');
+        return (bool) $ok;
+    }
+
 }

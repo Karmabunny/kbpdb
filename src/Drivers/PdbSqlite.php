@@ -245,4 +245,17 @@ class PdbSqlite extends Pdb
         return array_combine($arr, $arr);
     }
 
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
 }

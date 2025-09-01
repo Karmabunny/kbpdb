@@ -404,4 +404,22 @@ class PdbMysql extends Pdb
         return array_combine($arr, $arr);
     }
 
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        $key = substr($this->config->database . sha1($name), 0, 63);
+        $ok = $this->query("SELECT GET_LOCK(?, ?)", [$key, $timeout], 'val?');
+        return (bool) $ok;
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        $key = substr($this->config->database . sha1($name), 0, 63);
+        $ok = $this->query("SELECT RELEASE_LOCK(?)", [$key], 'val?');
+        return (bool) $ok;
+    }
+
 }
