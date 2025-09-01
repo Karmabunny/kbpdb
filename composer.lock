@@ -4,8 +4,59 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c5b78f5f79df05479f3bf468fa445b15",
+    "content-hash": "c8868d3b4ab0801709261a7794dad4df",
     "packages": [
+        {
+            "name": "karmabunny/interfaces",
+            "version": "v1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Karmabunny/kbinterfaces.git",
+                "reference": "ec4b6a46b55b4449996c006ba5cb500f31848d2e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Karmabunny/kbinterfaces/zipball/ec4b6a46b55b4449996c006ba5cb500f31848d2e",
+                "reference": "ec4b6a46b55b4449996c006ba5cb500f31848d2e",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.2|^8"
+            },
+            "require-dev": {
+                "phpcompatibility/php-compatibility": "^9.3",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^9.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "karmabunny\\interfaces\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Karmabunny",
+                    "email": "info@karmabunny.com.au"
+                }
+            ],
+            "description": "Base KB interfaces",
+            "keywords": [
+                "interfaces",
+                "karmabunny",
+                "kb",
+                "utilities"
+            ],
+            "support": {
+                "issues": "https://github.com/Karmabunny/kbinterfaces/issues",
+                "source": "https://github.com/Karmabunny/kbinterfaces/tree/v1.0.0"
+            },
+            "time": "2025-09-01T05:46:40+00:00"
+        },
         {
             "name": "karmabunny/kb",
             "version": "v3.58.35",
