@@ -3,7 +3,6 @@
 namespace karmabunny\pdb\Drivers;
 
 use Exception;
-use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Extra\SqliteFunctions;
 use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
@@ -25,20 +24,12 @@ class PdbSqlite extends Pdb
     ];
 
 
-    /**
-     *
-     * @param PdbConfig|array $config
-     * @param array $options PDO attributes
-     * @return PDO
-     * @throws ConnectionException
-     */
-    public static function connect($config, array $options = [])
+    /** @inheritdoc */
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
         }
-
-        $pdo = parent::connect($config, $options);
 
         $hacks = $config->getHacks();
         $fns = $hacks[PdbConfig::HACK_SQLITE_FUNCTIONS] ?? [];
@@ -49,7 +40,7 @@ class PdbSqlite extends Pdb
             $pdo->sqliteCreateFunction($name, $fn, -1, PDO::SQLITE_DETERMINISTIC);
         }
 
-        return $pdo;
+        parent::afterConnect($pdo, $config, $options);
     }
 
 

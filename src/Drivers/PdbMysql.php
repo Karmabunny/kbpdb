@@ -20,45 +20,14 @@ use PDO;
 class PdbMysql extends Pdb
 {
 
-    /**
-     *
-     * @param PdbConfig|array $config
-     * @param array $options attributes
-     * @return PDO
-     * @throws ConnectionException
-     * @throws InvalidArgumentException
-     */
-    public static function connect($config, array $options = [])
+    /** @inheritdoc */
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
     {
-        if (!($config instanceof PdbConfig)) {
-            $config = new PdbConfig($config);
-        }
-
-        $pdo = parent::connect($config, $options);
-        $hacks = $config->getHacks();
-
-        if ($hacks[PdbConfig::HACK_NO_ENGINE_SUBSTITUTION] ?? false) {
+        if ($config->getHack(PdbConfig::HACK_NO_ENGINE_SUBSTITUTION)) {
             $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         }
 
-        if (is_string($tz = $hacks[PdbConfig::HACK_TIME_ZONE] ?? false)) {
-            if (!is_string($tz) or !preg_match('!^[^/0-9]+/[^/0-9]+$!', $tz)) {
-                // @phpstan-ignore-next-line
-                $tz = is_scalar($tz) ? (string) $tz : gettype($tz);
-                throw new InvalidArgumentException("Invalid time zone: {$tz}");
-            }
 
-            $tz = $pdo->quote($tz, PDO::PARAM_STR);
-            $pdo->query("SET SESSION time_zone = {$tz}");
-        }
-
-        return $pdo;
-    }
-
-
-    /** @inheritdoc */
-    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
-{
         // Set our TZ on the session.
         // The 'config.session' can still override this.
         if ($config->getHack(PdbConfig::HACK_MYSQL_TZ_NO_SESSION)) {
