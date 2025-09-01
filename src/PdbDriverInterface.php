@@ -99,4 +99,21 @@ interface PdbDriverInterface
      */
     public function indexList(string $table): array;
 
+
+    /**
+     *
+     * @param string $name
+     * @param float $timeout in seconds
+     * @return bool
+     */
+    public function createLock(string $name, float $timeout = 0): bool;
+
+
+    /**
+     *
+     * @param string $name
+     * @return bool
+     */
+    public function deleteLock(string $name): bool;
+
 }
