@@ -249,6 +249,8 @@ class PdbSync
             }
 
             // Check each index
+            // Skip on create because these are created within checkTables.
+            // TODO this may change, some DBs must create indexes separately.
             if (!$new_table and $do['index']) {
                 foreach ($table->indexes as $index) {
                     $this->checkIndexMatches($table->name, $index);
@@ -256,9 +258,10 @@ class PdbSync
             }
 
             // Check each foreign key
+            // FKs are always added afterwards.
             if ($do['foreign_key']) {
                 foreach ($table->foreign_keys as $foreign_key) {
-                    $this->checkForeignKeyMatches($table->name, $foreign_key);
+                    $this->checkForeignKeyMatches($table->name, $foreign_key, !$new_table);
                 }
             }
 
@@ -865,43 +868,45 @@ class PdbSync
     *
     * @param string $table_name The name of the table to check
     * @param PdbForeignKey $foreign_key The foreign key definition to check
+    * @param bool $check_fixes
     * @return bool
     **/
-    private function checkForeignKeyMatches(string $table_name, PdbForeignKey $foreign_key)
+    private function checkForeignKeyMatches(string $table_name, PdbForeignKey $foreign_key, bool $check_fixes)
     {
-        $current_fks = $this->pdb->getForeignKeys($table_name);
+        if ($check_fixes) {
+            $current_fks = $this->pdb->getForeignKeys($table_name);
 
-        // Filter out non-matching FKs.
-        foreach ($current_fks as $id => $fk) {
-            if (
-                $foreign_key->to_table != $fk->to_table or
-                $foreign_key->from_column != $fk->from_column or
-                $foreign_key->to_column != $fk->to_column or
-                $foreign_key->update_rule != $fk->update_rule or
-                $foreign_key->delete_rule != $fk->delete_rule
-            ) unset($current_fks[$id]);
-        }
-
-        // TODO Is there a reason we don't do this automatically?
-        if (count($current_fks) > 1) {
-            $names = [];
-
-            foreach ($current_fks as $row) {
-                $names[] = $row->constraint_name;
-
-                $this->storeFix($row->constraint_name, [
-                    'name' => 'Drop FK',
-                    'sql' => "ALTER TABLE ~{$table_name} DROP FOREIGN KEY {$row->constraint_name}",
-                ]);
+            // Filter out non-matching FKs.
+            foreach ($current_fks as $id => $fk) {
+                if (
+                    $foreign_key->to_table != $fk->to_table or
+                    $foreign_key->from_column != $fk->from_column or
+                    $foreign_key->to_column != $fk->to_column or
+                    $foreign_key->update_rule != $fk->update_rule or
+                    $foreign_key->delete_rule != $fk->delete_rule
+                ) unset($current_fks[$id]);
             }
 
-            $names = implode(', ', $names);
-            $this->storeWarning("Multiple foreign keys found for column {$foreign_key->from_column} - {$names})");
-        }
+            // TODO Is there a reason we don't do this automatically?
+            if (count($current_fks) > 1) {
+                $names = [];
 
-        // Nothing to do? Because the FK already exists.
-        if (count($current_fks) != 0) {
-            return true;
+                foreach ($current_fks as $row) {
+                    $names[] = $row->constraint_name;
+
+                    $this->storeFix($row->constraint_name, [
+                        'name' => 'Drop FK',
+                        'sql' => "ALTER TABLE ~{$table_name} DROP FOREIGN KEY {$row->constraint_name}",
+                    ]);
+                }
+
+                $names = implode(', ', $names);
+                $this->storeWarning("Multiple foreign keys found for column {$foreign_key->from_column} - {$names})");
+            }
+            // Nothing to do? Because the FK already exists.
+            if (count($current_fks) != 0) {
+                return true;
+            }
         }
 
         $this->heading = "FRN KEY - Table '{$table_name}', Foreign key {$foreign_key->from_column} -> {$foreign_key->to_table}.{$foreign_key->to_column}";
@@ -910,52 +915,54 @@ class PdbSync
         $to_column = $this->pdb->quote($foreign_key->to_column, Pdb::QUOTE_FIELD);
 
         // Look for records which fail to join to the foreign table
-        try {
-            $q = "SELECT COUNT(*)
-                FROM ~{$table_name} AS main
-                LEFT JOIN ~{$foreign_key->to_table} AS extant
-                    ON main.{$from_column} = extant.{$to_column}
-                WHERE extant.id IS NULL
-            ";
-            /** @var string */
-            $num_invalid_records = $this->pdb->query($q, [], 'val');
-
-            if ($num_invalid_records > 0) {
-                $this->storeWarning([
-                    "{$num_invalid_records} invalid records found:",
-                    "in '{$table_name}' table (foreign key on '{$foreign_key->from_column}' column)",
-                ]);
-
-                $q = str_replace('COUNT(*)', "main.id, main.{$from_column}", $q);
-
-                $fix_name = "{$table_name}.{$foreign_key->from_column}";
-
-                $this->storeFix($fix_name, [
-                    'name' => 'Find records',
-                    'sql' => $q,
-                ]);
-
-                $q = "DELETE FROM ~{$table_name}
-                    WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
+        if ($check_fixes) {
+            try {
+                $q = "SELECT COUNT(*)
+                    FROM ~{$table_name} AS main
+                    LEFT JOIN ~{$foreign_key->to_table} AS extant
+                        ON main.{$from_column} = extant.{$to_column}
+                    WHERE extant.id IS NULL
                 ";
+                /** @var string */
+                $num_invalid_records = $this->pdb->query($q, [], 'val');
 
-                $this->storeFix($fix_name, [
-                    'name' => 'Delete records',
-                    'sql' => $q,
-                ]);
+                if ($num_invalid_records > 0) {
+                    $this->storeWarning([
+                        "{$num_invalid_records} invalid records found:",
+                        "in '{$table_name}' table (foreign key on '{$foreign_key->from_column}' column)",
+                    ]);
 
-                $q = "UPDATE ~{$table_name}
-                    SET {$from_column} = NULL
-                    WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
-                ";
+                    $q = str_replace('COUNT(*)', "main.id, main.{$from_column}", $q);
 
-                $this->storeFix($fix_name, [
-                    'name' => 'NULL offending values',
-                    'sql' => $q,
-                ]);
+                    $fix_name = "{$table_name}.{$foreign_key->from_column}";
+
+                    $this->storeFix($fix_name, [
+                        'name' => 'Find records',
+                        'sql' => $q,
+                    ]);
+
+                    $q = "DELETE FROM ~{$table_name}
+                        WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
+                    ";
+
+                    $this->storeFix($fix_name, [
+                        'name' => 'Delete records',
+                        'sql' => $q,
+                    ]);
+
+                    $q = "UPDATE ~{$table_name}
+                        SET {$from_column} = NULL
+                        WHERE {$from_column} NOT IN (SELECT id FROM ~{$foreign_key->to_table});
+                    ";
+
+                    $this->storeFix($fix_name, [
+                        'name' => 'NULL offending values',
+                        'sql' => $q,
+                    ]);
+                }
+            } catch (QueryException $ex) {
+                $this->storeWarning("Query error looking for invalid records; does the table '{$foreign_key->to_table}' exist?");
             }
-        } catch (QueryException $ex) {
-            $this->storeWarning("Query error looking for invalid records; does the table '{$foreign_key->to_table}' exist?");
         }
 
         // Update the constraint.
