@@ -84,6 +84,17 @@ class PdbColumn extends Collection implements PdbStructWriterInterface
 
 
     /**
+     * Get the column type, normalised.
+     *
+     * @return string
+     */
+    public function getType(): string
+    {
+        return PdbHelpers::normalizeType($this->type);
+    }
+
+
+    /**
      * Get the PHP var type of column based on the column data type
      *
      * @return string
