@@ -78,7 +78,7 @@ class PdbForeignKey extends Collection implements PdbStructWriterInterface
             return $errors;
         }
 
-        if ($to_column->type != $from_column->type) {
+        if ($to_column->getType() != $from_column->getType()) {
             $errors[] = "Foreign key \"{$this->from_column}\" column type mismatch ({$to_column->type} vs {$from_column->type}))";
         }
 
