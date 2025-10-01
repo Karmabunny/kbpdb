@@ -1503,11 +1503,11 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
         $foreign_keys = $this->getForeignKeys($table);
         $attributes = $this->getTableAttributes($table);
 
-        $primary_keys = [];
+        $primary_key = [];
 
         foreach ($columns as $column) {
             if ($column->is_primary) {
-                $primary_keys[] = $column->name;
+                $primary_key[] = $column->name;
             }
         }
 
@@ -1515,7 +1515,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             'name' => $table,
             'columns' => $columns,
             'indexes' => $indexes,
-            'primary_keys' => $primary_keys,
+            'primary_key' => $primary_key,
             'foreign_keys' => $foreign_keys,
             'attributes' => $attributes,
         ]);
