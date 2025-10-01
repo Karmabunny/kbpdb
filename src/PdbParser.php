@@ -308,12 +308,23 @@ class PdbParser implements PdbSchemaInterface
     /**
      * Run a sanity check over all loaded tables
      *
+     * @param PdbTable[] $extra_tables
      * @return bool
      */
-    public function sanityCheck()
+    public function sanityCheck(array $extra_tables = [])
     {
+        $tables = $this->tables;
+
+        foreach ($extra_tables as $table) {
+            if (isset($tables[$table->name])) {
+                continue;
+            }
+
+            $tables[$table->name] = $table;
+        }
+
         foreach ($this->tables as $table) {
-            $errors = $table->check($this->tables);
+            $errors = $table->check($tables);
 
             if (!empty($errors)) {
                 $this->errors[$table->name] = $errors;
