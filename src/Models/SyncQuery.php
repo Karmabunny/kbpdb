@@ -20,6 +20,14 @@ class SyncQuery extends Collection
 
 
     /**
+     * One of PdbSync::QUERY_TYPES.
+     *
+     * @var string
+     */
+    public $type;
+
+
+    /**
      * @var string
      */
     public $sql;

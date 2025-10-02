@@ -1115,6 +1115,7 @@ class PdbSync
 
         $this->queries[$type][] = new SyncQuery([
             'sql' => $query,
+            'type' => $type,
             'heading' => $this->heading,
             'message' => $message,
         ]);
