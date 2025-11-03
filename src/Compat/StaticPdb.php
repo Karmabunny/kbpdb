@@ -51,7 +51,7 @@ use PDOStatement;
  * @method static void rollback(string $name = null)
  * @method static string now()
  * @method static array lookup(string $table, array $conditions = [], array $order = ['name'], string $name = 'name')
- * @method static array get(string $table, int $id)
+ * @method static array get(string $table, int $id, bool $throw = true)
  * @method static bool recordExists(string $table, array $conditions)
  * @method static array extractEnumArr(string $table, string $column)
  * @method static bool validateEnum(string $table, array $field)

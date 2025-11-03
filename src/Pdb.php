@@ -849,18 +849,19 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * @param string $table The table name, not prefixed
      * @param int $id The id of the record to fetch
-     * @return array The record data
+     * @param bool $throw Whether to throw an exception if the row is missing
+     * @return ($throw is true ? array : array|null) The record data
      * @throws QueryException If the query fails
      * @throws RowMissingException If there's no row
      * @throws InvalidArgumentException
      * @throws ConnectionException
      */
-    public function get(string $table, $id)
+    public function get(string $table, $id, bool $throw = true)
     {
         static::validateIdentifier($table);
 
         $q = "SELECT * FROM ~{$table} WHERE id = ?";
-        return $this->query($q, [(int) $id], 'row');
+        return $this->query($q, [(int) $id], $throw ? 'row' : 'row?');
     }
 
 
