@@ -10,6 +10,8 @@ use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbForeignKey;
 use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbReturn;
+use karmabunny\pdb\Models\PdbSchema;
+use karmabunny\pdb\Models\PdbTable;
 use karmabunny\pdb\Models\PdbTransaction;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
