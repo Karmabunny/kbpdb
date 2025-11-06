@@ -12,6 +12,8 @@ use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
 use ReflectionException;
 use karmabunny\kb\Reflect;
+use karmabunny\pdb\Exceptions\ConnectionException;
+use karmabunny\pdb\Exceptions\QueryException;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
