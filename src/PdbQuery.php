@@ -37,6 +37,7 @@ use ReturnTypeWillChange;
  * - `andWhere($conditions, $combine)`
  * - `orWhere($conditions, $combine)`
  * - `with($subQuery, $alias)`
+ * - `union($subQuery)`
  * - `groupBy($field)`
  * - `orderBy(...$fields)`
  * - `limit($limit)`
@@ -127,6 +128,9 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @var array{0:PdbQueryInterface,1:string}[]
      */
     protected $_with = [];
+
+    /** @var PdbQueryInterface[] */
+    protected $_union = [];
 
     /** @var array list [field, order] */
     protected $_order = [];
@@ -490,6 +494,19 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     {
         Pdb::validateIdentifier($alias);
         $this->_with[] = [ $query, $alias ];
+        return $this;
+    }
+
+
+    /**
+     * Add a sub-query to the UNION clause.
+     *
+     * @param PdbQueryInterface $query
+     * @return static
+     */
+    public function union(PdbQueryInterface $query)
+    {
+        $this->_union[] = $query;
         return $this;
     }
 
@@ -978,6 +995,13 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         if ($this->_offset) {
             $params[] = $this->_offset;
             $sql .= 'OFFSET ? ';
+        }
+
+        // Unions
+        foreach ($this->_union as $query) {
+            [$subSql, $subParams] = $query->build($validate);
+            $sql = rtrim($sql) . "\nUNION\n{$subSql}";
+            $params = array_merge($params, $subParams);
         }
 
         return [trim($sql), $params];

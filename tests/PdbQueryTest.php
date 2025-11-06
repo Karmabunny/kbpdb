@@ -268,4 +268,21 @@ class PdbQueryTest extends TestCase
     }
 
 
+    public function testUnions(): void
+    {
+        $query1 = $this->pdb->find('mmm')
+            ->select('id, name');
+
+        $query2 = $this->pdb->find('ahh')
+            ->select('id, name');
+
+        $query = $query1->union($query2);
+
+        [$sql, $params] = $query->build();
+
+        $expected = 'SELECT "id", "name" FROM "pdb_mmm"';
+        $expected .= "\nUNION\n";
+        $expected .= 'SELECT "id", "name" FROM "pdb_ahh"';
+        $this->assertEquals($expected, $sql);
+    }
 }
