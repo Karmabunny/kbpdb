@@ -246,4 +246,26 @@ class PdbQueryTest extends TestCase
         $this->assertEquals($expected, $sql);
     }
 
+
+    public function testWithQuery(): void
+    {
+        $query2 = $this->pdb->find('ahh');
+
+        $query1 = $this->pdb->find('mmm')
+            ->alias('mmm')
+            ->innerJoin('sub', 'mmm.id = sub._id')
+            ->with($query2, 'sub');
+
+        // Modify after attaching.
+        $query2->select('id as _id')
+            ->where(['name' => 'test']);
+
+        [$sql, $params] = $query1->build();
+
+        $expected = 'WITH "sub" AS (SELECT "id" AS "_id" FROM "pdb_ahh" WHERE "name" = ?)' . "\n";
+        $expected .= 'SELECT "mmm".* FROM "pdb_mmm" AS "mmm" INNER JOIN "sub" ON "mmm"."id" = "sub"."_id"';
+        $this->assertEquals($expected, $sql);
+    }
+
+
 }
