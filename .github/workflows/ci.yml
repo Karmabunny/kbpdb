@@ -22,7 +22,7 @@ jobs:
     - uses: php-actions/phpstan@v3
       with:
         php_version: 8.2
-        path: src/
+        path: src/ tests/Models
         version: composer
         configuration: phpstan.neon
         command: analyse
