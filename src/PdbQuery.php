@@ -241,7 +241,6 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
                     throw new InvalidArgumentException('Nested queries must have an alias');
                 }
 
-                $value->validate();
                 Pdb::validateIdentifier($alias);
                 $this->_select[] = [$value, $alias];
             }
