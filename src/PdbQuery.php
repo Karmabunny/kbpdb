@@ -282,25 +282,23 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      * Set the FROM table and alias (optional).
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param string $alias
      * @return static
      * @throws InvalidArgumentException
      */
     public function from($table, ?string $alias = null)
     {
-        if ($alias) {
-            if (is_array($table)) {
-                $table = reset($table);
-            }
-
-            $table = [$table => $alias];
+        if (!$alias and is_array($table)) {
+            [$table, $alias] = PdbHelpers::parseAlias($table);
         }
 
-        $table = PdbHelpers::parseAlias($table);
-        Pdb::validateAlias($table);
+        if (!$alias and $table instanceof PdbQueryInterface) {
+            throw new InvalidArgumentException('from() expects an alias when using a sub-query');
+        }
 
-        $this->_from = $table;
+        Pdb::validateAlias([$table, $alias]);
+        $this->_from = [$table, $alias];
         return $this;
     }
 
@@ -790,7 +788,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
                 $alias = $this->pdb->quoteField($alias);
                 $sql .= "SELECT {$alias}.* ";
             }
-            else if ($from) {
+            else if (is_string($from)) {
                 $sql .= "SELECT ~{$from}.* ";
             }
             else {
@@ -802,11 +800,29 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         if ($this->_from) {
             [$from, $alias] = $this->_from + [null, null];
 
-            $sql .= "FROM ~{$from} ";
-            if ($alias) {
+            if ($from instanceof PdbQueryInterface) {
+                // This is also performed in the from() method.
+                if ($validate and empty($alias)) {
+                    throw new InvalidArgumentException('from() expects an alias when using a sub-query');
+                }
+
+                [$subSql, $subParams] = $from->build($validate);
+                $alias = $alias ?: ('subQuery' . sha1($subSql));
+
+                $sql .= "FROM ({$subSql}) ";
                 $sql .= 'AS ';
                 $sql .= $this->pdb->quoteField($alias);
                 $sql .= ' ';
+
+                $params = array_merge($params, $subParams);
+            }
+            else {
+                $sql .= "FROM ~{$from} ";
+                if ($alias) {
+                    $sql .= 'AS ';
+                    $sql .= $this->pdb->quoteField($alias);
+                    $sql .= ' ';
+                }
             }
         }
 
@@ -922,16 +938,22 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @return string[] [ alias => table ]
+     * @return (string|PdbQueryInterface)[] [ alias => table ]
      */
     public function getIdentifiers(): array
     {
         $ids = [];
 
         [$table, $alias] = $this->_from;
-        $table = $this->pdb->getPrefix($table) . $table;
-        $alias = $alias ?: $table;
-        $ids[$alias] = $table;
+
+        if (is_string($table)) {
+            $table = $this->pdb->getPrefix($table) . $table;
+            $alias = $alias ?: $table;
+        }
+
+        if ($alias) {
+            $ids[$alias] = $table;
+        }
 
         foreach ($this->_joins as $join) {
             [$table, $alias] = $join[1];

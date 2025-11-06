@@ -2,6 +2,7 @@
 
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
+use karmabunny\pdb\PdbQuery;
 use PHPUnit\Framework\TestCase;
 
 
@@ -226,6 +227,22 @@ class PdbQueryTest extends TestCase
         $expected .= 'FROM "pdb_stuff" ';
         $expected .= 'INNER JOIN "pdb_more" AS "mmm" ';
         $expected .= 'ON "pdb_stuff"."id" = "mmm"."stuff_id"';
+        $this->assertEquals($expected, $sql);
+    }
+
+
+    public function testFromSubQuery(): void
+    {
+        $subQuery = $this->pdb->find('ahh')
+            ->where(['name' => 'test'])
+            ->select('id, name AS title');
+
+        $query = (new PdbQuery($this->pdb))
+            ->from($subQuery, 'ahh');
+
+        [$sql, $params] = $query->build();
+
+        $expected = 'SELECT "ahh".* FROM (SELECT "id", "name" AS "title" FROM "pdb_ahh" WHERE "name" = ?) AS "ahh"';
         $this->assertEquals($expected, $sql);
     }
 
