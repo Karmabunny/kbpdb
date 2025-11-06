@@ -27,9 +27,9 @@ class PdbQueryTest extends TestCase
         $query = $this->pdb->find('mmm')
             ->select([
                 'person_pre_seeds.*',
-                'persons.first_name' => 'given',
+                'given' => 'persons.first_name',
                 'persons.last_name surname',
-                'persons.email' => 'email_address',
+                'email_address' => 'persons.email',
                 'persons.phone',
                 'IF(~mmm.status IS NOT NULL, ~mmm.status, \'-\') AS access_status',
             ]);

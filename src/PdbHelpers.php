@@ -199,7 +199,8 @@ class PdbHelpers
      * The second item is null if no alias present.
      *
      * This converts:
-     * - `[column => alias]` (array)
+     * - `[column, alias]` (passthrough)
+     * - `[alias => column]` (array)
      * - `'column as alias'` (string, full syntax)
      * - `'column alias'` (string, shorthand)
      *
@@ -222,8 +223,8 @@ class PdbHelpers
                 return [$value, null];
             }
 
-            // Convert [ column => alias ] to [ column, alias ]
-            return [ $key, $value ];
+            // Convert [ alias => column ] to [ column, alias ]
+            return [ $value, $key ];
         }
 
         // Convert 'column as alias' to [ column, alias ]

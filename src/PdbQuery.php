@@ -210,7 +210,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * Note, this will replace any previous select().
      *
-     * @param string|string[] $fields column => alias
+     * @param string|string[] $fields alias => column
      * @return static
      * @throws InvalidArgumentException
      */
@@ -227,7 +227,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * This does _not_ replace previous select(), only adds.
      *
-     * @param string|string[] $fields column => alias
+     * @param string|string[] $fields alias => column
      * @return static
      * @throws InvalidArgumentException
      */
