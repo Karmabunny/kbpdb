@@ -314,7 +314,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
             $conditions = [ $conditions ];
         }
         // Backward compat, shallow encode raw conditions.
-        else if (is_array($conditions)) {
+        else {
             foreach ($conditions as &$item) {
                 if (is_string($item)) {
                     $item = new PdbRawCondition($item);
