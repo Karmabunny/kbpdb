@@ -3,3 +3,4 @@ parameters:
     phpVersion: 70100
     paths:
         - src
+        - tests/Models
