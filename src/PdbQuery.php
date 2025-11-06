@@ -244,6 +244,20 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
                 Pdb::validateIdentifier($alias);
                 $this->_select[] = [$value, $alias];
             }
+            // Split strings by commas, provided there's no function in here.
+            else if (
+                is_numeric($alias)
+                and is_string($value)
+                and !preg_match('/[()]/', $value)
+            ) {
+                $subfields = preg_split('/\s*,\s*/', $value);
+
+                foreach ($subfields as $field) {
+                    $field = PdbHelpers::parseAlias($field);
+                    Pdb::validateAlias($field, false);
+                    $this->_select[] = $field;
+                }
+            }
             else {
                 $field = is_numeric($alias) ? $value : [$value, $alias];
                 $field = PdbHelpers::parseAlias($field);
