@@ -111,7 +111,7 @@ class PdbHelpers
                 case 'FIXED':
                 case 'NUMERIC':
                     $parts = explode(',', $values, 2);
-                    $digit = (int) ($parts[0] ?? 10);
+                    $digit = (int) ($parts[0] ?: 10);
                     $decimal = (int) ($parts[1] ?? 0);
 
                     return "DECIMAL({$digit},{$decimal})";
