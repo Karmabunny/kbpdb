@@ -635,7 +635,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param int|bool $ttl seconds
      * @return static
      */
-    public function cache(string $key = null, $ttl = true)
+    public function cache(?string $key = null, $ttl = true)
     {
         $this->_cache_key = $key;
 
