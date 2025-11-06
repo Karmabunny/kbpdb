@@ -624,7 +624,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param array $conditions
      * @return static
      */

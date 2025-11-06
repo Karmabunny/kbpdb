@@ -1088,7 +1088,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Shorthand for creating a new PdbQuery.
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param array $conditions
      * @return PdbQuery
      */

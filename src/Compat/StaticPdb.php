@@ -17,6 +17,7 @@ use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbHelpers;
 use karmabunny\pdb\PdbQuery;
+use karmabunny\pdb\PdbQueryInterface;
 use PDO;
 use PDOException;
 use PDOStatement;
@@ -44,7 +45,7 @@ use PDOStatement;
  * @method static int update(string $table, array $data, array $conditions)
  * @method static int delete(string $table, array $conditions)
  * @method static int upsert(string $table, array $data, array $conditions)
- * @method static PdbQuery find(string $table, array $conditions = [])
+ * @method static PdbQuery find(string|string[]|PdbQueryInterface $table, array $conditions = [])
  * @method static bool inTransaction()
  * @method static PdbTransaction transact()
  * @method static mixed withTransaction(callable $callback)
