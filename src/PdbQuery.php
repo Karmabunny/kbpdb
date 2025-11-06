@@ -235,11 +235,22 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     {
         $fields = Arrays::flatten($fields, true, 2);
 
-        foreach ($fields as $key => $value) {
-            $field = is_numeric($key) ? $value : [$key => $value];
-            $field = PdbHelpers::parseAlias($field);
-            Pdb::validateAlias($field, true);
-            $this->_select[] = $field;
+        foreach ($fields as $alias => $value) {
+            if ($value instanceof PdbQueryInterface) {
+                if (is_numeric($alias)) {
+                    throw new InvalidArgumentException('Nested queries must have an alias');
+                }
+
+                $value->validate();
+                Pdb::validateIdentifier($alias);
+                $this->_select[] = [$value, $alias];
+            }
+            else {
+                $field = is_numeric($alias) ? $value : [$value, $alias];
+                $field = PdbHelpers::parseAlias($field);
+                Pdb::validateAlias($field, true);
+                $this->_select[] = $field;
+            }
         }
 
         return $this;
@@ -727,7 +738,11 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
             foreach ($this->_select as $item) {
                 [$field, $alias] = $item + [null, null];
 
-                if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
+                if ($field instanceof PdbQueryInterface) {
+                    [$field, $_params] = $field->build($validate);
+                    $params = array_merge($params, $_params);
+                }
+                else if (!preg_match(PdbHelpers::RE_FUNCTION, $field)) {
                     $field = $this->pdb->quoteField($field);
                 }
 
