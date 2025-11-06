@@ -33,6 +33,7 @@ class PdbModelQuery extends PdbQuery
      */
     public function __construct(string $model, array $config = [])
     {
+        // @phpstan-ignore-next-line: assert doc types.
         if (!is_subclass_of($model, PdbModelInterface::class)) {
             throw new InvalidArgumentException("{$model} must implement PdbModelInterface");
         }

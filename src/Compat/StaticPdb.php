@@ -155,10 +155,10 @@ abstract class StaticPdb
         else if (is_array($name)) {
             $config = new PdbConfig($name);
         }
+        // @phpstan-ignore-next-line: assert doc types.
         else if ($name instanceof PdbConfig) {
             $config = $name;
         }
-        // @phpstan-ignore-next-line
         else {
             throw new InvalidArgumentException("Invalid config name");
         }
@@ -420,10 +420,12 @@ abstract class StaticPdb
      */
     public static function insertPrefixes($query, $compat = null): string
     {
+        // @phpstan-ignore-next-line: assert doc types.
         if (!is_string($query)) {
             $query = $compat;
         }
 
+        // @phpstan-ignore-next-line: assert doc types.
         if (!is_string($query)) {
             throw new InvalidArgumentException('Expected a string query');
         }

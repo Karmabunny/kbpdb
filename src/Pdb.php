@@ -2069,6 +2069,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
 
         // Build the formatters cache.
         foreach ($this->config->formatters as $class => $formatter) {
+            /** @var class-string $class */
 
             $cached = $this->_formatters[$class] ?? null;
 
@@ -2343,6 +2344,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             $config = PdbReturn::parse($config);
         }
 
+        // @phpstan-ignore-next-line: assert doc types.
         if (!($config instanceof PdbReturn)) {
             throw new InvalidArgumentException('Invalid return type: ' . get_class($config));
         }

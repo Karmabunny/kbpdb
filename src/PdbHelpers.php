@@ -279,6 +279,7 @@ class PdbHelpers
             if ($matches[3]) return 'float';
             if ($matches[4]) return $strict ? 'string' : 'datetime';
             if ($matches[5]) return $strict ? 'string' : 'array';
+            // @phpstan-ignore-next-line: what?
             if ($matches[6]) return 'bool';
         }
 

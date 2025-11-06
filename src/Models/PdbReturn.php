@@ -124,6 +124,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
             $config = [ 'type' => $config ];
         }
 
+        // @phpstan-ignore-next-line: assert doc types.
         if (is_array($config)) {
             if ($type = $config['type'] ?? null) {
                 $type = self::parseType($type);

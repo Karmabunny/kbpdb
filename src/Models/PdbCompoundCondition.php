@@ -60,6 +60,7 @@ class PdbCompoundCondition implements PdbConditionInterface
         }
 
         foreach ($this->conditions as $condition) {
+            // @phpstan-ignore-next-line: assert doc types.
             if (!$condition instanceof PdbConditionInterface) {
                 throw (new InvalidConditionException('Invalid condition'))
                     ->withCondition($this)
