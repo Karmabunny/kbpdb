@@ -103,13 +103,22 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /** @var array list [field, alias] */
     protected $_select = [];
 
-    /** @var array single [field, alias] */
+    /**
+     * single [field, alias]
+     * @var array{0:string|PdbQueryInterface,1:string|null}|array{}
+    */
     protected $_from = [];
 
-    /** @var array list [type, [table, alias], conditions, combine] */
+    /**
+     * list [ type, [table, alias], conditions, combine ]
+     * @var array{0:string,1:array,2:array,3:string}[]
+     */
     protected $_joins = [];
 
-    /** @var array list [type, conditions, combine] */
+    /**
+     * list [type, conditions, combine]
+     * @var array{0:string,1:array,2:string}[]
+     */
     protected $_having = [];
 
     /** @var array list [field, order] */
