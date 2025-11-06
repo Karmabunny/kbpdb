@@ -413,7 +413,6 @@ class PdbConfig extends Collection
                 // specifies 'socket=false' we're going respect that.
                 if (
                     $this->socket === false
-                    and $this->type === self::TYPE_MYSQL
                     and $this->host === 'localhost'
                 ) {
                     $parts[] = 'host=127.0.0.1';
