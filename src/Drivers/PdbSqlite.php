@@ -27,10 +27,6 @@ class PdbSqlite extends Pdb
     /** @inheritdoc */
     protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
     {
-        if (!($config instanceof PdbConfig)) {
-            $config = new PdbConfig($config);
-        }
-
         $hacks = $config->getHacks();
         $fns = $hacks[PdbConfig::HACK_SQLITE_FUNCTIONS] ?? [];
         $fns = array_intersect_key(static::$FUNCTIONS, $fns);
