@@ -2,6 +2,7 @@
 
 namespace kbtests;
 
+use karmabunny\kb\Uuid;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
@@ -139,6 +140,54 @@ abstract class BasePdbCase extends TestCase
         $table = $this->struct->tables['clubs'];
         $expected = $table->columns;
         $this->assertEquals($expected, $columns);
+    }
+
+
+    public function testQueryBuilder(): void
+    {
+        $id1 = $this->pdb->insert('clubs', [
+            'uid' => Uuid::uuid4(),
+            'date_added' => $this->pdb->now(),
+            'date_modified' => $this->pdb->now(),
+            'active' => 1,
+            'name' => 'Club 1',
+            'status' => 'active',
+            'founded' => $this->pdb->now(),
+            'type' => 'one',
+        ]);
+
+        $id2 = $this->pdb->insert('clubs', [
+            'uid' => Uuid::uuid4(),
+            'date_added' => $this->pdb->now(),
+            'date_modified' => $this->pdb->now(),
+            'active' => 1,
+            'name' => 'Club 2',
+            'status' => 'active',
+            'founded' => $this->pdb->now(),
+            'type' => 'two',
+        ]);
+
+        $expected1 = $this->pdb->get('clubs', $id1, false);
+        $this->assertNotNull($expected1);
+        $this->assertEquals('Club 1', $expected1['name']);
+
+        $expected2 = $this->pdb->get('clubs', $id2, false);
+        $this->assertNotNull($expected2);
+        $this->assertEquals('Club 2', $expected2['name']);
+
+        $subQuery = $this->pdb->find('clubs')
+            ->where(['type' => 'one']);
+
+        $query = $this->pdb->find('clubs as club')
+            ->with($subQuery->select('id as _id'), 'subQuery')
+            ->join('subQuery', 'subQuery._id = club.id');
+
+        $actual1 = $query->all();
+        $this->assertEquals([$expected1], $actual1);
+
+        $subQuery->where(['type' => 'two']);
+        $actual2 = $query->all();
+        $this->assertEquals([$expected2], $actual2);
     }
 
 

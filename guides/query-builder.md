@@ -55,9 +55,9 @@ This is the second-half of the `query()` method. executes a prepared statement a
 
 ## Shorthand helpers
 
-> `Pdb::get($table, $id): array`
+> `Pdb::get($table, $id, $throw = true): array`
 
-This fetches a table row by ID. If the row doesn't exit it throws a `RowMissingException`.
+This fetches a table row by ID. Given `$throw` it raises `RowMissingException` if the row is missing.
 
 
 > `Pdb::lookup($table, $conditions, $order, $name): array`
@@ -212,6 +212,16 @@ Set the offset of a query.
 Specify `offset(null)` to clear an existing offset.
 
 
+> `with($subQuery, $alias)`
+
+Prefix the query with `WITH alias AS (...)`.
+
+
+> `union($query)`
+
+Perform a union with this query.
+
+
 > `find($table, $conditions)`
 
 This is a shorthand that combines the filters `->from($table)->where($conditions)`.
@@ -234,6 +244,7 @@ Valid terminators:
 - `keyed(): object[]`
 - `iterator(): iterable<object>`
 - `batch($size): iterable<object[]>`
+- `each($size): iterable<object>`
 
 
 > `cache($key, $ttl)`
@@ -337,6 +348,11 @@ can build classes
 
 
 > `batch($size): iterable<array>`
+
+can build classes
+
+
+> `each($size): iterable<array>`
 
 can build classes
 

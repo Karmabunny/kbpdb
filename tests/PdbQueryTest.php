@@ -2,6 +2,7 @@
 
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
+use karmabunny\pdb\PdbQuery;
 use PHPUnit\Framework\TestCase;
 
 
@@ -21,6 +22,15 @@ class PdbQueryTest extends TestCase
 
         $this->pdb->query('DROP TABLE IF EXISTS ~mmm', [], 'null');
     }
+
+
+    public function testSerialize(): void
+    {
+        // Remove underscores from internal properties?
+        // Serialize/unserialise with nested queries, condition objects.
+        $this->markTestSkipped('TODO');
+    }
+
 
     public function testSelect(): void
     {
@@ -229,4 +239,59 @@ class PdbQueryTest extends TestCase
         $this->assertEquals($expected, $sql);
     }
 
+
+    public function testFromSubQuery(): void
+    {
+        $subQuery = $this->pdb->find('ahh')
+            ->where(['name' => 'test'])
+            ->select('id, name AS title');
+
+        $query = (new PdbQuery($this->pdb))
+            ->from($subQuery, 'ahh');
+
+        [$sql, $params] = $query->build();
+
+        $expected = 'SELECT "ahh".* FROM (SELECT "id", "name" AS "title" FROM "pdb_ahh" WHERE "name" = ?) AS "ahh"';
+        $this->assertEquals($expected, $sql);
+    }
+
+
+    public function testWithQuery(): void
+    {
+        $query2 = $this->pdb->find('ahh');
+
+        $query1 = $this->pdb->find('mmm')
+            ->alias('mmm')
+            ->innerJoin('sub', 'mmm.id = sub._id')
+            ->with($query2, 'sub');
+
+        // Modify after attaching.
+        $query2->select('id as _id')
+            ->where(['name' => 'test']);
+
+        [$sql, $params] = $query1->build();
+
+        $expected = 'WITH "sub" AS (SELECT "id" AS "_id" FROM "pdb_ahh" WHERE "name" = ?)' . "\n";
+        $expected .= 'SELECT "mmm".* FROM "pdb_mmm" AS "mmm" INNER JOIN "sub" ON "mmm"."id" = "sub"."_id"';
+        $this->assertEquals($expected, $sql);
+    }
+
+
+    public function testUnions(): void
+    {
+        $query1 = $this->pdb->find('mmm')
+            ->select('id, name');
+
+        $query2 = $this->pdb->find('ahh')
+            ->select('id, name');
+
+        $query = $query1->union($query2);
+
+        [$sql, $params] = $query->build();
+
+        $expected = 'SELECT "id", "name" FROM "pdb_mmm"';
+        $expected .= "\nUNION\n";
+        $expected .= 'SELECT "id", "name" FROM "pdb_ahh"';
+        $this->assertEquals($expected, $sql);
+    }
 }

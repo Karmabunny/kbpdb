@@ -204,7 +204,7 @@ class PdbHelpers
      * - `'column as alias'` (string, full syntax)
      * - `'column alias'` (string, shorthand)
      *
-     * @param string|string[] $field
+     * @param string|PdbQueryInterface|array $field
      * @return array [ field, alias ] second param is null if no alias is present.
      */
     public static function parseAlias($field): array
@@ -225,6 +225,10 @@ class PdbHelpers
 
             // Convert [ alias => column ] to [ column, alias ]
             return [ $value, $key ];
+        }
+
+        if ($field instanceof PdbQueryInterface) {
+            return [$field, null];
         }
 
         // Convert 'column as alias' to [ column, alias ]

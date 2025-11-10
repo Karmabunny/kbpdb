@@ -36,6 +36,8 @@ use ReturnTypeWillChange;
  * - `where($conditions, $combine)`
  * - `andWhere($conditions, $combine)`
  * - `orWhere($conditions, $combine)`
+ * - `with($subQuery, $alias)`
+ * - `union($subQuery)`
  * - `groupBy($field)`
  * - `orderBy(...$fields)`
  * - `limit($limit)`
@@ -120,6 +122,15 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @var array{0:string,1:array,2:string}[]
      */
     protected $_having = [];
+
+    /**
+     * list [query, alias]
+     * @var array{0:PdbQueryInterface,1:string}[]
+     */
+    protected $_with = [];
+
+    /** @var PdbQueryInterface[] */
+    protected $_union = [];
 
     /** @var array list [field, order] */
     protected $_order = [];
@@ -282,25 +293,23 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      * Set the FROM table and alias (optional).
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param string $alias
      * @return static
      * @throws InvalidArgumentException
      */
     public function from($table, ?string $alias = null)
     {
-        if ($alias) {
-            if (is_array($table)) {
-                $table = reset($table);
-            }
-
-            $table = [$table => $alias];
+        if (!$alias) {
+            [$table, $alias] = PdbHelpers::parseAlias($table);
         }
 
-        $table = PdbHelpers::parseAlias($table);
-        Pdb::validateAlias($table);
+        if (!$alias and $table instanceof PdbQueryInterface) {
+            throw new InvalidArgumentException('from() expects an alias when using a sub-query');
+        }
 
-        $this->_from = $table;
+        Pdb::validateAlias([$table, $alias]);
+        $this->_from = [$table, $alias];
         return $this;
     }
 
@@ -337,8 +346,18 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      */
     protected function _join(string $type, $table, $conditions, string $combine = 'AND')
     {
-        $table = PdbHelpers::parseAlias($table);
-        Pdb::validateAlias($table);
+        [$table, $alias] = PdbHelpers::parseAlias($table);
+
+        if ($table instanceof PdbQueryInterface) {
+            if (!$alias) {
+                throw new InvalidArgumentException('join() expects an alias when using a sub-query');
+            }
+
+            Pdb::validateIdentifier($table);
+        }
+        else {
+            Pdb::validateAlias([$table, $alias]);
+        }
 
         if (is_string($conditions)) {
             $conditions = [ new PdbRawCondition($conditions) ];
@@ -356,7 +375,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
             unset($item);
         }
 
-        $this->_joins[] = [$type, $table, $conditions, $combine];
+        $this->_joins[] = [$type, [$table, $alias], $conditions, $combine];
         return $this;
     }
 
@@ -460,6 +479,34 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         if (!empty($conditions)) {
             $this->_having[] = ['HAVING', $conditions, $combine];
         }
+        return $this;
+    }
+
+
+    /**
+     * Add a sub-query to the WITH clause.
+     *
+     * @param PdbQueryInterface $query
+     * @param string $alias
+     * @return static
+     */
+    public function with(PdbQueryInterface $query, string $alias)
+    {
+        Pdb::validateIdentifier($alias);
+        $this->_with[] = [ $query, $alias ];
+        return $this;
+    }
+
+
+    /**
+     * Add a sub-query to the UNION clause.
+     *
+     * @param PdbQueryInterface $query
+     * @return static
+     */
+    public function union(PdbQueryInterface $query)
+    {
+        $this->_union[] = $query;
         return $this;
     }
 
@@ -577,7 +624,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param array $conditions
      * @return static
      */
@@ -753,6 +800,15 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         $sql = '';
         $params = [];
 
+        if ($this->_with) {
+            foreach ($this->_with as [$query, $alias]) {
+                [$subSql, $subParams] = $query->build($validate);
+                $alias = $this->pdb->quoteField($alias);
+                $sql .= "WITH {$alias} AS ({$subSql})\n";
+                $params = array_merge($params, $subParams);
+            }
+        }
+
         // Build 'select'.
         if ($this->_select) {
             $fields = [];
@@ -790,7 +846,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
                 $alias = $this->pdb->quoteField($alias);
                 $sql .= "SELECT {$alias}.* ";
             }
-            else if ($from) {
+            else if (is_string($from)) {
                 $sql .= "SELECT ~{$from}.* ";
             }
             else {
@@ -802,11 +858,29 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         if ($this->_from) {
             [$from, $alias] = $this->_from + [null, null];
 
-            $sql .= "FROM ~{$from} ";
-            if ($alias) {
+            if ($from instanceof PdbQueryInterface) {
+                // This is also performed in the from() method.
+                if ($validate and empty($alias)) {
+                    throw new InvalidArgumentException('from() expects an alias when using a sub-query');
+                }
+
+                [$subSql, $subParams] = $from->build($validate);
+                $alias = $alias ?: ('subQuery' . sha1($subSql));
+
+                $sql .= "FROM ({$subSql}) ";
                 $sql .= 'AS ';
                 $sql .= $this->pdb->quoteField($alias);
                 $sql .= ' ';
+
+                $params = array_merge($params, $subParams);
+            }
+            else {
+                $sql .= "FROM ~{$from} ";
+                if ($alias) {
+                    $sql .= 'AS ';
+                    $sql .= $this->pdb->quoteField($alias);
+                    $sql .= ' ';
+                }
             }
         }
 
@@ -814,11 +888,35 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
         foreach ($this->_joins as [$type, $table, $conditions, $combine]) {
             [$table, $alias] = $table + [null, null];
 
-            $sql .= "{$type} JOIN ~{$table} ";
-            if ($alias) {
+            if ($table instanceof PdbQueryInterface) {
+                // This is also performed in the join() method.
+                if ($validate and empty($alias)) {
+                    throw new InvalidArgumentException('from() expects an alias when using a sub-query');
+                }
+
+                [$subSql, $subParams] = $table->build($validate);
+                $alias = $alias ?: ('subQuery' . sha1($subSql));
+
+                $sql .= "{$type} JOIN ({$subSql}) ";
                 $sql .= 'AS ';
                 $sql .= $this->pdb->quoteField($alias);
                 $sql .= ' ';
+            }
+            else {
+                // This is actually an alias.
+                if ($this->_with and in_array($table, array_column($this->_with, 1, 1))) {
+                    $table = $this->pdb->quoteField($table);
+                    $sql .= "{$type} JOIN {$table} ";
+                }
+                else {
+                    $sql .= "{$type} JOIN ~{$table} ";
+                }
+
+                if ($alias) {
+                    $sql .= 'AS ';
+                    $sql .= $this->pdb->quoteField($alias);
+                    $sql .= ' ';
+                }
             }
 
             $sql .= 'ON ';
@@ -899,6 +997,13 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
             $sql .= 'OFFSET ? ';
         }
 
+        // Unions
+        foreach ($this->_union as $query) {
+            [$subSql, $subParams] = $query->build($validate);
+            $sql = rtrim($sql) . "\nUNION\n{$subSql}";
+            $params = array_merge($params, $subParams);
+        }
+
         return [trim($sql), $params];
     }
 
@@ -922,22 +1027,32 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
     /**
      *
-     * @return string[] [ alias => table ]
+     * @return (string|PdbQueryInterface)[] [ alias => table ]
      */
     public function getIdentifiers(): array
     {
         $ids = [];
 
         [$table, $alias] = $this->_from;
-        $table = $this->pdb->getPrefix($table) . $table;
-        $alias = $alias ?: $table;
-        $ids[$alias] = $table;
+
+        if (is_string($table)) {
+            $table = $this->pdb->getPrefix($table) . $table;
+            $alias = $alias ?: $table;
+        }
+
+        if ($alias) {
+            $ids[$alias] = $table;
+        }
 
         foreach ($this->_joins as $join) {
             [$table, $alias] = $join[1];
             $table = $this->pdb->getPrefix($table) . $table;
             $alias = $alias ?: $table;
             $ids[$alias] = $table;
+        }
+
+        foreach ($this->_with as [$query, $alias]) {
+            $ids[$alias] = $query;
         }
 
         return $ids;

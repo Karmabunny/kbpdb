@@ -1088,7 +1088,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
     /**
      * Shorthand for creating a new PdbQuery.
      *
-     * @param string|string[] $table
+     * @param string|string[]|PdbQueryInterface $table
      * @param array $conditions
      * @return PdbQuery
      */
@@ -1998,7 +1998,7 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
      *
      * An 'alias' in pdb is represented as an array pair: field, alias.
      *
-     * @param string|string[] $field
+     * @param string|array{0:mixed,1?:string} $field
      * @param bool $loose Permit integers/functions, e.g. SELECT 1, COUNT(*), etc
      * @return void
      * @throws InvalidArgumentException
@@ -2012,7 +2012,9 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable
             [$field, $alias] = $field + [null, null];
         }
 
-        Pdb::validateIdentifierExtended($field, $loose);
+        if (is_scalar($field)) {
+            Pdb::validateIdentifierExtended($field, $loose);
+        }
 
         if ($alias) {
             Pdb::validateIdentifier($alias);
