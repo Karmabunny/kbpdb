@@ -300,7 +300,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      */
     public function from($table, ?string $alias = null)
     {
-        if (!$alias and is_array($table)) {
+        if (!$alias) {
             [$table, $alias] = PdbHelpers::parseAlias($table);
         }
 
