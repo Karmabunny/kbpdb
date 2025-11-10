@@ -23,6 +23,15 @@ class PdbQueryTest extends TestCase
         $this->pdb->query('DROP TABLE IF EXISTS ~mmm', [], 'null');
     }
 
+
+    public function testSerialize(): void
+    {
+        // Remove underscores from internal properties?
+        // Serialize/unserialise with nested queries, condition objects.
+        $this->markTestSkipped('TODO');
+    }
+
+
     public function testSelect(): void
     {
         $query = $this->pdb->find('mmm')
