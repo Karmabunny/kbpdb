@@ -379,7 +379,7 @@ class PdbPgsql extends Pdb
 
                 // Preventing infinite loops with a timeout.
                 if (microtime(true) - $start >= $timeout) {
-                    return false;
+                    break;
                 }
 
                 usleep($tick);
