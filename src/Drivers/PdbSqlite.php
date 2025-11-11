@@ -41,7 +41,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function getPermissions()
+    public function getPermissions(): array
     {
         // SQLite doesn't have users/permissions - anything goes.
         return PdbHelpers::TYPES;
@@ -49,7 +49,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function getTableNames(string $filter = '*', bool $strip = true)
+    public function getTableNames(string $filter = '*', bool $strip = true): array
     {
         $q = "SELECT name
             FROM sqlite_master
@@ -86,7 +86,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function tableExists(string $table)
+    public function tableExists(string $table): bool
     {
         self::validateIdentifier($table);
 
@@ -102,7 +102,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function fieldList(string $table)
+    public function fieldList(string $table): array
     {
         $q = "SELECT
                 \"name\",
@@ -151,7 +151,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function indexList(string $table)
+    public function indexList(string $table): array
     {
         $table = $this->config->prefix . $table;
 
@@ -178,7 +178,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function getForeignKeys(string $table)
+    public function getForeignKeys(string $table): array
     {
         $prefix_table = $this->config->prefix . $table;
 
@@ -204,14 +204,14 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function getDependentKeys(string $table)
+    public function getDependentKeys(string $table): array
     {
         throw new Exception('Not implemented: ' . __METHOD__);
     }
 
 
     /** @inheritdoc */
-    public function getTableAttributes(string $table)
+    public function getTableAttributes(string $table): array
     {
         // for autoinc - https://stackoverflow.com/a/33285873/7694753
         return [];
@@ -219,7 +219,7 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    public function extractEnumArr(string $table, string $column)
+    public function extractEnumArr(string $table, string $column): array
     {
         // https://stackoverflow.com/a/17203007/7694753
         $table = $this->config->prefix . $table;
@@ -245,4 +245,17 @@ class PdbSqlite extends Pdb
         return array_combine($arr, $arr);
     }
 
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        throw new Exception('Not implemented: ' . __METHOD__);
+    }
 }

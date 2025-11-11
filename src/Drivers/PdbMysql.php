@@ -2,7 +2,6 @@
 
 namespace karmabunny\pdb\Drivers;
 
-use InvalidArgumentException;
 use karmabunny\kb\Time;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Models\PdbColumn;
@@ -70,7 +69,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function getPermissions()
+    public function getPermissions(): array
     {
         $q = "SHOW GRANTS FOR CURRENT_USER()";
         $res = $this->query($q, [], 'col');
@@ -100,7 +99,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function getTableNames(string $filter = '*', bool $strip = true)
+    public function getTableNames(string $filter = '*', bool $strip = true): array
     {
         $q = "SELECT TABLE_NAME
             FROM INFORMATION_SCHEMA.TABLES
@@ -139,7 +138,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function tableExists(string $table)
+    public function tableExists(string $table): bool
     {
         $q = "SELECT 1
             FROM INFORMATION_SCHEMA.TABLES
@@ -158,7 +157,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function fieldList(string $table)
+    public function fieldList(string $table): array
     {
         $q = "SELECT
                 COLUMN_NAME,
@@ -228,7 +227,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function indexList(string $table)
+    public function indexList(string $table): array
     {
         $q = "SELECT
                 INDEX_NAME,
@@ -265,7 +264,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function getForeignKeys(string $table)
+    public function getForeignKeys(string $table): array
     {
         $q = "SELECT
                 K.CONSTRAINT_NAME,
@@ -314,7 +313,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function getDependentKeys(string $table)
+    public function getDependentKeys(string $table): array
     {
         $q = "SELECT
                 K.CONSTRAINT_NAME,
@@ -365,7 +364,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function getTableAttributes(string $table)
+    public function getTableAttributes(string $table): array
     {
         $q = "SELECT
                 T.CREATE_TIME,
@@ -393,7 +392,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    public function extractEnumArr(string $table, string $column)
+    public function extractEnumArr(string $table, string $column): array
     {
         Pdb::validateIdentifier($table);
         Pdb::validateIdentifier($column);
@@ -403,6 +402,24 @@ class PdbMysql extends Pdb
 
         $arr = PdbHelpers::convertEnumArr($res['Type']);
         return array_combine($arr, $arr);
+    }
+
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        $key = substr($this->config->database . sha1($name), 0, 63);
+        $ok = $this->query("SELECT GET_LOCK(?, ?)", [$key, $timeout], 'val?');
+        return (bool) $ok;
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        $key = substr($this->config->database . sha1($name), 0, 63);
+        $ok = $this->query("SELECT RELEASE_LOCK(?)", [$key], 'val?');
+        return (bool) $ok;
     }
 
 }

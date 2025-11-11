@@ -38,7 +38,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function getPermissions()
+    public function getPermissions(): array
     {
         // TODO Postgres has a slightly different concept about permissions.
         // The grants are multi-level. Where the database has 'create/drop'
@@ -52,7 +52,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function getTableNames(string $filter = '*', bool $strip = true)
+    public function getTableNames(string $filter = '*', bool $strip = true): array
     {
         $q = "SELECT TABLE_NAME
             FROM INFORMATION_SCHEMA.TABLES
@@ -90,7 +90,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function tableExists(string $table)
+    public function tableExists(string $table): bool
     {
         $q = "SELECT 1
             FROM INFORMATION_SCHEMA.TABLES
@@ -109,7 +109,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function fieldList(string $table)
+    public function fieldList(string $table): array
     {
         // TODO primary keys?
 
@@ -196,7 +196,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function indexList(string $table)
+    public function indexList(string $table): array
     {
         $q = "SELECT
                 indexname,
@@ -236,7 +236,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function getForeignKeys(string $table)
+    public function getForeignKeys(string $table): array
     {
         $q = "SELECT
                 k1.constraint_name,
@@ -288,7 +288,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function getDependentKeys(string $table)
+    public function getDependentKeys(string $table): array
     {
         $q = "SELECT
                 k1.constraint_name,
@@ -341,19 +341,61 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    public function getTableAttributes(string $table)
+    public function getTableAttributes(string $table): array
     {
         return [];
     }
 
 
     /** @inheritdoc */
-    public function extractEnumArr(string $table, string $column)
+    public function extractEnumArr(string $table, string $column): array
     {
         // TODO
         // To use CREATE TYPE ENUM ?
         // Or CHECK ("column" IN (...))
         return [];
+    }
+
+
+    /** @inheritdoc */
+    public function createLock(string $name, float $timeout = 0): bool
+    {
+        [, $key] = unpack('q', sha1($name, true));
+
+        if ($timeout <= 0) {
+            $ok = (bool) $this->query("SELECT pg_try_advisory_lock(?)", [$key], 'val?');
+            return $ok;
+        }
+        else {
+            $start = microtime(true);
+            $tick = 50 * 1000;
+
+            for (;;) {
+                $ok = (bool) $this->query("SELECT pg_try_advisory_lock(?)", [$key], 'val?');
+
+                if ($ok) {
+                    return true;
+                }
+
+                // Preventing infinite loops with a timeout.
+                if (microtime(true) - $start >= $timeout) {
+                    break;
+                }
+
+                usleep($tick);
+            }
+
+            return false;
+        }
+    }
+
+
+    /** @inheritdoc */
+    public function deleteLock(string $name): bool
+    {
+        [, $key] = unpack('q', sha1($name, true));
+        $ok = $this->query("SELECT pg_advisory_unlock(?)", [$key], 'val?');
+        return (bool) $ok;
     }
 
 }

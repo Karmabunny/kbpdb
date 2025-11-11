@@ -11,6 +11,7 @@ use karmabunny\pdb\Exceptions\TransactionNameException;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbLog;
+use karmabunny\pdb\PdbMutex;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use PHPUnit\Framework\TestCase;
@@ -559,4 +560,52 @@ abstract class BasePdbCase extends TestCase
             'NOT active' => [false],
         ];
     }
+
+
+    protected function createMutex(string $name)
+    {
+        return new PdbMutex($this->pdb, $name);
+    }
+
+
+    public function testMutexLock()
+    {
+        if (
+            !$this->pdb instanceof PdbPgsql
+            and !$this->pdb instanceof PdbMysql
+        ) {
+            $this->markTestSkipped('Skipping mutex tests, not supported.');
+        }
+
+        $time = microtime(true);
+        $lock1 = $this->createMutex('test:1');
+        $this->assertTrue($lock1->acquire(0));
+
+        // No existing lock - no waiting, got a lock.
+        $this->assertLessThan(0.01, microtime(true) - $time);
+
+        // New lock, no collision, no wait.
+        $lock2 = $this->createMutex('test:2');
+        $this->assertTrue($lock2->acquire(0));
+
+        // Existing lock, collision, immediate failure.
+        $time = microtime(true);
+        $lock3 = $this->createMutex('test:1');
+        $this->assertFalse($lock3->acquire(0));
+        $this->assertLessThan(0.01, microtime(true) - $time);
+
+        // Existing lock, collision, failure after timeout.
+        $time = microtime(true);
+        $lock3 = $this->createMutex('test:1');
+        $this->assertFalse($lock3->acquire(0.5));
+        $this->assertGreaterThan(0.5, microtime(true) - $time);
+
+        $this->assertTrue($lock1->release());
+
+        // Try again - with success.
+        $lock3 = $this->createMutex('test:1');
+        $this->assertTrue($lock3->acquire(0));
+        $this->assertEquals($lock1->name, $lock3->name);
+    }
+
 }
