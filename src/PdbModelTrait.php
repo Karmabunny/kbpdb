@@ -266,7 +266,7 @@ trait PdbModelTrait
     protected function _beforeSave()
     {
         // Only populate defaults for new models.
-        if (!$this->id) {
+        if (empty($this->id)) {
             $this->populateDefaults();
         }
     }
