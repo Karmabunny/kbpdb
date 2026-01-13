@@ -142,7 +142,7 @@ trait PdbModelTrait
                 if ($value instanceof PdbSetDefaults) {
                     $type = $property->getType();
                     if ($type instanceof ReflectionNamedType && $type->getName() === 'array') {
-                        $property->setValue($this, $value->asArray());
+                        $property->setValue($this, $value->toArray());
                         continue;
                     }
                     $value = (string) $value;

@@ -1,10 +1,13 @@
 <?php
 namespace karmabunny\pdb;
 
+use karmabunny\interfaces\ArrayableInterface;
+
+
 /**
  * Represents the plural default values of a SET column
  */
-class PdbSetDefaults
+class PdbSetDefaults implements ArrayableInterface
 {
     protected string $originalValues;
 
@@ -18,9 +21,9 @@ class PdbSetDefaults
     }
 
     /**
-     * @return []string
+     * @return string[]
      */
-    function asArray(): array
+    function toArray(): array
     {
         return $this->defaults;
     }
