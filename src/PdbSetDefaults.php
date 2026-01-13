@@ -27,6 +27,6 @@ class PdbSetDefaults
 
     function __toString(): string
     {
-        return $this->defaults;
+        return $this->originalValues;
     }
 }
