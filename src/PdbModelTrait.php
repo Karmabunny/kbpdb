@@ -102,8 +102,11 @@ trait PdbModelTrait
             if ($column->default === null) continue;
 
             $default = $column->default;
-            if (strtolower(substr($column->type, 0, 4)) === 'set(') {
+            $type = strtolower($column->type);
+            if (substr($type, 0, 4) === 'set(') {
                 $default = new PdbSetDefaults($default);
+            } elseif (substr($type, 0, 4) === 'json' || $type === 'longtext') {
+                $default = new PdbJsonDefault($default);
             }
 
             $defaults[$column->name] = $default;
@@ -139,7 +142,7 @@ trait PdbModelTrait
             // Here we set these immediately.
             // @phpstan-ignore-next-line : phpstan runs on 7.1.
             if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
-                if ($value instanceof PdbSetDefaults) {
+                if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {
                     $type = $property->getType();
                     if ($type instanceof ReflectionNamedType && $type->getName() === 'array') {
                         $property->setValue($this, $value->toArray());
