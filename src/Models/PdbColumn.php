@@ -84,6 +84,22 @@ class PdbColumn extends Collection implements PdbStructWriterInterface
 
 
     /**
+     * Check if the column has a default value.
+     *
+     * A nullable column is considered to have a default value.
+     *
+     * @return bool
+     */
+    public function hasDefault(): bool
+    {
+        return (
+            $this->default !== null
+            or $this->is_nullable
+        );
+    }
+
+
+    /**
      * Get the column type, normalised.
      *
      * @return string

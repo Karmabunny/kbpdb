@@ -99,7 +99,7 @@ trait PdbModelTrait
 
         foreach ($columns as $column) {
             if (!property_exists(static::class, $column->name)) continue;
-            if ($column->default === null) continue;
+            if (!$column->hasDefault()) continue;
 
             $default = $column->default;
             $type = strtolower($column->type);
