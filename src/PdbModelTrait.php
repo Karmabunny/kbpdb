@@ -98,7 +98,7 @@ trait PdbModelTrait
 
         foreach ($columns as $column) {
             if (!property_exists(static::class, $column->name)) continue;
-            if ($column->default === null) continue;
+            if (!$column->hasDefault()) continue;
 
             $defaults[$column->name] = $column->default;
         }
