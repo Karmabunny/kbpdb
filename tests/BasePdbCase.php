@@ -6,6 +6,7 @@ use karmabunny\kb\Uuid;
 use karmabunny\pdb\Drivers\PdbMysql;
 use karmabunny\pdb\Drivers\PdbPgsql;
 use karmabunny\pdb\Drivers\PdbSqlite;
+use karmabunny\pdb\Exceptions\ConstraintQueryException;
 use karmabunny\pdb\Exceptions\TransactionEmptyException;
 use karmabunny\pdb\Exceptions\TransactionNameException;
 use karmabunny\pdb\Pdb;
@@ -606,6 +607,46 @@ abstract class BasePdbCase extends TestCase
         $lock3 = $this->createMutex('test:1');
         $this->assertTrue($lock3->acquire(0));
         $this->assertEquals($lock1->name, $lock3->name);
+    }
+
+
+    public function testConstraintParser()
+    {
+        if ($this->pdb instanceof PdbSqlite) {
+            $this->markTestSkipped('Skipping constraint parser test, not supported.');
+        }
+
+        $this->pdb->delete('clubs', ['name' => 'Duplicate Club']);
+
+        $this->pdb->insert('clubs', [
+            'date_added' => $this->pdb->now(),
+            'date_modified' => $this->pdb->now(),
+            'uid' => Uuid::uuid4(),
+            'active' => 1,
+            'name' => 'Duplicate Club',
+            'status' => 'new',
+            'founded' => $this->pdb->now(),
+        ]);
+
+        try {
+            $this->pdb->insert('clubs', [
+                'date_added' => $this->pdb->now(),
+                'date_modified' => $this->pdb->now(),
+                'uid' => Uuid::uuid4(),
+                'active' => 1,
+                'name' => 'Duplicate Club',
+                'status' => 'new',
+                'founded' => $this->pdb->now(),
+            ]);
+        }
+        catch (ConstraintQueryException $error) {
+            $this->assertEquals('Duplicate Club', $error->getKeyValue());
+            $this->assertEquals('name', $error->getKeyName());
+        }
+
+        if (!isset($error)) {
+            $this->fail('Expected ConstraintQueryException');
+        }
     }
 
 }
