@@ -103,10 +103,12 @@ trait PdbModelTrait
 
             $default = $column->default;
             $type = strtolower($column->type);
-            if (substr($type, 0, 4) === 'set(') {
-                $default = new PdbSetDefaults($default);
-            } elseif (substr($type, 0, 4) === 'json' || $type === 'longtext') {
-                $default = new PdbJsonDefault($default);
+            if ($default !== null) {
+                if (substr($type, 0, 4) === 'set(') {
+                    $default = new PdbSetDefaults($default);
+                } elseif (substr($type, 0, 4) === 'json' || $type === 'longtext') {
+                    $default = new PdbJsonDefault($default);
+                }
             }
 
             $defaults[$column->name] = $default;
