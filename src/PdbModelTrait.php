@@ -12,6 +12,7 @@ use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
+use ReflectionType;
 use karmabunny\kb\Reflect;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
@@ -142,13 +143,17 @@ trait PdbModelTrait
             // Here we set these immediately.
             // @phpstan-ignore-next-line : phpstan runs on 7.1.
             if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
+                $type = $property->getType();
                 if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {
-                    $type = $property->getType();
                     if ($type instanceof ReflectionNamedType && $type->getName() === 'array') {
                         $property->setValue($this, $value->toArray());
                         continue;
                     }
                     $value = (string) $value;
+                }
+
+                if ($value === null && $type instanceof ReflectionType && !$type->allowsNull()) {
+                    continue;
                 }
 
                 $property->setValue($this, $value);
