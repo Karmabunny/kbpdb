@@ -287,7 +287,7 @@ trait PdbModelTrait
         $pdb = static::getConnection();
         $table = static::getTableName();
 
-        if ($this->id > 0) {
+        if (!empty($this->id)) {
             $pdb->update($table, $data, [ 'id' => $this->id ]);
         }
         else {
