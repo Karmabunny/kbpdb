@@ -178,6 +178,8 @@ class PdbMysql extends Pdb
         ];
 
         $res = $this->query($q, $params, 'pdo');
+
+        /** @var array<string, PdbColumn> $rows */
         $rows = [];
 
         while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
@@ -222,6 +224,23 @@ class PdbMysql extends Pdb
         }
 
         $res->closeCursor();
+
+        $q = "SELECT CONSTRAINT_NAME, CHECK_CLAUSE
+            FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+            WHERE CONSTRAINT_SCHEMA = ?
+                AND TABLE_NAME = ?";
+        $res = $this->query($q, $params, 'pdo');
+
+        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
+            $col = $row['CONSTRAINT_NAME'];
+            if (!isset($rows[$col]) || !preg_match('/^json_valid\(/i', $row['CHECK_CLAUSE'])) {
+                continue;
+            }
+            $rows[$col]->type = 'json';
+        }
+
+        $res->closeCursor();
+
         return $rows;
     }
 
