@@ -2,6 +2,7 @@
 
 namespace kbtests\Models;
 
+use DateTimeImmutable;
 use karmabunny\kb\Uuid;
 
 /**
@@ -9,8 +10,8 @@ use karmabunny\kb\Uuid;
  */
 class TypedModel extends Record
 {
-    public string $date_added;
-    public string $date_modified;
+    public DateTimeImmutable $date_added;
+    public DateTimeImmutable $date_modified;
     public string $uid;
 
     public string $name;
