@@ -521,6 +521,11 @@ trait PdbModelTrait
                 $value = [$value];
             }
 
+            // Anything else.
+            if ($value === null or !is_array($value)) {
+                $value = $type->allowsNull() ? null : [];
+            }
+
             return;
         }
 
