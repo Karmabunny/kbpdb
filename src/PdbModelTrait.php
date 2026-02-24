@@ -7,6 +7,7 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
+use karmabunny\kb\ConfigurableInit;
 use karmabunny\kb\Configure;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
@@ -230,6 +231,27 @@ trait PdbModelTrait
         }
 
         return $model;
+    }
+
+
+    /**
+     * Populate a model with a DB row.
+     *
+     * Extend this to implement custom logic, e.g. dirty property behaviour.
+     *
+     * By default this uses {@see Configure::update()}
+     *
+     * @param static $instance
+     * @param array $config
+     * @return void
+     */
+    public static function populate($instance, array $config)
+    {
+        Configure::update($instance, $config);
+
+        if ($instance instanceof ConfigurableInit) {
+            $instance->init();
+        }
     }
 
 

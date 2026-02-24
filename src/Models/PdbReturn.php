@@ -12,6 +12,7 @@ use karmabunny\kb\ConfigurableInit;
 use karmabunny\kb\DataObject;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbModelInterface;
 use karmabunny\pdb\PdbReturnInterface;
 use PDO;
 use PDOStatement;
@@ -339,8 +340,15 @@ class PdbReturn extends DataObject implements PdbReturnInterface
     public function buildClass($result)
     {
         if ($class = $this->class) {
-            if (is_subclass_of($class, Configurable::class)) {
-                $create = function($item) use ($class) {
+            if (is_subclass_of($class, PdbModelInterface::class)) {
+                $create = function(array $item) use ($class) {
+                    $object = new $class();
+                    $class::populate($object, $item);
+                    return $object;
+                };
+            }
+            else if (is_subclass_of($class, Configurable::class)) {
+                $create = function(array $item) use ($class) {
                     $object = new $class();
                     $object->update($item);
 
@@ -352,7 +360,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
                 };
             }
             else {
-                $create = function($item) use ($class) {
+                $create = function(array $item) use ($class) {
                     $object = new $class();
                     foreach ($item as $key => $value) {
                         $object->$key = $value;
