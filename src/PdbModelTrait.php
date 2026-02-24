@@ -298,6 +298,11 @@ trait PdbModelTrait
                 $value = (int) $value;
                 continue;
             }
+
+            if ($value instanceof DateTimeInterface) {
+                $value = $value->format(Pdb::FORMAT_DATE_TIME);
+                continue;
+            }
         }
 
         unset($value);
