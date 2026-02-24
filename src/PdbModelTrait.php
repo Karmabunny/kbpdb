@@ -277,8 +277,33 @@ trait PdbModelTrait
      */
     public function getSaveData(): array
     {
-        $data = Reflect::getProperties($this);
+        $data = Reflect::getProperties($this, null);
+
+        foreach ($data as $key => &$value) {
+
+            // Convert arrays to SET or JSON strings.
+            if (is_array($value)) {
+                if (static::getFieldType($key) === 'set') {
+                    $value = implode(',', $value);
+                }
+                else {
+                    $value = json_encode($value);
+                }
+
+                continue;
+            }
+
+            // Ensure booleans are integers.
+            if (is_bool($value)) {
+                $value = (int) $value;
+                continue;
+            }
+        }
+
+        unset($value);
+
         unset($data['id']);
+
         return $data;
     }
 
