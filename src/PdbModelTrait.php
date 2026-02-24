@@ -560,11 +560,17 @@ trait PdbModelTrait
         // Converting datetimes from strings or numeric types.
         // Numeric assumes a timestamp from the Unix epoch.
         // String is anything date-ish looking.
+        $type_name = $type->getName();
         if (
             !$value instanceof DateTimeInterface
-            and is_subclass_of($type->getName(), DateTimeInterface::class)
+            and (
+                $type_name === DateTimeInterface::class
+                or is_subclass_of($type_name, DateTimeInterface::class)
+            )
         ) {
-            $class = $type->getName();
+            $class = ($type_name === DateTimeInterface::class)
+                ? \DateTimeImmutable::class
+                : $type_name;
             $tz = static::getConnection()->getTimezone();
 
             if ($is_empty) {
