@@ -443,21 +443,21 @@ trait PdbModelTrait
     protected static function getFieldType(string $field_name)
     {
         $fields = static::getFieldList();
-        $field_defn = $fields[$field_name]['type'] ?? null;
+        $field_defn = $fields[$field_name] ?? null;
 
         if ($field_defn === null) {
             return null;
         }
 
-        if (stripos($field_defn, 'set(') === 0) {
+        if (stripos($field_defn->type, 'set(') === 0) {
             return 'set';
         }
 
-        if (stripos($field_defn, 'enum(') === 0) {
+        if (stripos($field_defn->type, 'enum(') === 0) {
             return 'enum';
         }
 
-        return strtolower($field_defn);
+        return strtolower($field_defn->type);
     }
 
 
