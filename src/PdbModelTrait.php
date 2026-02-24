@@ -287,7 +287,7 @@ trait PdbModelTrait
                     $value = implode(',', $value);
                 }
                 else {
-                    $value = json_encode($value);
+                    $value = Json::encode($value);
                 }
 
                 continue;
