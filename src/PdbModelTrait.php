@@ -6,9 +6,11 @@
 
 namespace karmabunny\pdb;
 
+use DateTimeInterface;
 use InvalidArgumentException;
 use karmabunny\kb\ConfigurableInit;
 use karmabunny\kb\Configure;
+use karmabunny\kb\Json;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
 use ReflectionException;
@@ -17,6 +19,8 @@ use ReflectionType;
 use karmabunny\kb\Reflect;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
+use karmabunny\pdb\Models\PdbColumn;
+use ReflectionProperty;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -239,16 +243,22 @@ trait PdbModelTrait
      *
      * Extend this to implement custom logic, e.g. dirty property behaviour.
      *
-     * By default this uses {@see Configure::update()}
-     *
      * @param static $instance
      * @param array $config
      * @return void
      */
     public static function populate($instance, array $config)
     {
-        Configure::update($instance, $config);
+        foreach ($config as $key => $value) {
+            if (!property_exists($instance, $key)) {
+                continue;
+            }
 
+            static::typeCastValue($key, $value);
+            $instance->$key = $value;
+        }
+
+        // Preserve init() behaviour.
         if ($instance instanceof ConfigurableInit) {
             $instance->init();
         }
@@ -373,4 +383,178 @@ trait PdbModelTrait
         return (bool) $pdb->delete($table, ['id' => $this->id]);
     }
 
+
+    /**
+     * Get the field definitions for the table that holds this record
+     *
+     * @return array<string,PdbColumn>
+     */
+    protected static function getFieldList(): array
+    {
+        static $fieldList = [];
+
+        $table = static::getTableName();
+
+        if (!isset($fieldList[$table])) {
+            $pdb = static::getConnection();
+            $fieldList[$table] = $pdb->fieldList($table);
+        }
+
+        return $fieldList[$table];
+    }
+
+
+    /**
+     * Test for a field type.
+     *
+     * @param string $field_name
+     * @return string|null
+     */
+    protected static function getFieldType(string $field_name)
+    {
+        $fields = static::getFieldList();
+        $field_defn = $fields[$field_name]['type'] ?? null;
+
+        if ($field_defn === null) {
+            return null;
+        }
+
+        if (stripos($field_defn, 'set(') === 0) {
+            return 'set';
+        }
+
+        if (stripos($field_defn, 'enum(') === 0) {
+            return 'enum';
+        }
+
+        return strtolower($field_defn);
+    }
+
+
+    /**
+     * Convert a property value to it's appropriate type.
+     *
+     * Supported types:
+     * - array: from JSON-encoded string
+     * - array: from comma-separated SET
+     * - bool: from '0' or '1'
+     * - int: from numeric string
+     * - float: from numeric string
+     * - datetime: from string
+     * - string: from anything else
+     *
+     * @param string $property
+     * @param mixed $value
+     * @return void
+     */
+    protected static function typeCastValue(string $property, &$value): void
+    {
+        // We'll drop old PHP very soon. Promise.
+        if (PHP_VERSION_ID < 74000) {
+            return;
+        }
+
+        // @phpstan-ignore-next-line : already guarded.
+        $type = (new ReflectionProperty(static::class, $property))->getType();
+
+        // Can't do anything with this.
+        if (!$type instanceof ReflectionNamedType) {
+            return;
+        }
+
+        // Strict empty, not PHP empty.
+        $is_empty = ($value === '' or $value === null);
+
+        if ($type->allowsNull() and $is_empty) {
+            $value = null;
+            return;
+        }
+
+        if (!is_array($value) and $type->getName() === 'array') {
+            if ($is_empty or !is_string($value)) {
+                $value = [];
+                return;
+            }
+
+            if (static::getFieldType($property) === 'set') {
+                $value = explode(',', $value);
+                return;
+            }
+
+            // N.B. data source (e.g. MySQL JSON column) should always provide
+            // valid JSON, so Json::decode should never throw an exception,
+            // outside of memory/depth constraints
+            $value = Json::decode($value);
+
+            // Gracefully handle change from single value to multi-value column
+            if (is_scalar($value)) {
+                $value = [$value];
+            }
+
+            return;
+        }
+
+        // Converting booleans from scalar types.
+        if (!is_bool($value) and $type->getName() === 'bool') {
+            if ($is_empty or !is_scalar($value)) {
+                $value = false;
+                return;
+            }
+
+            $value = filter_var($value, FILTER_VALIDATE_BOOLEAN);
+            return;
+        }
+
+        // Converting integers from numeric types.
+        if (!is_int($value) and $type->getName() === 'int') {
+            if ($is_empty or !is_numeric($value)) {
+                $value = 0;
+                return;
+            }
+
+            $value = (int) $value;
+            return;
+        }
+
+        // Converting floats from numeric types.
+        if (!is_float($value) and $type->getName() === 'float') {
+            if ($is_empty or !is_numeric($value)) {
+                $value = 0.0;
+                return;
+            }
+
+            $value = (float) $value;
+            return;
+        }
+
+        // Converting datetimes from strings or numeric types.
+        // Numeric assumes a timestamp from the Unix epoch.
+        // String is anything date-ish looking.
+        if (
+            !$value instanceof DateTimeInterface
+            and is_subclass_of($type->getName(), DateTimeInterface::class)
+        ) {
+            $class = $type->getName();
+            $tz = static::getConnection()->getTimezone();
+
+            if ($is_empty) {
+                $value = new $class('@0', $tz);
+                return;
+            }
+
+            if (is_numeric($value)) {
+                $value = new $class('@' . $value, $tz);
+                return;
+            }
+
+            if (is_string($value)) {
+                $value = new $class($value, $tz);
+                return;
+            }
+
+            // Invalid type, fallback to 0.
+            $value = new $class('@0', $tz);
+            return;
+        }
+    }
 }
