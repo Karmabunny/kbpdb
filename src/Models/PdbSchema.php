@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
@@ -19,13 +20,13 @@ class PdbSchema extends Collection implements PdbSchemaInterface, PdbStructWrite
 {
 
     /** @var string */
-    public $name;
+    public string $name;
 
     /** @var PdbTable[] name => PdbTable */
-    public $tables = [];
+    public array $tables = [];
 
     /** @var PdbView[] name => PdbView */
-    public $views = [];
+    public array $views = [];
 
 
     /** @inheritdoc */

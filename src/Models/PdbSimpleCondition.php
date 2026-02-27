@@ -57,13 +57,13 @@ class PdbSimpleCondition implements PdbConditionInterface
     ];
 
     /** @var string */
-    public $operator;
+    public string $operator;
 
     /** @var string */
-    public $column;
+    public string $column;
 
     /** @var mixed */
-    public $value;
+    public mixed $value;
 
     /**
      * This controls the bind method of the 'value'.
@@ -78,7 +78,7 @@ class PdbSimpleCondition implements PdbConditionInterface
      *
      * @var string|null Pdb::QUOTE_FIELD|QUOTE_VALUE|null
      **/
-    public $bind_type;
+    public ?string $bind_type;
 
     /**
      * Create a condition.
@@ -88,7 +88,7 @@ class PdbSimpleCondition implements PdbConditionInterface
      * @param mixed $value
      * @param string|null $bind
      */
-    public function __construct(string $operator, string $column, $value, ?string $bind = null)
+    public function __construct(string $operator, string $column, mixed $value, ?string $bind = null)
     {
         $this->operator = trim(strtoupper($operator));
         $this->column = $column;

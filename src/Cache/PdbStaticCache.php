@@ -40,11 +40,11 @@ class PdbStaticCache extends PdbCache implements ConfigurableInterface
      * Enable expiry of keys as advised by the TTL.
      * @var bool
      */
-    public $enable_ttl = false;
+    public bool $enable_ttl = false;
 
 
     /** @inheritdoc */
-    public function store(string $key, $result, int $ttl)
+    public function store(string $key, mixed $result, int $ttl)
     {
         static::$cache[$key] = $result;
 
@@ -64,7 +64,7 @@ class PdbStaticCache extends PdbCache implements ConfigurableInterface
 
 
     /** @inheritdoc */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
         $this->_clean($key);
         return static::$cache[$key] ?? null;

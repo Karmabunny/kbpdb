@@ -21,7 +21,7 @@ abstract class PdbCache
      * @param int $ttl
      * @return void
      */
-    public abstract function store(string $key, $result, int $ttl);
+    public abstract function store(string $key, mixed $result, int $ttl);
 
 
     /**
@@ -37,7 +37,7 @@ abstract class PdbCache
      * @param string $key
      * @return mixed|null
      */
-    public abstract function get(string $key);
+    public abstract function get(string $key): mixed;
 
 
     /**

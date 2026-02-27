@@ -14,14 +14,15 @@ use Exception;
 class PdbParserException extends Exception implements PdbExceptionInterface
 {
 
-    protected $errors = [];
+    protected array $errors = [];
 
 
-    public function withErrors(array $errors)
+    public function withErrors(array $errors): static
     {
         $this->errors = $errors;
         $tables = array_keys($errors);
         $this->message = 'Parse error for tables:' . implode(', ', $tables);
+        return $this;
     }
 
 

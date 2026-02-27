@@ -21,17 +21,17 @@ class JsonLinesBinder implements PdbDataBinderInterface
 {
 
     /** @var mixed */
-    public $value;
+    public mixed $value;
 
     /** @var int */
-    public $flags;
+    public int $flags;
 
 
     /**
      * @param mixed $value
      * @param int $flags
      */
-    public function __construct($value, int $flags = 0)
+    public function __construct(mixed $value, int $flags = 0)
     {
         $this->value = $value;
         $this->flags = $flags;
@@ -39,7 +39,7 @@ class JsonLinesBinder implements PdbDataBinderInterface
 
 
     /** @inheritdoc */
-    public function getBindingValue()
+    public function getBindingValue(): string
     {
         return Json::encode($this->value, $this->flags) . "\n";
     }
@@ -64,7 +64,7 @@ class JsonLinesBinder implements PdbDataBinderInterface
      * @return iterable<mixed>
      * @throws JsonException
      */
-    public static function parseJsonLines(string $item, int $flags = 0)
+    public static function parseJsonLines(string $item, int $flags = 0): iterable
     {
         $tok = strtok($item, "\n");
 

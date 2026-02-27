@@ -59,7 +59,7 @@ interface PdbReturnInterface
      * @param PDOStatement $rs
      * @return string|int|null|array
      */
-    public function format(PDOStatement $rs);
+    public function format(PDOStatement $rs): string|int|null|array;
 
 
     /**
@@ -68,6 +68,6 @@ interface PdbReturnInterface
      * @param array $result
      * @return object[]|object|null
      */
-    public function buildClass($result);
+    public function buildClass(array $result): array|object|null;
 
 }

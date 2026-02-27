@@ -18,7 +18,7 @@ trait PdbDataFormatterTrait
 {
 
     /** @inheritdoc */
-    public function format($value): string
+    public function format(object $value): string
     {
         return (string) $value;
     }

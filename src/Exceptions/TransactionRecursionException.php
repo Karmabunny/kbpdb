@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -14,5 +15,5 @@ class TransactionRecursionException
     extends TransactionQueryException
     implements TransactionException
 {
-    public $state = '25001';
+    public string $state = '25001';
 }

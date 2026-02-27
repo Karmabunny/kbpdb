@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -31,10 +32,7 @@ use karmabunny\pdb\Exceptions\InvalidConditionException;
 use karmabunny\pdb\Exceptions\PdbException;
 use karmabunny\pdb\Exceptions\TransactionEmptyException;
 use karmabunny\pdb\Exceptions\TransactionNameException;
-use karmabunny\pdb\Models\PdbColumn;
 use karmabunny\pdb\Models\PdbCondition;
-use karmabunny\pdb\Models\PdbForeignKey;
-use karmabunny\pdb\Models\PdbIndex;
 use karmabunny\pdb\Models\PdbReturn;
 use karmabunny\pdb\Models\PdbSchema;
 use karmabunny\pdb\Models\PdbTable;
@@ -215,41 +213,35 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
     ];
 
 
-    /** @var PdbConfig */
-    public $config;
+    public PdbConfig $config;
 
-    /** @var PDO|null */
-    protected $connection;
+    protected ?PDO $connection = null;
 
-    /** @var PdbCache */
-    protected $cache;
+    protected PdbCache $cache;
 
-    /** @var InflectorInterface|null */
-    protected $inflector;
+    protected ?InflectorInterface $inflector = null;
 
     /** @var string|false */
-    protected $transaction_key = false;
+    protected string|false $transaction_key = false;
 
-    /** @var int|null */
-    protected $last_insert_id = null;
+    protected ?int $last_insert_id = null;
 
     /** @var callable|null (query, params, result|exception) */
-    protected $debugger;
+    protected $debugger = null;
 
     /** @var callable|null (position, token) */
-    protected $profiler;
+    protected $profiler = null;
 
     /** @var PdbDataFormatterInterface[] */
-    protected $_formatters = [];
+    protected array $_formatters = [];
 
-    /** @var DateTimeZone|null */
-    protected $_timezone = null;
+    protected ?DateTimeZone $_timezone = null;
 
     /**
      *
      * @param PdbConfig|array $config
      */
-    public function __construct($config)
+    public function __construct(PdbConfig|array $config)
     {
         if (!($config instanceof PdbConfig)) {
             $this->config = new PdbConfig($config);
@@ -281,7 +273,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param PdbConfig|array $config
      * @return Pdb
      */
-    public static function create($config)
+    public static function create(PdbConfig|array $config): Pdb
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
@@ -311,7 +303,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return PDO
      * @throws ConnectionException
      */
-    public static function connect($config, array $options = [])
+    public static function connect(PdbConfig|array $config, array $options = []): PDO
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
@@ -521,7 +513,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return PDO
      * @throws ConnectionException If connection fails
      */
-    public function getConnection()
+    public function getConnection(): PDO
     {
         if (!isset($this->connection)) {
             $this->connection = static::connect($this->config);
@@ -556,12 +548,12 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|null|PDOStatement
+     * @return array|string|int|object|PDOStatement|null
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function q($query, array $params, $config)
+    public function q($query, array $params, string|array|PdbReturnInterface $config): mixed
     {
         return $this->query($query, $params, $config);
     }
@@ -581,12 +573,12 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|null|PDOStatement
+     * @return array|string|int|object|PDOStatement|null
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function query(string $query, array $params, $config)
+    public function query(string $query, array $params, string|array|PdbReturnInterface $config): mixed
     {
         if ($config instanceof PdbReturnInterface) {
             $config = clone $config;
@@ -636,13 +628,19 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function prepare(string $query, array $options = [])
+    public function prepare(string $query, array $options = []): PDOStatement
     {
         $pdo = $this->getConnection();
         $query = $this->insertPrefixes($query);
 
         try {
-            return $pdo->prepare($query, $options);
+            $res = $pdo->prepare($query, $options);
+
+            if ($res === false) {
+                throw new PDOException('Failed to prepare statement');
+            }
+
+            return $res;
         } catch (PDOException $ex) {
             throw QueryException::create($ex)
                 ->setQuery($query);
@@ -663,12 +661,12 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|null|PDOStatement
+     * @return array|string|int|object|PDOStatement|null
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public function execute(PDOStatement $st, array $params, $config)
+    public function execute(PDOStatement $st, array $params, $config): mixed
     {
         if (!($config instanceof PdbReturnInterface)) {
             $config = PdbReturn::parse($config);
@@ -832,7 +830,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * }
      * $res->closeCursor();
      */
-    public function buildClause(array $conditions, array &$values, $combine = 'AND')
+    public function buildClause(array $conditions, array &$values, string $combine = 'AND'): string
     {
         return PdbCondition::buildClause($this, $conditions, $values, $combine, true);
     }
@@ -856,7 +854,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws InvalidArgumentException
      * @throws ConnectionException
      */
-    public function get(string $table, $id, bool $throw = true)
+    public function get(string $table, int|string $id, bool $throw = true): ?array
     {
         static::validateIdentifier($table);
 
@@ -875,7 +873,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function insert($table, array $data)
+    public function insert(string $table, array $data): int
     {
         static::validateIdentifier($table);
 
@@ -902,7 +900,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function update(string $table, array $data, array $conditions)
+    public function update(string $table, array $data, array $conditions): int
     {
         static::validateIdentifier($table);
         if (count($data) == 0) {
@@ -990,7 +988,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return string
      * @throws InvalidArgumentException
      */
-    protected function getBindingQuery(string $col, $val): string
+    protected function getBindingQuery(string $col, mixed $val): string
     {
         if ($val instanceof PdbDataBinderInterface) {
             return $val->getBindingQuery($this, $col);
@@ -1014,7 +1012,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function upsert(string $table, array $data, array $conditions)
+    public function upsert(string $table, array $data, array $conditions): int
     {
         static::validateIdentifier($table);
 
@@ -1070,7 +1068,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function delete(string $table, array $conditions)
+    public function delete(string $table, array $conditions): int
     {
         static::validateIdentifier($table);
         if (count($conditions) == 0) {
@@ -1092,7 +1090,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param array $conditions
      * @return PdbQuery
      */
-    public function find($table, array $conditions = [])
+    public function find(string|array|PdbQueryInterface $table, array $conditions = []): PdbQuery
     {
         return (new PdbQuery($this))->find($table, $conditions);
     }
@@ -1107,7 +1105,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * Checks if there's a current transaction in progress
      * @return bool True if inside a transaction
      */
-    public function inTransaction()
+    public function inTransaction(): bool
     {
         $pdo = $this->getConnection();
 
@@ -1135,7 +1133,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws TransactionRecursionException if already in a transaction + nested transactions are disabled.
      * @throws ConnectionException If the connection fails
      */
-    public function transact()
+    public function transact(): PdbTransaction
     {
         $pdo = $this->getConnection();
 
@@ -1185,7 +1183,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws TransactionRecursionException
      * @throws ConnectionException
      */
-    public function withTransaction(callable $callback)
+    public function withTransaction(callable $callback): mixed
     {
         if (
             ($this->config->transaction_mode & PdbConfig::TX_ENABLE_NESTED)
@@ -1237,7 +1235,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws TransactionEmptyException If there's no active transaction
      * @throws ConnectionException If the connection fails
      */
-    public function savepoint(?string $name = null)
+    public function savepoint(?string $name = null): string
     {
         // Someone could have started a transaction elsewhere, you know.
         // Some DBs (sqlite) will treat an out-of-transaction savepoint as a
@@ -1282,7 +1280,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws TransactionNameException The transaction/savepoint doesn't exist
      * @throws TransactionEmptyException If there's no active transaction
      */
-    public function commit($name = null)
+    public function commit(PdbTransaction|string|null $name = null): void
     {
         $pdo = $this->getConnection();
 
@@ -1347,7 +1345,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws TransactionEmptyException No active transaction
      * @throws ConnectionException If the connection fails
      */
-    public function rollback($name = null)
+    public function rollback(PdbTransaction|string|null $name = null): void
     {
         $pdo = $this->getConnection();
 
@@ -1403,7 +1401,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param string $name The field to use for the mapped values
      * @return array A lookup table
      **/
-    public function lookup(string $table, array $conditions = [], array $order = ['name'], $name = 'name')
+    public function lookup(string $table, array $conditions = [], array $order = ['name'], string $name = 'name'): array
     {
         return $this->find($table, $conditions)
             ->orderBy(...$order)
@@ -1424,7 +1422,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *     // ...
      * }
      */
-    public function recordExists(string $table, array $conditions)
+    public function recordExists(string $table, array $conditions): bool
     {
         return $this->find($table, $conditions)->exists();
     }
@@ -1453,7 +1451,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @deprecated use getTableNames()
      * @return string[] non-prefixed
      */
-    public function listTables()
+    public function listTables(): array
     {
         return $this->getTableNames('', true);
     }
@@ -1464,7 +1462,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param string $table non-prefixed
      * @return PdbTable|null
      */
-    public function getTable(string $table)
+    public function getTable(string $table): ?PdbTable
     {
         if (!$this->tableExists($table)) {
             return null;
@@ -1498,7 +1496,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *
      * @return PdbTable[]
      */
-    public function tableList()
+    public function tableList(): array
     {
         $tables = $this->getTableNames();
         $list = [];
@@ -1525,7 +1523,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param bool $refresh
      * @return DateTimeZone
      */
-    public function getTimezone($refresh = false): DateTimeZone
+    public function getTimezone(bool $refresh = false): DateTimeZone
     {
         if ($refresh or !$this->_timezone) {
             if ($this->config->timezone) {
@@ -1570,7 +1568,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param string $format default FORMAT_DATE_TIME
      * @return string
      */
-    public function now(string $format = self::FORMAT_DATE_TIME)
+    public function now(string $format = self::FORMAT_DATE_TIME): string
     {
         $tz = $this->getTimezone();
         $date = new DateTime('now', $tz);
@@ -1583,7 +1581,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *
      * @return int|null The record id, or null if there hasn't been an insert
      */
-    public function getLastInsertId()
+    public function getLastInsertId(): ?int
     {
         return $this->last_insert_id;
     }
@@ -1615,7 +1613,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws ConnectionException
      * @throws PdbException
      */
-    public function quoteAll($fields, string $type): array
+    public function quoteAll(iterable $fields, string $type): array
     {
         $values = [];
         foreach ($fields as $field) {
@@ -1632,7 +1630,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @throws ConnectionException
      * @throws PdbException
      */
-    public function quoteValue($value): string
+    public function quoteValue(mixed $value): string
     {
         $pdo = $this->getConnection();
 
@@ -1781,7 +1779,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param int $id
      * @return string
      */
-    public function generateUid(string $table, int $id)
+    public function generateUid(string $table, int $id): string
     {
         if ($id == 0) return Uuid::nil();
 
@@ -1798,7 +1796,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException
      */
-    public static function validateReturnType(string $return_type)
+    public static function validateReturnType(string $return_type): void
     {
         $return_type = strtolower($return_type);
 
@@ -1817,7 +1815,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
-    public static function validateIdentifier($name, $loose = false)
+    public static function validateIdentifier(mixed $name, bool $loose = false): void
     {
         $name = (string) $name;
 
@@ -1849,7 +1847,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
-    public static function validateIdentifierExtended($name, $loose = false)
+    public static function validateIdentifierExtended(mixed $name, bool $loose = false): void
     {
         $name = (string) $name;
 
@@ -1879,7 +1877,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException
      */
-    public static function validateFunction($value)
+    public static function validateFunction(mixed $value): void
     {
         $value = (string) $value;
 
@@ -1898,7 +1896,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException If the identifier is invalid
      */
-    public static function validateDirection($name)
+    public static function validateDirection(mixed $name): void
     {
         $name = (string) $name;
 
@@ -1918,7 +1916,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return void
      * @throws InvalidArgumentException
      */
-    public static function validateAlias($field, $loose = false)
+    public static function validateAlias(string|array $field, bool $loose = false): void
     {
         if (is_string($field)) {
             $alias = null;
@@ -1948,7 +1946,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param array $field [0] Table name [1] Column name
      * @return bool
      */
-    public function validateEnum(string $val, array $field)
+    public function validateEnum(string $val, array $field): bool
     {
         list($table, $col) = $field;
         $enum = $this->extractEnumArr($table, $col);
@@ -1969,7 +1967,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param mixed $value
      * @return PdbDataFormatterInterface|null
      */
-    protected function getFormatter($value)
+    protected function getFormatter(mixed $value): ?PdbDataFormatterInterface
     {
         if (!is_object($value)) {
             return null;
@@ -2033,7 +2031,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @return mixed The formatted value
      * @throws InvalidArgumentException
      */
-    public function format($value)
+    public function format(mixed $value): mixed
     {
         if ($value instanceof PdbDataInterface) {
             $value = $value->getBindingValue();
@@ -2066,7 +2064,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param string $query Query which contains tilde placeholders, e.g. 'SELECT * FROM ~pages WHERE id = 1'
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `fwc_pages` WHERE id = 1'
      */
-    public function insertPrefixes(string $query)
+    public function insertPrefixes(string $query): string
     {
         // Shortcut.
         if (strpos($query, '~') === false) {
@@ -2094,7 +2092,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param string $value
      * @return string
      */
-    protected function stripPrefix(string $value)
+    protected function stripPrefix(string $value): string
     {
         foreach ($this->config->table_prefixes as $table => $prefix) {
             if ($value === $prefix . $table) {
@@ -2179,7 +2177,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param PDOStatement $st Statement to bind parameters to
      * @param array $params Parameters to bind
      */
-    protected static function bindParams(PDOStatement $st, array $params)
+    protected static function bindParams(PDOStatement $st, array $params): void
     {
         foreach ($params as $key => $val) {
             // Numeric (question mark) params require 1-based indexing
@@ -2250,18 +2248,17 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *
      * This also supports the shorthand `row?` and `val?` forms.
      *
-     * @param string|array|PdbReturn $config One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
+     * @param string|array|PdbReturnInterface $config One of 'null', 'count', 'arr', 'arr-num', 'row', 'row-num', 'map', 'map-arr', 'val' or 'col'
      * @return string|int|null|array
      * @throws RowMissingException If the result set didn't contain the required row
      * @throws InvalidArgumentException If the type is invalid
      */
-    public static function formatRs(PDOStatement $rs, $config)
+    public static function formatRs(PDOStatement $rs, string|array|PdbReturnInterface $config): array|string|int|null
     {
         if (!is_object($config)) {
             $config = PdbReturn::parse($config);
         }
 
-        // @phpstan-ignore-next-line: assert doc types.
         if (!($config instanceof PdbReturn)) {
             throw new InvalidArgumentException('Invalid return type: ' . get_class($config));
         }
@@ -2300,7 +2297,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param PDOStatement|QueryException $result
      * @return void
      */
-    protected function logQuery(string $query, array $params, $result)
+    protected function logQuery(string $query, array $params, PDOStatement|QueryException $result): void
     {
         if ($result instanceof QueryException) {
             $this->log($result, Log::LEVEL_ERROR);
@@ -2342,7 +2339,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param array $values
      * @return string
      */
-    public function prettyQuery(string $query, array $values)
+    public function prettyQuery(string $query, array $values): string
     {
         $query = $this->insertPrefixes($query);
 

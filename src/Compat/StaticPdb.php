@@ -145,25 +145,18 @@ abstract class StaticPdb
      *
      * You probably want getConnection() or getInstance().
      *
-     * @param string|PdbConfig|array $name
+     * @param string|PdbConfig|array $config
      * @param array $options PDO attributes
      * @return PDO
      * @throws PDOException If connection fails
      */
-    public static function connect($name, array $options = []): PDO
+    public static function connect(string|array|PdbConfig $config, array $options = []): PDO
     {
-        if (is_string($name)) {
-            $config = static::getConfig($name);
+        if (is_string($config)) {
+            $config = static::getConfig($config);
         }
-        else if (is_array($name)) {
-            $config = new PdbConfig($name);
-        }
-        // @phpstan-ignore-next-line: assert doc types.
-        else if ($name instanceof PdbConfig) {
-            $config = $name;
-        }
-        else {
-            throw new InvalidArgumentException("Invalid config name");
+        else if (is_array($config)) {
+            $config = new PdbConfig($config);
         }
 
         return Pdb::connect($config, $options);
@@ -173,11 +166,11 @@ abstract class StaticPdb
     /**
      * Wrap everything.
      *
-     * @param mixed $name
-     * @param mixed $arguments
+     * @param string $name
+     * @param array $arguments
      * @return mixed
      */
-    public static function __callStatic($name, $arguments)
+    public static function __callStatic(string $name, array $arguments): mixed
     {
         $pdb = static::getInstance();
 
@@ -221,7 +214,7 @@ abstract class StaticPdb
      * @throws InvalidArgumentException
      * @throws PDOException
      */
-    public static function buildClause(array $conditions, array &$values, $combine = 'AND')
+    public static function buildClause(array $conditions, array &$values, string $combine = 'AND'): string
     {
         // Because references can't be passed through variadic args.
         $pdb = static::getInstance();
@@ -251,12 +244,12 @@ abstract class StaticPdb
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
-     * @return array|string|int|null|PDOStatement
+     * @return array|string|int|object|PDOStatement|null
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public static function query(string $query, array $params, $config)
+    public static function query(string $query, array $params, string|array|PdbReturn $config): mixed
     {
         $pdb = static::getInstance();
         $st = $pdb->prepare($query);
@@ -283,12 +276,12 @@ abstract class StaticPdb
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
-     * @return array|string|int|null|PDOStatement
+     * @return array|string|int|object|PDOStatement|null
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
      */
-    public static function q($query, array $params, $config)
+    public static function q(string $query, array $params, string|array|PdbReturn $config): mixed
     {
         return static::query($query, $params, $config);
     }
@@ -302,7 +295,7 @@ abstract class StaticPdb
      * @return PDO
      * @throws PDOException If connection fails
      */
-    public static function getConnection($type = 'RW')
+    public static function getConnection(string $type = 'RW'): PDO
     {
         try {
             $pdb = static::getInstance($type);
@@ -322,7 +315,7 @@ abstract class StaticPdb
      *
      * @return string
      */
-    public static function prefix()
+    public static function prefix(): string
     {
         $pdb = static::getInstance();
         return $pdb->config->prefix;
@@ -335,7 +328,7 @@ abstract class StaticPdb
      *
      * @param string $prefix The overriding prefix
      */
-    public static function setPrefix(string $prefix)
+    public static function setPrefix(string $prefix): void
     {
         $pdb = static::getInstance();
         $pdb->config->prefix = $prefix;
@@ -353,7 +346,7 @@ abstract class StaticPdb
      *
      * @param callable $func The logging function to use
      */
-    public static function setLogHandler(callable $func)
+    public static function setLogHandler(callable $func): void
     {
         $pdb = static::getInstance();
         $pdb->setDebugger($func);
@@ -363,7 +356,7 @@ abstract class StaticPdb
     /**
      * Clear the log handler
      */
-    public static function clearLogHandler()
+    public static function clearLogHandler(): void
     {
         $pdb = static::getInstance();
         $pdb->setDebugger(null);
@@ -386,7 +379,7 @@ abstract class StaticPdb
      * @param PDO $connection Any PDO connection.
      * @param PdbConfig|array $config
      */
-    public static function setOverrideConnection(PDO $connection, $config = [])
+    public static function setOverrideConnection(PDO $connection, PdbConfig|array $config = []): void
     {
         if (!($config instanceof PdbConfig)) {
             $config = new PdbConfig($config);
@@ -403,7 +396,7 @@ abstract class StaticPdb
      * Clear any overridden connection, reverting behaviour back to
      * the default connection logic.
      */
-    public static function clearOverrideConnection()
+    public static function clearOverrideConnection(): void
     {
         unset(static::$connections['override']);
     }
@@ -421,7 +414,7 @@ abstract class StaticPdb
      * @param null $compat do not use
      * @return string Query with tildes replaced by prefixes, e.g. 'SELECT * FROM `sprout_pages` WHERE id = 1'
      */
-    public static function insertPrefixes($query, $compat = null): string
+    public static function insertPrefixes(mixed $query, mixed $compat = null): string
     {
         // @phpstan-ignore-next-line: assert doc types.
         if (!is_string($query)) {

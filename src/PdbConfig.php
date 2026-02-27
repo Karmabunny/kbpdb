@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -82,14 +83,14 @@ class PdbConfig extends Collection
      *
      * @var string
      */
-    public $type;
+    public ?string $type = null;
 
     /**
      * Connection hostname or IP address.
      *
      * @var string
      */
-    public $host;
+    public ?string $host = null;
 
     /**
      * Connection username.
@@ -98,21 +99,21 @@ class PdbConfig extends Collection
      *
      * @var string
      */
-    public $user;
+    public ?string $user = null;
 
     /**
      * Connection password.
      *
      * @var string
      */
-    public $pass;
+    public ?string $pass = null;
 
     /**
      * Database name.
      *
      * @var string
      */
-    public $database;
+    public ?string $database = null;
 
     /**
      * Treat the host as a unix socket for MySQL connections.
@@ -123,21 +124,21 @@ class PdbConfig extends Collection
      *
      * @var string|bool
      */
-    public $socket = true;
+    public string|bool $socket = true;
 
     /**
      * Port number, or null for default.
      *
      * @var int|null
      */
-    public $port = null;
+    public ?int $port = null;
 
     /**
      * Database schema, for Postgres.
      *
      * @var string
      */
-    public $schema = 'public';
+    public string $schema = 'public';
 
     /**
      * Secure mode, for Postgres.
@@ -146,7 +147,7 @@ class PdbConfig extends Collection
      *
      * @var string
      */
-    public $sslmode = 'prefer';
+    public string $sslmode = 'prefer';
 
     /**
      * Global table prefix.
@@ -155,44 +156,44 @@ class PdbConfig extends Collection
      *
      * @var string
      */
-    public $prefix = 'pdb_';
+    public string $prefix = 'pdb_';
 
     /**
      * Connection charset, default utf8.
      *
      * @var string
      */
-    public $character_set = 'utf8';
+    public string $character_set = 'utf8';
 
     /**
      * Default collation, default utf8.
      *
      * @var string
      */
-    public $collation = 'utf8_unicode_ci';
+    public string $collation = 'utf8_unicode_ci';
 
     /**
      * Connection timeout.
      *
      * @var int
      */
-    public $timeout = 0;
+    public int $timeout = 0;
 
     /**
      * Namespace for UUIDv5 generation.
      *
      * @var string
      */
-    public $namespace = Pdb::UUID_NAMESPACE;
+    public string $namespace = Pdb::UUID_NAMESPACE;
 
     /**
      * Per-table prefixes.
      *
      * These override the global `prefix` config.
      *
-     * @var string[] [table => prefix]
+     * @var array<string,string> [table => prefix]
      */
-    public $table_prefixes = [];
+    public array $table_prefixes = [];
 
     /**
      * String formatters for class parameters.
@@ -211,7 +212,7 @@ class PdbConfig extends Collection
      *
      * @var (callable|PdbDataFormatterInterface|string)[] [class => fn]
      */
-    public $formatters = [];
+    public array $formatters = [];
 
     /**
      * Connection string override.
@@ -222,7 +223,7 @@ class PdbConfig extends Collection
      *
      * @var string|null
      */
-    public $dsn;
+    public ?string $dsn = null;
 
     /**
      * Set the timezone for this connection.
@@ -231,7 +232,7 @@ class PdbConfig extends Collection
      *
      * @var string|null
      */
-    public $timezone = null;
+    public ?string $timezone = null;
 
     /**
      * Use the PHP timezone for `Pdb::now()`.
@@ -240,7 +241,7 @@ class PdbConfig extends Collection
      *
      * @var bool
      */
-    public $use_system_timezone = true;
+    public bool $use_system_timezone = true;
 
     /**
      * Session variables per call to `connect()`.
@@ -253,7 +254,7 @@ class PdbConfig extends Collection
      *
      * @var array [ varname => value ]
      */
-    public $session = [];
+    public array $session = [];
 
 
     /**
@@ -261,7 +262,7 @@ class PdbConfig extends Collection
      *
      * @var array [ PDO::ATTR_* => value ]
      */
-    public $attributes = [];
+    public array $attributes = [];
 
     /**
      * Driver specific hacks.
@@ -270,7 +271,7 @@ class PdbConfig extends Collection
      *
      * @var string[]
      */
-    public $hacks = [];
+    public array $hacks = [];
 
     /**
      * A caching class extending PdbCache.
@@ -292,14 +293,14 @@ class PdbConfig extends Collection
      *
      * @var PdbCache|string|array
      */
-    public $cache = PdbStaticCache::class;
+    public PdbCache|string|array $cache = PdbStaticCache::class;
 
     /**
      * An inflector config for pluralisation and such.
      *
      * @var InflectorInterface|string|array
      */
-    public $inflector = Inflector::class;
+    public InflectorInterface|string|array $inflector = Inflector::class;
 
     /**
      * An identity key for this connection.
@@ -310,7 +311,7 @@ class PdbConfig extends Collection
      *
      * @var string|null
      */
-    public $identity;
+    public ?string $identity = null;
 
     /**
      * Default caching TTL, in seconds.
@@ -322,7 +323,7 @@ class PdbConfig extends Collection
      *
      * @var int seconds
      */
-    public $ttl = 10;
+    public int $ttl = 10;
 
     /**
      * This is used in the Sprout compatibility layer.
@@ -333,7 +334,7 @@ class PdbConfig extends Collection
      *
      * @var PDO|null
      */
-    public $_pdo;
+    public ?PDO $_pdo = null;
 
     /**
      * TX enum
@@ -344,7 +345,7 @@ class PdbConfig extends Collection
      *
      * @var int
      */
-    public $transaction_mode = self::TX_STRICT_ROLLBACK | self::TX_STRICT_COMMIT;
+    public int $transaction_mode = self::TX_STRICT_ROLLBACK | self::TX_STRICT_COMMIT;
 
 
     /** @inheritdoc */
@@ -519,7 +520,7 @@ class PdbConfig extends Collection
      * @param string $name
      * @return mixed
      */
-    public function getHack(string $name)
+    public function getHack(string $name): mixed
     {
         return $this->hacks[$name] ?? in_array($name, $this->hacks);
     }
@@ -532,7 +533,7 @@ class PdbConfig extends Collection
      *
      * @return string[] [left, right]
      */
-    public function getFieldQuotes()
+    public function getFieldQuotes(): array
     {
         switch ($this->type) {
             case PdbConfig::TYPE_MYSQL:

@@ -17,7 +17,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function store(string $key, $result, int $ttl)
+    public function store(string $key, mixed $result, int $ttl)
     {
     }
 
@@ -30,7 +30,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
         return null;
     }

@@ -15,10 +15,10 @@ use karmabunny\pdb\Models\PdbConditionInterface;
 class InvalidConditionException extends InvalidArgumentException
 {
     /** @var PdbConditionInterface|null */
-    public $condition = null;
+    public ?PdbConditionInterface $condition = null;
 
     /** @var string|null */
-    public $actual = null;
+    public ?string $actual = null;
 
 
     /**
@@ -26,7 +26,7 @@ class InvalidConditionException extends InvalidArgumentException
      * @param PdbConditionInterface $condition
      * @return static
      */
-    public function withCondition(PdbConditionInterface $condition)
+    public function withCondition(PdbConditionInterface $condition): static
     {
         $this->condition = $condition;
 
@@ -43,7 +43,7 @@ class InvalidConditionException extends InvalidArgumentException
      * @param mixed $actual
      * @return static
      */
-    public function withActual($actual)
+    public function withActual(mixed $actual): static
     {
         if (!is_scalar($actual)) {
             $actual = gettype($actual);

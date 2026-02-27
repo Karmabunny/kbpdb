@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
@@ -17,14 +18,12 @@ class PdbIndex extends Collection implements PdbStructWriterInterface
     const TYPE_INDEX = 'index';
     const TYPE_UNIQUE = 'unique';
 
-    /** @var string */
-    public $name;
+    public string $name;
 
-    /** @var string */
-    public $type = 'index';
+    public string $type = self::TYPE_INDEX;
 
     /** @var string[] */
-    public $columns = [];
+    public array $columns = [];
 
 
     /** @inheritdoc */

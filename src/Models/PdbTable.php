@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
@@ -22,16 +23,16 @@ class PdbTable extends Collection implements PdbStructWriterInterface
     ];
 
     /** @var string non-prefixed */
-    public $name;
+    public string $name;
 
     /** @var PdbColumn[] name => PdbColumn */
-    public $columns = [];
+    public array $columns = [];
 
     /** @var PdbIndex[] */
-    public $indexes = [];
+    public array $indexes = [];
 
     /** @var PdbForeignKey[] */
-    public $foreign_keys = [];
+    public array $foreign_keys = [];
 
 
     /**
@@ -39,7 +40,7 @@ class PdbTable extends Collection implements PdbStructWriterInterface
      *
      * @var string[]
      */
-    public $primary_key = [];
+    public array $primary_key = [];
 
 
     /**
@@ -47,9 +48,9 @@ class PdbTable extends Collection implements PdbStructWriterInterface
      *
      * These are not added on ALTER.
      *
-     * @var string[][] list of [name => value (string)]
+     * @var array<string,string>[] list of [name => value (string)]
      */
-    public $default_records = [];
+    public array $default_records = [];
 
 
     /**
@@ -59,15 +60,15 @@ class PdbTable extends Collection implements PdbStructWriterInterface
      *
      * @var string[]
      */
-    public $previous_names = [];
+    public array $previous_names = [];
 
 
     /**
      * Important but DB-specific properties of a table.
      *
-     * @var string[]
+     * @var array<string,string>
      */
-    public $attributes = [
+    public array $attributes = [
         'charset' => 'utf8',
     ];
 
@@ -77,7 +78,7 @@ class PdbTable extends Collection implements PdbStructWriterInterface
      * @param PdbColumn $column
      * @return static
      */
-    public function addColumn(PdbColumn $column)
+    public function addColumn(PdbColumn $column): static
     {
         $this->columns[$column->name] = $column;
         return $this;

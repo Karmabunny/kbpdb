@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -42,7 +43,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string
      */
-    public $type;
+    public string $type;
 
     /**
      * A class name.
@@ -56,7 +57,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $class;
+    public ?string $class = null;
 
     /**
      * A Time-to-live for the caching layer.
@@ -68,7 +69,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      * @see PdbCache
      * @var int|bool seconds
      */
-    public $cache_ttl = false;
+    public int|bool $cache_ttl = false;
 
     /**
      * The key for a query is generated as a shasum of the query + parameters.
@@ -78,7 +79,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $cache_key;
+    public ?string $cache_key = null;
 
     /**
      * Used for the return type: `map-arr`.
@@ -89,7 +90,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $map_key = null;
+    public ?string $map_key = null;
 
     /**
      * Whether RowMissingException should be thrown if the row is missing.
@@ -104,7 +105,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var bool
      */
-    public $throw = true;
+    public bool $throw = true;
 
 
     /**
@@ -118,7 +119,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      * @return PdbReturn
      * @throws InvalidArgumentException
      */
-    public static function parse($config): PdbReturn
+    public static function parse(string|array $config): PdbReturn
     {
         if (is_string($config)) {
             $config = [ 'type' => $config ];
@@ -238,7 +239,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
 
 
     /** @inheritdoc */
-    public function format(PDOStatement $rs)
+    public function format(PDOStatement $rs): array|string|int|null
     {
         $nullable = !$this->throw;
 
@@ -340,11 +341,11 @@ class PdbReturn extends DataObject implements PdbReturnInterface
     {
         if ($class = $this->class) {
             if (is_subclass_of($class, ConfigurableInterface::class)) {
-                $create = function($item) use ($class) {
+                $create = function(array $item) use ($class): object {
                     $object = new $class();
                     $object->update($item);
 
-                    if ($object instanceof ConfigurableInit) {
+                    if ($object instanceof ConfigurableInitInterface) {
                         $object->init();
                     }
 
@@ -352,7 +353,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
                 };
             }
             else {
-                $create = function($item) use ($class) {
+                $create = function(array $item) use ($class): object {
                     $object = new $class();
                     foreach ($item as $key => $value) {
                         $object->$key = $value;

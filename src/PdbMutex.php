@@ -12,19 +12,19 @@ class PdbMutex implements MutexInterface
 {
 
     /** @var Pdb */
-    public $pdb;
+    public Pdb $pdb;
 
     /** @var string */
-    public $name;
+    public string $name;
 
     /** @var bool */
-    public $autoRelease = true;
+    public bool $autoRelease = true;
 
     /** @var bool */
-    public $uniqueLocks = true;
+    public bool $uniqueLocks = true;
 
     /** @var bool */
-    public $releaseAllLocks = false;
+    public bool $releaseAllLocks = false;
 
 
     public function __construct(Pdb $pdb, string $name)

@@ -34,22 +34,22 @@ use Throwable;
 class PdbSync
 {
     /** @var Pdb */
-    private $pdb;
+    private Pdb $pdb;
 
 
     /**
      * Temporarily stores heading to attach to next query generated.
      */
-    private $heading = 'TBA';
+    private string $heading = 'TBA';
 
     /** @var SyncQuery[][] type => queries[] */
-    private $queries = [];
+    private array $queries = [];
 
-    /** @var SyncFix[][] type  => fixes[] */
-    private $fixes = [];
+    /** @var SyncFix[][] type => fixes[] */
+    private array $fixes = [];
 
     /** @var string[] */
-    private $warnings = [];
+    private array $warnings = [];
 
 
     /**
@@ -78,7 +78,7 @@ class PdbSync
     /**
      * @param Pdb|PdbConfig|array $config
      **/
-    public function __construct($config)
+    public function __construct(Pdb|PdbConfig|array $config)
     {
         if ($config instanceof Pdb) {
             $this->pdb = $config;
@@ -92,15 +92,18 @@ class PdbSync
     /**
     * Are the permissions of the current user adequate?
     *
-    * @return true|string[] true on success, or an array of missing permissions on failure.
+    * @return string[]|true true on success, or an array of missing permissions on failure.
     **/
-    public function checkConnPermissions()
+    public function checkConnPermissions(): array|bool
     {
         $permissions = $this->pdb->getPermissions();
 
         $require = ['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'CREATE', 'ALTER', 'DROP'];
         $missing = array_diff($require, $permissions);
-        if (count($missing) == 0) return true;
+
+        if (count($missing) == 0) {
+            return true;
+        }
 
         return $missing;
     }
@@ -115,7 +118,7 @@ class PdbSync
      * please. The {@see PdbLog::print} method has a sample implementation.
      *
      * @param PdbSchemaInterface $schema
-     * @param SyncActions|array $do
+     * @param SyncActions|array|null $do
      *   - `'create'`      - create table, update table attributes
      *   - `'primary'`     - update primary key
      *   - `'column'`      - create/modify columns
@@ -127,7 +130,7 @@ class PdbSync
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public function updateDatabase(PdbSchemaInterface $schema, $do = null)
+    public function updateDatabase(PdbSchemaInterface $schema, SyncActions|array|null $do = null): array
     {
         $this->migrate($schema, $do);
         return $this->execute();
@@ -161,7 +164,7 @@ class PdbSync
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function migrate(PdbSchemaInterface $schema, $do = null)
+    public function migrate(PdbSchemaInterface $schema, $do = null): void
     {
         // Mush it.
         if (is_array($do)) {
@@ -198,7 +201,7 @@ class PdbSync
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function migrateTables(array $tables, $do = null)
+    public function migrateTables(array $tables, SyncActions|array|null $do = null): void
     {
         // Mush it.
         if (is_array($do)) {
@@ -282,7 +285,7 @@ class PdbSync
      * @return void
      * @throws InvalidArgumentException
      */
-    public function migrateViews(array $views)
+    public function migrateViews(array $views): void
     {
         foreach ($views as $view_name => $view_def) {
             if (!$view_def instanceof PdbView) {
@@ -300,9 +303,9 @@ class PdbSync
     /**
      * Get the stored queries.
      *
-     * @return Generator<SyncQuery>
+     * @return iterable<SyncQuery>
      */
-    public function getQueries(): Generator
+    public function getQueries(): iterable
     {
         foreach (self::QUERY_TYPES as $type) {
             if (empty($this->queries[$type])) continue;
@@ -319,7 +322,7 @@ class PdbSync
      *
      * @return bool
      */
-    public function hasQueries()
+    public function hasQueries(): bool
     {
         foreach ($this->getQueries() as $query) {
             return true;
@@ -336,7 +339,7 @@ class PdbSync
      *
      * @return array [ type, body ] execution log
      */
-    public function execute($act = true)
+    public function execute($act = true): array
     {
         $log = [];
 
@@ -409,7 +412,7 @@ class PdbSync
      *
      * @return string[]
      */
-    public function getMigration()
+    public function getMigration(): array
     {
         $sql = [];
 

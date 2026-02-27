@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
@@ -13,14 +14,11 @@ use karmabunny\pdb\PdbStructWriterInterface;
  */
 class PdbView extends Collection implements PdbStructWriterInterface
 {
-    /** @var string */
-    public $name;
+    public string $name;
 
-    /** @var string */
-    public $sql;
+    public string $sql;
 
-    /** @var string */
-    public $checksum;
+    public string $checksum;
 
 
     /** @inheritdoc */
