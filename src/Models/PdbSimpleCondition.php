@@ -100,26 +100,9 @@ class PdbSimpleCondition implements PdbConditionInterface
     /** @inheritdoc */
     public function validate()
     {
-        // @phpstan-ignore-next-line: assert doc types.
-        if (!is_scalar($this->operator)) {
-            $message = 'Invalid operator: ' . gettype($this->operator);
-                throw (new InvalidConditionException($message))
-                    ->withCondition($this);
-        }
-
-        if ($this->column !== null) {
-            if (!in_array($this->operator, self::OPERATORS)) {
-                $message = "Unknown operator: '{$this->operator}'";
-                throw (new InvalidConditionException($message))
-                    ->withCondition($this);
-            }
-        }
-
-        // @phpstan-ignore-next-line: assert doc types.
-        if (!is_scalar($this->column)) {
-            $message = 'Column name must be scalar';
+        if (!in_array($this->operator, self::OPERATORS)) {
+            $message = "Unknown operator: '{$this->operator}'";
             throw (new InvalidConditionException($message))
-                ->withActual($this->column)
                 ->withCondition($this);
         }
 

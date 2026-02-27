@@ -11,7 +11,6 @@ use karmabunny\interfaces\InflectorInterface;
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Inflector;
-use karmabunny\kb\InflectorInterface;
 use karmabunny\kb\Reflect;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\Cache\PdbStaticCache;
