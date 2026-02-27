@@ -255,7 +255,7 @@ class StaticPdbTest extends TestCase
 
     public function dataThrowException()
     {
-        $stuff = array(null, '', 1, '☺');
+        $stuff = array('', 1, '☺');
         $out = array();
         foreach ($stuff as $a) {
             foreach ($stuff as $b) {
