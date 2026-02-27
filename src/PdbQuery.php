@@ -10,7 +10,7 @@ use ArrayIterator;
 use Generator;
 use InvalidArgumentException;
 use JsonSerializable;
-use karmabunny\kb\Arrayable;
+use karmabunny\interfaces\ArrayableInterface;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
@@ -77,7 +77,7 @@ use ReturnTypeWillChange;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
+class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializable
 {
 
     /** @var Pdb */

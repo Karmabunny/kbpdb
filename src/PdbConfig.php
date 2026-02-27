@@ -7,6 +7,7 @@
 namespace karmabunny\pdb;
 
 use InvalidArgumentException;
+use karmabunny\interfaces\InflectorInterface;
 use karmabunny\kb\Arrays;
 use karmabunny\kb\Collection;
 use karmabunny\kb\Inflector;

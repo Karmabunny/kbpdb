@@ -6,7 +6,7 @@
 
 namespace karmabunny\pdb\Cache;
 
-use karmabunny\kb\Configurable;
+use karmabunny\interfaces\ConfigurableInterface;
 use karmabunny\kb\UpdateTrait;
 
 /**
@@ -24,7 +24,7 @@ use karmabunny\kb\UpdateTrait;
  *
  * @package karmabunny\pdb
  */
-class PdbStaticCache extends PdbCache implements Configurable
+class PdbStaticCache extends PdbCache implements ConfigurableInterface
 {
     use UpdateTrait;
 

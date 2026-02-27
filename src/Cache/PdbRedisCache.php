@@ -6,7 +6,7 @@
 
 namespace karmabunny\pdb\Cache;
 
-use karmabunny\kb\ConfigurableInit;
+use karmabunny\interfaces\ConfigurableInitInterface;
 use karmabunny\kb\Json;
 use karmabunny\rdb\Rdb;
 
@@ -17,7 +17,7 @@ use karmabunny\rdb\Rdb;
  *
  * @package karmabunny\pdb
  */
-class PdbRedisCache extends PdbCache implements ConfigurableInit
+class PdbRedisCache extends PdbCache implements ConfigurableInitInterface
 {
 
     /** @var Rdb */

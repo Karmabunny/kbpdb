@@ -9,10 +9,10 @@ namespace karmabunny\pdb;
 use DateTime;
 use DateTimeZone;
 use InvalidArgumentException;
+use karmabunny\interfaces\InflectorInterface;
+use karmabunny\interfaces\LoggableInterface;
 use karmabunny\kb\Configure;
-use karmabunny\kb\InflectorInterface;
 use karmabunny\kb\Log;
-use karmabunny\kb\Loggable;
 use karmabunny\kb\LoggerTrait;
 use karmabunny\kb\NotSerializable;
 use karmabunny\kb\SerializeTrait;
@@ -50,7 +50,7 @@ use Throwable;
  *
  * @package karmabunny\pdb
  */
-abstract class Pdb implements Loggable, Serializable, NotSerializable, PdbDriverInterface
+abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, PdbDriverInterface
 {
     use LoggerTrait;
     use SerializeTrait;
