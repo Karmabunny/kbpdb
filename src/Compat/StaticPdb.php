@@ -1,5 +1,10 @@
 <?php
 declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2024 Karmabunny
+ */
+
 
 namespace karmabunny\pdb\Compat;
 
