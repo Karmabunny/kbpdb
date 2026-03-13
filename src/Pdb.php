@@ -606,7 +606,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
             }
 
             // Have a crack at creating classes.
-            if ($objects = $config->buildClass($result)) {
+            if (is_array($result) and ($objects = $config->buildClass($result))) {
                 return $objects;
             }
 
@@ -683,7 +683,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
             }
 
             // Have a crack at creating classes.
-            if ($objects = $config->buildClass($result)) {
+            if (is_array($result) and ($objects = $config->buildClass($result))) {
                 return $objects;
             }
 
@@ -752,7 +752,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
             }
 
             // Have a crack at creating classes.
-            if ($objects = $config->buildClass($ret)) {
+            if (is_array($ret) and ($objects = $config->buildClass($ret))) {
                 return $objects;
             }
         }
