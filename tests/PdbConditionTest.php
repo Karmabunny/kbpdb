@@ -311,6 +311,24 @@ class PdbConditionTest extends TestCase
         $this->assertEquals('(`another` = ? AND `one_more` IS NOT NULL AND ~table.`i_lied` = ?)', $clause4);
 
         $this->assertEquals(['ok', 'also ok', 'things', 100, 'one', 'last-one'], $values);
+
+
+        $conditions = PdbCondition::fromArray([
+            'active' => true,
+            ['or' => [
+                ['and' => ['a' => null, 'b' => 'QC']],
+                ['and' => ['c' => 123, 'd' => 'EQA']],
+            ]],
+        ]);
+
+        $this->assertCount(2, $conditions);
+        $values = [];
+        $clause1 = $conditions[0]->build($pdb, $values);
+        $clause2 = $conditions[1]->build($pdb, $values);
+
+        $this->assertEquals('`active` = ?', $clause1);
+        $this->assertEquals('((`a` IS NULL AND `b` = ?) OR (`c` = ? AND `d` = ?))', $clause2);
+        $this->assertEquals([true, 'QC', 123, 'EQA'], $values);
     }
 
 
