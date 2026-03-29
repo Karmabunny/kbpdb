@@ -81,4 +81,14 @@ interface PdbModelInterface
      * @return static[]
      */
     public static function findAll(array $conditions = []);
+
+
+    /**
+     * Populate a model with a DB row.
+     *
+     * @param static $instance
+     * @param array $config
+     * @return void
+     */
+    public static function populate($instance, array $config);
 }

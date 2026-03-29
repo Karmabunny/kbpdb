@@ -2189,6 +2189,8 @@ abstract class Pdb implements Loggable, Serializable, NotSerializable, PdbDriver
 
             if (is_int($val)) {
                 $st->bindValue($key, $val, PDO::PARAM_INT);
+            } else if (is_bool($val)) {
+                $st->bindValue($key, (int) $val, PDO::PARAM_INT);
             } else {
                 $st->bindValue($key, $val, PDO::PARAM_STR);
             }
