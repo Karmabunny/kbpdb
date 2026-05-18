@@ -713,4 +713,23 @@ class StaticPdbTest extends TestCase
 
     }
 
+
+    public static function dataLikeEscape()
+    {
+        return [
+            '' => ['%foo\\bar_baz', '\\', '\%foo\\\\bar\\_baz'],
+            '%' =>['%foo\\bar_baz', '%', '%%foo%\\bar%_baz'],
+            '_' =>['%foo\\bar_baz', '_', '_%foo_\\bar__baz'],
+            '!' =>['%foo\\bar_baz', '!', '!%foo!\\bar!_baz'],
+        ];
+    }
+
+
+    /**
+     * @dataProvider dataLikeEscape
+     */
+    public function testLikeEscape($str, $escape, $expected)
+    {
+        $this->assertEquals($expected, Pdb::likeEscape($str, $escape));
+    }
 }
