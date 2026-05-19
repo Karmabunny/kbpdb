@@ -36,8 +36,6 @@ class PdbMutex implements MutexInterface
         if ($this->uniqueLocks) {
             $this->pdb = Pdb::create($this->pdb->config);
         }
-
-        register_shutdown_function([$this, '__destruct']);
     }
 
 
