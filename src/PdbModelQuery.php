@@ -12,11 +12,13 @@ use InvalidArgumentException;
  *
  *
  * @package karmabunny\pdb
+ *
+ * @template T of PdbModelInterface
  */
 class PdbModelQuery extends PdbQuery
 {
 
-    /** @var class-string<PdbModelInterface> */
+    /** @var class-string<T> */
     protected $_model;
 
     /** @var bool|string */
@@ -28,7 +30,8 @@ class PdbModelQuery extends PdbQuery
 
     /**
      *
-     * @param class-string<PdbModelInterface> $model
+     * @param class-string<T> $model
+     * @param array<string, mixed> $config
      * @throws InvalidArgumentException
      */
     public function __construct(string $model, array $config = [])
@@ -67,7 +70,7 @@ class PdbModelQuery extends PdbQuery
      * ```sprout_file_join => file_join```
      *
      * @param bool $inflect
-     * @return static
+     * @return $this
      * @since v0.18
      */
     public function inflect(bool $inflect = true)
@@ -80,7 +83,7 @@ class PdbModelQuery extends PdbQuery
     /**
      *
      * @param bool|null $deleted
-     * @return static
+     * @return $this
      */
     public function deleted(?bool $deleted)
     {
