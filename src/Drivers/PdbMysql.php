@@ -55,6 +55,20 @@ class PdbMysql extends Pdb
     }
 
 
+    /** @inheritdoc */
+    public function getServerVersion(): string
+    {
+        $version = parent::getServerVersion();
+        $mariadb = strpos(strtolower($version), 'mariadb') !== false;
+
+        if ($mariadb) {
+            $version = preg_replace('/^5\.5\.5.*?([0-9\.]+).*$/', '$1', $version);
+        }
+
+        return $version;
+    }
+
+
     /**
      * Is this a MariaDB connection?
      *
@@ -63,7 +77,7 @@ class PdbMysql extends Pdb
      */
     public function isMariadb(): bool
     {
-        $version = $this->getServerVersion();
+        $version = parent::getServerVersion();
         return strpos(strtolower($version), 'mariadb') !== false;
     }
 
