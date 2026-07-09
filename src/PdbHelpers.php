@@ -169,6 +169,7 @@ class PdbHelpers
         return strtr($str, [
             '%' => $escape . '%',
             '_' => $escape . '_',
+            '\\' => $escape . '\\',
         ]);
     }
 

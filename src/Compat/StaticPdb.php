@@ -65,7 +65,7 @@ use PDOStatement;
  * @method static string prettyQueryIndentation(string $query)
  * @method static string prettyQuery(string $query, array $values)
  * @method static string stripStrings(string $q)
- * @method static string likeEscape(string $str)
+ * @method static string likeEscape(string $str, string $escape = '\\')
  * @method static array convertEnumArr(string $enum_defn)
  *
  * @method static string quote(string $field, string $type)
