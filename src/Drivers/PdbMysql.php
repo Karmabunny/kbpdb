@@ -239,21 +239,31 @@ class PdbMysql extends Pdb
 
         $res->closeCursor();
 
-        $q = "SELECT CONSTRAINT_NAME, CHECK_CLAUSE
-            FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
-            WHERE CONSTRAINT_SCHEMA = ?
-                AND TABLE_NAME = ?";
-        $res = $this->query($q, $params, 'pdo');
+        // The JSON type, methods, and CHECK_CONSTRAINTS are only available in
+        // modern versions of mysql and mariadb.
+        $version = $this->getServerVersion();
+        $isMaria = $this->isMariadb();
 
-        while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
-            $col = $row['CONSTRAINT_NAME'];
-            if (!isset($rows[$col]) || !preg_match('/^json_valid\(/i', $row['CHECK_CLAUSE'])) {
-                continue;
+        if (
+            ($isMaria and version_compare($version, '10.2', '>='))
+            or (!$isMaria and version_compare($version, '8.0', '>='))
+        ) {
+            $q = "SELECT CONSTRAINT_NAME, CHECK_CLAUSE
+                FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
+                WHERE CONSTRAINT_SCHEMA = ?
+                    AND TABLE_NAME = ?";
+            $res = $this->query($q, $params, 'pdo');
+
+            while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
+                $col = $row['CONSTRAINT_NAME'];
+                if (!isset($rows[$col]) || !preg_match('/^json_valid\(/i', $row['CHECK_CLAUSE'])) {
+                    continue;
+                }
+                $rows[$col]->type = 'json';
             }
-            $rows[$col]->type = 'json';
-        }
 
-        $res->closeCursor();
+            $res->closeCursor();
+        }
 
         return $rows;
     }
