@@ -145,7 +145,9 @@ trait PdbModelTrait
             // Here we set these immediately.
             // @phpstan-ignore-next-line : phpstan runs on 7.1.
             if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
+                // @phpstan-ignore-next-line : phpstan runs on 7.1.
                 $type = $property->getType();
+
                 if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {
                     if ($type instanceof ReflectionNamedType && $type->getName() === 'array') {
                         $property->setValue($this, $value->toArray());
