@@ -9,6 +9,7 @@ namespace karmabunny\pdb;
 use ArrayAccess;
 use ArrayIterator;
 use IteratorAggregate;
+use karmabunny\kb\Cli;
 use Traversable;
 
 /**
@@ -128,8 +129,6 @@ class PdbLog implements IteratorAggregate
      *
      * This is formatted in markdown too.
      *
-     * TODO Add (optional) colours.
-     *
      * @param static|array $log
      * @return void echos output
      */
@@ -141,27 +140,29 @@ class PdbLog implements IteratorAggregate
 
         foreach ($log as [$type, $body]) {
             switch ($type) {
-                case 'section':
-                    echo ' ' . $body . PHP_EOL;
-                    echo '--------------' . PHP_EOL;
-                    echo PHP_EOL;
+                case self::SECTION:
+                    Cli::puts(Cli::FG_YELLOW, $body);
+                    Cli::puts(Cli::FG_YELLOW, '--------------');
                 break;
 
-                case 'heading':
-                    echo '## ' . $body . PHP_EOL;
-                    echo PHP_EOL;
+                case self::HEADING:
+                    Cli::puts(Cli::FG_CYAN, '##', $body);
                 break;
 
-                case 'query':
-                    echo '> ' . str_replace("\n", "\n> ", $body) . PHP_EOL;
-                    echo PHP_EOL;
-                    break;
+                case self::QUERY:
+                    $body = str_replace("\n", "\n> ", $body);
+                    $body = PdbHelpers::prettyQueryAnsi($body);
+                    Cli::puts('>', $body);
+                break;
 
-                case 'message':
-                    echo '!! ' . $body . PHP_EOL;
-                    echo PHP_EOL;
+                case self::MESSAGE:
+                    Cli::puts(Cli::FG_RED, '!!', $body);
+                break;
             }
+
+            Cli::stdout(PHP_EOL);
         }
-        echo PHP_EOL;
+
+        Cli::stdout(PHP_EOL);
     }
 }
