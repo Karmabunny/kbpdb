@@ -334,14 +334,14 @@ class PdbSync
      * This returns a 'pdb log' that can be converted to whichever format you
      * please. The {@see PdbLog::print()} method has a sample implementation.
      *
-     * @return array [ type, body ] execution log
+     * @return PdbLog
      */
-    public function execute($act = true)
+    public function execute($act = true): PdbLog
     {
-        $log = [];
+        $log = new PdbLog();
 
         if ($this->hasQueries()) {
-            $log[] = [ 'section', 'Tables' ];
+            $log->section('Tables');
         }
 
         /** @var Throwable[] $errors */
@@ -352,52 +352,52 @@ class PdbSync
 
             if ($heading !== $query->heading) {
                 $heading = $query->heading;
-                $log[] = [ 'heading', $query->heading ];
+                $log->heading($query->heading);
             }
 
             try {
-                $log[] = [ 'query', $query->sql ];
+                $log->query($query->sql);
                 if ($act) {
                     $this->pdb->query($query->sql, [], 'pdo');
                 }
             }
             catch (Throwable $error) {
-                $log[] = [ 'message', $error->getMessage() ];
+                $log->message($error->getMessage());
                 $errors[] = $error;
             }
 
             if ($query->message) {
-                $log[] = [ 'message', $query->message ];
+                $log->message($query->message);
             }
         }
 
         if (!empty($this->warnings)) {
-            $log[] = [ 'section', 'Warnings' ];
+            $log->section('Warnings');
         }
 
         foreach ($this->warnings as $warning) {
-            $log[] = [ 'message', $warning ];
+            $log->message($warning);
         }
 
         if (!empty($this->fixes)) {
-            $log[] = [ 'section', 'Fixes' ];
+            $log->section('Fixes');
         }
 
         foreach ($this->fixes as $type => $fixes) {
-            $log[] = [ 'heading', $type ];
+            $log->heading($type);
 
             foreach ($fixes as $fix) {
-                $log[] = [ 'message', $fix->name ];
-                $log[] = [ 'query', $fix->sql ];
+                $log->message($fix->name);
+                $log->query($fix->sql);
             }
         }
 
         if (!empty($errors)) {
-            $logs[] = [ 'section', 'Errors' ];
+            $log->section('Errors');
         }
 
         foreach ($errors as $error) {
-            $log[] = [ 'message', $error->getMessage() ];
+            $log->message($error->getMessage(), true);
         }
 
         return $log;
@@ -423,7 +423,7 @@ class PdbSync
             }
 
             // The juicy bits.
-            $sql[] = $query->sql;
+            $sql[] = $this->pdb->insertPrefixes($query->sql);
 
             // Some queries have extra messages, also comments.
             if ($query->message) {

@@ -6,6 +6,11 @@
 
 namespace karmabunny\pdb;
 
+use ArrayAccess;
+use ArrayIterator;
+use IteratorAggregate;
+use Traversable;
+
 /**
  * This is a array format for describing logs from the parser and sync tools.
  *
@@ -38,7 +43,7 @@ namespace karmabunny\pdb;
  *
  * @package karmabunny\pdb
  */
-class PdbLog
+class PdbLog implements IteratorAggregate
 {
     const SECTION = 'section';
     const HEADING = 'heading';
@@ -46,7 +51,11 @@ class PdbLog
     const QUERY = 'query';
 
 
+    /** @var array{0:string,1:string}[] */
     protected $log = [];
+
+    /** @var string[] */
+    protected $errors = [];
 
 
     public function __construct(array $log = [])
@@ -55,9 +64,34 @@ class PdbLog
     }
 
 
-    public function getLog()
+    /** @inheritdoc */
+    public function getIterator(): Traversable
+    {
+        return new ArrayIterator($this->log);
+    }
+
+
+    public function getLog(): array
     {
         return $this->log;
+    }
+
+
+    public function isEmpty(): bool
+    {
+        return empty($this->log);
+    }
+
+
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+
+    public function hasErrors(): bool
+    {
+        return !empty($this->errors);
     }
 
 
@@ -73,9 +107,13 @@ class PdbLog
     }
 
 
-    public function message(string $message)
+    public function message(string $message, bool $error = false)
     {
         $this->log[] = [ self::MESSAGE, $message ];
+
+        if ($error) {
+            $this->errors[] = $message;
+        }
     }
 
 
