@@ -20,13 +20,20 @@ class PdbMysql extends Pdb
 {
 
     /** @inheritdoc */
-    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    public static function connect($config, array $options = [])
     {
         if (!isset($options[PDO::MYSQL_ATTR_FOUND_ROWS])) {
             // This makes UPDATE predictable and behave the same as other DBMS.
             $options[PDO::MYSQL_ATTR_FOUND_ROWS] = true;
         }
 
+        return parent::connect($config, $options);
+    }
+
+
+    /** @inheritdoc */
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    {
         if ($config->getHack(PdbConfig::HACK_NO_ENGINE_SUBSTITUTION)) {
             $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
         }
