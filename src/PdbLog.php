@@ -10,6 +10,7 @@ use ArrayAccess;
 use ArrayIterator;
 use IteratorAggregate;
 use karmabunny\kb\Cli;
+use karmabunny\kb\Enc;
 use Traversable;
 
 /**
@@ -164,5 +165,49 @@ class PdbLog implements IteratorAggregate
         }
 
         Cli::stdout(PHP_EOL);
+    }
+
+
+
+    /**
+     * Render a log as HTML.
+     *
+     * @param static|array $log
+     * @return string
+     */
+    public static function html($log): string
+    {
+        $html = '';
+
+        foreach ($log as [$type, $body]) {
+            switch ($type) {
+                case 'section':
+                    $body = Enc::html($body);
+                    $html .= "<h3>{$body}</h3>\n";
+                    break;
+
+                case 'heading':
+                    [$title, $body] = explode(' - ', $body, 2) + ['', ''];
+                    $title = Enc::html($title);
+                    $body = Enc::html($body);
+
+                    $html .= "<p class='heading'><b>{$title} </b>";
+                    if (!empty($body)) $html .= $body;
+                    $html .= "</p>\n";
+                    break;
+
+                case 'query':
+                    $body = Enc::html($body);
+                    $html .= "<pre class='query'>{$body}</pre>\n";
+                    break;
+
+                case 'message':
+                    $body = Enc::html($body);
+                    $html .= "<p>{$body}</p>";
+                    break;
+            }
+        }
+
+        return $html;
     }
 }
