@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c378bc70ce9ab626a8c890fce6b6140d",
+    "content-hash": "05dd09a1a6dcbee7c8a092debc6afef1",
     "packages": [
         {
             "name": "karmabunny/interfaces",
-            "version": "v1.0.1",
+            "version": "v1.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbinterfaces.git",
-                "reference": "32b0489a5681022be70d37512f28603359ad1fbb"
+                "reference": "dcf87a7013dbdb29c66480d3bdb8561d1167e0fe"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbinterfaces/zipball/32b0489a5681022be70d37512f28603359ad1fbb",
-                "reference": "32b0489a5681022be70d37512f28603359ad1fbb",
+                "url": "https://api.github.com/repos/Karmabunny/kbinterfaces/zipball/dcf87a7013dbdb29c66480d3bdb8561d1167e0fe",
+                "reference": "dcf87a7013dbdb29c66480d3bdb8561d1167e0fe",
                 "shasum": ""
             },
             "require": {
@@ -53,26 +53,26 @@
             ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbinterfaces/issues",
-                "source": "https://github.com/Karmabunny/kbinterfaces/tree/v1.0.1"
+                "source": "https://github.com/Karmabunny/kbinterfaces/tree/v1.2.1"
             },
-            "time": "2025-11-11T22:47:53+00:00"
+            "time": "2026-01-28T01:05:13+00:00"
         },
         {
             "name": "karmabunny/kb",
-            "version": "v4.58.38",
+            "version": "v4.64.51",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbphp.git",
-                "reference": "9deba2671eefdddeb1177758360c7aae18070252"
+                "reference": "b47e93f319bfaa332a023b82f706121e646bff12"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/9deba2671eefdddeb1177758360c7aae18070252",
-                "reference": "9deba2671eefdddeb1177758360c7aae18070252",
+                "url": "https://api.github.com/repos/Karmabunny/kbphp/zipball/b47e93f319bfaa332a023b82f706121e646bff12",
+                "reference": "b47e93f319bfaa332a023b82f706121e646bff12",
                 "shasum": ""
             },
             "require": {
-                "karmabunny/interfaces": "^1.0",
+                "karmabunny/interfaces": "^1.2",
                 "php": "^7.2|^8",
                 "symfony/polyfill-php73": "*",
                 "symfony/polyfill-php81": "^1.26"
@@ -84,6 +84,9 @@
             },
             "type": "library",
             "autoload": {
+                "files": [
+                    "compat/bootstrap.php"
+                ],
                 "psr-4": {
                     "karmabunny\\kb\\": [
                         "src/",
@@ -110,13 +113,13 @@
             ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbphp/issues",
-                "source": "https://github.com/Karmabunny/kbphp/tree/v4.58.38"
+                "source": "https://github.com/Karmabunny/kbphp/tree/v4.64.51"
             },
-            "time": "2025-11-21T05:34:41+00:00"
+            "time": "2026-07-17T05:13:19+00:00"
         },
         {
             "name": "symfony/polyfill-php73",
-            "version": "v1.33.0",
+            "version": "v1.37.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php73.git",
@@ -172,7 +175,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php73/tree/v1.33.0"
+                "source": "https://github.com/symfony/polyfill-php73/tree/v1.37.0"
             },
             "funding": [
                 {
@@ -196,29 +199,26 @@
         },
         {
             "name": "symfony/polyfill-php81",
-            "version": "v1.26.0",
+            "version": "v1.38.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/polyfill-php81.git",
-                "reference": "13f6d1271c663dc5ae9fb843a8f16521db7687a1"
+                "reference": "6bfb9c766cacffbc8e118cb87217d08ed84e5cd7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/polyfill-php81/zipball/13f6d1271c663dc5ae9fb843a8f16521db7687a1",
-                "reference": "13f6d1271c663dc5ae9fb843a8f16521db7687a1",
+                "url": "https://api.github.com/repos/symfony/polyfill-php81/zipball/6bfb9c766cacffbc8e118cb87217d08ed84e5cd7",
+                "reference": "6bfb9c766cacffbc8e118cb87217d08ed84e5cd7",
                 "shasum": ""
             },
             "require": {
-                "php": ">=7.1"
+                "php": ">=7.2"
             },
             "type": "library",
             "extra": {
-                "branch-alias": {
-                    "dev-main": "1.26-dev"
-                },
                 "thanks": {
-                    "name": "symfony/polyfill",
-                    "url": "https://github.com/symfony/polyfill"
+                    "url": "https://github.com/symfony/polyfill",
+                    "name": "symfony/polyfill"
                 }
             },
             "autoload": {
@@ -255,7 +255,7 @@
                 "shim"
             ],
             "support": {
-                "source": "https://github.com/symfony/polyfill-php81/tree/v1.26.0"
+                "source": "https://github.com/symfony/polyfill-php81/tree/v1.38.1"
             },
             "funding": [
                 {
@@ -267,11 +267,15 @@
                     "type": "github"
                 },
                 {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
                     "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
                     "type": "tidelift"
                 }
             ],
-            "time": "2022-05-24T11:49:31+00:00"
+            "time": "2026-05-26T12:45:58+00:00"
         }
     ],
     "packages-dev": [

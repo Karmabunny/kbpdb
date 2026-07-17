@@ -16,7 +16,7 @@
         "ext-dom": "*",
         "ext-libxml": "*",
         "ext-pdo": "*",
-        "karmabunny/kb": "^3.58|^4"
+        "karmabunny/kb": "^4.64"
     },
     "require-dev": {
         "karmabunny/rdb": "^1.16",
