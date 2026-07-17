@@ -270,9 +270,9 @@ class PdbParser implements PdbSchemaInterface
             $table->primary_key[] = $col_name;
 
             // Also add in the 'is_primary' flag while we're here.
-            /** @var PdbColumn|null $col */
-            $col = &$table->columns[$col_name] ?? null;
-            if ($col) $col->is_primary = true;
+            if (isset($table->columns[$col_name])) {
+                $table->columns[$col_name]->is_primary = true;
+            }
         }
 
 

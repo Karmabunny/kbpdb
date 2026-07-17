@@ -472,9 +472,12 @@ class PdbHelpers
         if (!empty($matches[14])) return 8;
         // timestamp
         if (!empty($matches[15])) return 4;
+
         // date + time
+        // @phpstan-ignore-next-line: it knows this is never empty, but I want to be explicit.
         if (!empty($matches[16])) return 3;
 
+        // @phpstan-ignore-next-line: default case.
         return 0;
     }
 
@@ -602,7 +605,7 @@ class PdbHelpers
 
             $matches = [];
             preg_match('/^ +/', $line, $matches);
-            $lowest_indent = min($lowest_indent, strlen(@$matches[0]));
+            $lowest_indent = min($lowest_indent, strlen($matches[0] ?? ''));
         }
 
         if ($lowest_indent == 0) return implode("\n", $lines);
