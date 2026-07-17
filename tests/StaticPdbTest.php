@@ -272,7 +272,8 @@ class StaticPdbTest extends TestCase
     **/
     public function testThrowException($table, $vals)
     {
-        $this->expectException(InvalidArgumentException::class);
+        $error = is_string($table) ? InvalidArgumentException::class : TypeError::class;
+        $this->expectException($error);
         Pdb::insert($table, $vals);
     }
 
