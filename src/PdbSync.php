@@ -123,11 +123,11 @@ class PdbSync
      *   - `'foreign_key'` - update constraints
      *   - `'remove'`      - remove columns
      *   - `'views'`       - process views
-     * @return array [ type, body ]
+     * @return PdbLog
      * @throws InvalidArgumentException
      * @throws QueryException
      */
-    public function updateDatabase(PdbSchemaInterface $schema, $do = null)
+    public function updateDatabase(PdbSchemaInterface $schema, $do = null): PdbLog
     {
         $this->migrate($schema, $do);
         return $this->execute();
