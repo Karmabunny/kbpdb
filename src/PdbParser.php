@@ -371,7 +371,7 @@ class PdbParser implements PdbSchemaInterface
             $log->heading($table);
 
             foreach ($errors as $error) {
-                $log->message($error);
+                $log->message($error, true);
             }
         }
 
