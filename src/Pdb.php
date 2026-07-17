@@ -548,7 +548,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|object|PDOStatement|null
+     * @return mixed
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
@@ -573,7 +573,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|object|PDOStatement|null
+     * @return mixed
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
@@ -661,7 +661,7 @@ abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, 
      * @param PDOStatement $st The query to execute. Prepare using {@see Pdb::prepare}
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturnInterface $config a return type or config {@see PdbReturn}
-     * @return array|string|int|object|PDOStatement|null
+     * @return mixed
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails

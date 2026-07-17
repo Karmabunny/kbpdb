@@ -1353,7 +1353,7 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
     /**
      *
      * @param string $return_type
-     * @return array|string|int|object|PDOStatement|null
+     * @return mixed
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
