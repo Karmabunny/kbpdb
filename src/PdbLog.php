@@ -6,6 +6,12 @@
 
 namespace karmabunny\pdb;
 
+use ArrayIterator;
+use IteratorAggregate;
+use karmabunny\kb\Cli;
+use karmabunny\kb\Enc;
+use Traversable;
+
 /**
  * This is a array format for describing logs from the parser and sync tools.
  *
@@ -38,7 +44,7 @@ namespace karmabunny\pdb;
  *
  * @package karmabunny\pdb
  */
-class PdbLog
+class PdbLog implements IteratorAggregate
 {
     const SECTION = 'section';
     const HEADING = 'heading';
@@ -46,7 +52,11 @@ class PdbLog
     const QUERY = 'query';
 
 
+    /** @var array{0:string,1:string}[] */
     protected $log = [];
+
+    /** @var string[] */
+    protected $errors = [];
 
 
     public function __construct(array $log = [])
@@ -55,9 +65,34 @@ class PdbLog
     }
 
 
-    public function getLog()
+    /** @inheritdoc */
+    public function getIterator(): Traversable
+    {
+        return new ArrayIterator($this->log);
+    }
+
+
+    public function getLog(): array
     {
         return $this->log;
+    }
+
+
+    public function isEmpty(): bool
+    {
+        return empty($this->log);
+    }
+
+
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+
+    public function hasErrors(): bool
+    {
+        return !empty($this->errors);
     }
 
 
@@ -73,9 +108,13 @@ class PdbLog
     }
 
 
-    public function message(string $message)
+    public function message(string $message, bool $error = false)
     {
         $this->log[] = [ self::MESSAGE, $message ];
+
+        if ($error) {
+            $this->errors[] = $message;
+        }
     }
 
 
@@ -90,8 +129,6 @@ class PdbLog
      *
      * This is formatted in markdown too.
      *
-     * TODO Add (optional) colours.
-     *
      * @param static|array $log
      * @return void echos output
      */
@@ -103,27 +140,73 @@ class PdbLog
 
         foreach ($log as [$type, $body]) {
             switch ($type) {
-                case 'section':
-                    echo ' ' . $body . PHP_EOL;
-                    echo '--------------' . PHP_EOL;
-                    echo PHP_EOL;
+                case self::SECTION:
+                    Cli::puts(Cli::FG_YELLOW, $body);
+                    Cli::puts(Cli::FG_YELLOW, '--------------');
                 break;
+
+                case self::HEADING:
+                    Cli::puts(Cli::FG_CYAN, '##', $body);
+                break;
+
+                case self::QUERY:
+                    $body = str_replace("\n", "\n> ", $body);
+                    $body = PdbHelpers::prettyQueryAnsi($body);
+                    Cli::puts('>', $body);
+                break;
+
+                case self::MESSAGE:
+                    Cli::puts(Cli::FG_RED, '!!', $body);
+                break;
+            }
+
+            Cli::stdout(PHP_EOL);
+        }
+
+        Cli::stdout(PHP_EOL);
+    }
+
+
+
+    /**
+     * Render a log as HTML.
+     *
+     * @param static|array $log
+     * @return string
+     */
+    public static function html($log): string
+    {
+        $html = '';
+
+        foreach ($log as [$type, $body]) {
+            switch ($type) {
+                case 'section':
+                    $body = Enc::html($body);
+                    $html .= "<h3>{$body}</h3>\n";
+                    break;
 
                 case 'heading':
-                    echo '## ' . $body . PHP_EOL;
-                    echo PHP_EOL;
-                break;
+                    [$title, $body] = explode(' - ', $body, 2) + ['', ''];
+                    $title = Enc::html($title);
+                    $body = Enc::html($body);
+
+                    $html .= "<p class='heading'><b>{$title} </b>";
+                    if (!empty($body)) $html .= $body;
+                    $html .= "</p>\n";
+                    break;
 
                 case 'query':
-                    echo '> ' . str_replace("\n", "\n> ", $body) . PHP_EOL;
-                    echo PHP_EOL;
+                    $body = Enc::html($body);
+                    $html .= "<pre class='query'>{$body}</pre>\n";
                     break;
 
                 case 'message':
-                    echo '!! ' . $body . PHP_EOL;
-                    echo PHP_EOL;
+                    $body = Enc::html($body);
+                    $html .= "<p>{$body}</p>";
+                    break;
             }
         }
-        echo PHP_EOL;
+
+        return $html;
     }
 }

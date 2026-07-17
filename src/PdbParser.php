@@ -360,18 +360,18 @@ class PdbParser implements PdbSchemaInterface
     /**
      * Get a formatted error log.
      *
-     * @return array
+     * @return PdbLog
      */
-    public function getErrorsLog(): array
+    public function getErrorsLog(): PdbLog
     {
-        $log = [];
-        $log[] = [ 'section', 'Load Errors' ];
+        $log = new PdbLog();
+        $log->section('Load Errors');
 
         foreach ($this->errors as $table => $errors) {
-            $log[] = [ 'heading', $table ];
+            $log->heading($table);
 
             foreach ($errors as $error) {
-                $log[] = [ 'message', $error ];
+                $log->message($error, true);
             }
         }
 
