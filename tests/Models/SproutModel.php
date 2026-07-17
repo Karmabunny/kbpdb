@@ -2,7 +2,7 @@
 
 namespace kbtests\Models;
 
-use karmabunny\pdb\Pdb;
+use karmabunny\pdb\Exceptions\RowMissingException;
 
 /**
  * Base models from Sprout.
@@ -49,7 +49,11 @@ abstract class SproutModel extends Record
         $table = static::getTableName();
 
         if ($this->id > 0) {
-            $pdb->update($table, $data, [ 'id' => $this->id ]);
+            $count = $pdb->update($table, $data, [ 'id' => $this->id ]);
+
+            if (!$count) {
+                throw new RowMissingException("Failed to update record for '{$table}'");
+            }
         }
         else {
             $data['id'] = $pdb->insert($table, $data);
@@ -58,11 +62,15 @@ abstract class SproutModel extends Record
             if (property_exists($this, 'uid')) {
                 $data['uid'] = $pdb->generateUid($table, $data['id']);
 
-                $pdb->update(
+                $count = $pdb->update(
                     $table,
                     [ 'uid' => $data['uid'] ],
                     [ 'id' => $data['id'] ]
                 );
+
+                if (!$count) {
+                    throw new RowMissingException("Failed to update record for '{$table}'");
+                }
             }
         }
     }
