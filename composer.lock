@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0cd070b5ce0ccd0d25d2cdee4d6b8795",
+    "content-hash": "04411da5715ac22f9f04af94fee0da11",
     "packages": [
         {
             "name": "karmabunny/interfaces",
@@ -2973,11 +2973,14 @@
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php": "^8.1",
+        "php": "^8.2",
         "ext-dom": "*",
         "ext-libxml": "*",
         "ext-pdo": "*"
     },
     "platform-dev": {},
+    "platform-overrides": {
+        "php": "8.2"
+    },
     "plugin-api-version": "2.6.0"
 }
