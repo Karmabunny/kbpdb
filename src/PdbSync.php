@@ -362,7 +362,6 @@ class PdbSync
                 }
             }
             catch (Throwable $error) {
-                $log->message($error->getMessage());
                 $errors[] = $error;
             }
 
