@@ -720,11 +720,24 @@ class PdbHelpers
      */
     public static function prettyQueryAnsi(string $query): string
     {
-        $keywords = implode('|', self::KEYWORDS);
-        $pattern = "/\b(?:{$keywords}|[a-z_]+\(.*\))\b/i";
+        static $pattern = null;
 
-        return preg_replace_callback($pattern, function($matches) {
+        if (!$pattern) {
+            $keywords = self::KEYWORDS;
+            $keywords = array_map('preg_quote', $keywords);
+
+            usort($keywords, function($a, $b) {
+                return strlen($b) <=> strlen($a);
+            });
+
+            $keywords = implode('|', $keywords);
+            $pattern = "/\\b(?:{$keywords}\\b|\\b[a-z_]+\(?=\\()/i";
+        }
+
+        $pretty = preg_replace_callback($pattern, function($matches) {
             return Cli::color(strtoupper($matches[0]), Cli::FG_BLUE);
         }, $query);
+
+        return $pretty ?? $query;
     }
 }
