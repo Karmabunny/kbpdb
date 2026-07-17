@@ -1,9 +1,14 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\DataBinders;
 
 use DateTimeInterface;
-use karmabunny\kb\Configurable;
+use karmabunny\interfaces\ConfigurableInterface;
 use karmabunny\kb\UpdateTrait;
 use karmabunny\pdb\PdbDataFormatterInterface;
 use karmabunny\pdb\PdbDataFormatterTrait;
@@ -28,7 +33,7 @@ use karmabunny\pdb\PdbDataFormatterTrait;
  *
  * @package karmabunny\pdb
  */
-class DateTimeFormatter implements PdbDataFormatterInterface, Configurable
+class DateTimeFormatter implements PdbDataFormatterInterface, ConfigurableInterface
 {
     use PdbDataFormatterTrait;
     use UpdateTrait;

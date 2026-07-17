@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -18,7 +19,7 @@ trait PdbDataFormatterTrait
 {
 
     /** @inheritdoc */
-    public function format($value): string
+    public function format(object $value): string
     {
         return (string) $value;
     }

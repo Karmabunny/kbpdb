@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -6,7 +7,7 @@
 
 namespace karmabunny\pdb\Cache;
 
-use karmabunny\kb\ConfigurableInit;
+use karmabunny\interfaces\ConfigurableInitInterface;
 use karmabunny\kb\Json;
 use karmabunny\rdb\Rdb;
 
@@ -17,17 +18,17 @@ use karmabunny\rdb\Rdb;
  *
  * @package karmabunny\pdb
  */
-class PdbRedisCache extends PdbCache implements ConfigurableInit
+class PdbRedisCache extends PdbCache implements ConfigurableInitInterface
 {
 
     /** @var Rdb */
-    public $rdb;
+    public Rdb $rdb;
 
     /** @var array */
-    public $config = [];
+    public array $config = [];
 
     /** @var bool */
-    protected $_init = true;
+    protected bool $_init = true;
 
 
     /**
@@ -70,7 +71,7 @@ class PdbRedisCache extends PdbCache implements ConfigurableInit
 
 
     /** @inheritdoc */
-    public function store(string $key, $result, int $ttl)
+    public function store(string $key, mixed $result, int $ttl)
     {
         $json = Json::encode($result);
         $this->rdb->set($key, $json, $ttl * 1000);
@@ -85,7 +86,7 @@ class PdbRedisCache extends PdbCache implements ConfigurableInit
 
 
     /** @inheritdoc */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
         $value = $this->rdb->get($key);
         if (!$value) return $value;

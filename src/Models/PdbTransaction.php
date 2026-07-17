@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\Models;
 
@@ -14,17 +19,15 @@ use karmabunny\pdb\Pdb;
 class PdbTransaction extends DataObject
 {
 
-    /** @var Pdb */
-    public $pdb;
+    public Pdb $pdb;
 
     /** @var string|false */
-    public $parent;
+    public string|false $parent;
 
     /** @var string|false */
-    public $key;
+    public string|false $key;
 
-    /** @var bool */
-    public $readonly = false;
+    public bool $readonly = false;
 
 
     /**

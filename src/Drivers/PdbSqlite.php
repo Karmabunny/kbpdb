@@ -1,4 +1,10 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2024 Karmabunny
+ */
+
 
 namespace karmabunny\pdb\Drivers;
 
@@ -32,7 +38,6 @@ class PdbSqlite extends Pdb
         $fns = array_intersect_key(static::$FUNCTIONS, $fns);
 
         foreach ($fns as $name => $fn) {
-            // @phpstan-ignore-next-line: it definitely supports 4 args.
             $pdo->sqliteCreateFunction($name, $fn, -1, PDO::SQLITE_DETERMINISTIC);
         }
 

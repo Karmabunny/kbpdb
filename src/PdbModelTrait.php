@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -141,11 +142,7 @@ trait PdbModelTrait
                 continue;
             }
 
-            // Newer PHP is picky about typed properties.
-            // Here we set these immediately.
-            // @phpstan-ignore-next-line : phpstan runs on 7.1.
-            if (PHP_VERSION_ID >= 70400 and !$property->isInitialized($this)) {
-                // @phpstan-ignore-next-line : phpstan runs on 7.1.
+            if (!$property->isInitialized($this)) {
                 $type = $property->getType();
 
                 if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {

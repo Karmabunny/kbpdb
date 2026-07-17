@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -53,7 +54,7 @@ class PdbHelpers
      * @param string $query
      * @return string|null null if invalid.
      */
-    public static function getQueryType(string $query)
+    public static function getQueryType(string $query): ?string
     {
         $matches = [];
         preg_match('/^\s*(\w+)[^\w]/', $query, $matches);
@@ -131,7 +132,7 @@ class PdbHelpers
      * @param string $q The query
      * @return string The modified query
      */
-    public static function stripStrings($q)
+    public static function stripStrings(string $q): string
     {
         $q = preg_replace('/\'(?:\\\\\'|[^\'\\\\])*\'/', '', $q);
         $q = preg_replace('/"(?:\\\\"|[^"\\\\])*"/', '', $q);
@@ -205,8 +206,8 @@ class PdbHelpers
      * - `'column as alias'` (string, full syntax)
      * - `'column alias'` (string, shorthand)
      *
-     * @param string|PdbQueryInterface|array $field
-     * @return array [ field, alias ] second param is null if no alias is present.
+     * @param string|array|PdbQueryInterface $field
+     * @return array{0:string|PdbQueryInterface,1:string|null} [ field, alias ] second param is null if no alias is present.
      */
     public static function parseAlias($field): array
     {
@@ -268,7 +269,7 @@ class PdbHelpers
      * @param bool $strict only return real types
      * @return string|null the PHP type, null if unknown
      */
-    public static function convertDataType(string $type, $strict = false)
+    public static function convertDataType(string $type, bool $strict = false): ?string
     {
         $matches = [];
 
@@ -297,10 +298,10 @@ class PdbHelpers
      * Convert an ENUM or SET definition from MySQL into an array of values
      *
      * @param string $enum_defn The definition from MySQL, e.g. ENUM('aa','bb','cc')
-     * @return array Numerically indexed
+     * @return array<int,string> Numerically indexed
      * @throws InvalidArgumentException
      */
-    public static function convertEnumArr($enum_defn)
+    public static function convertEnumArr(string $enum_defn): array
     {
         $pattern = '/^(?:ENUM|SET)\s*\(\s*\'/i';
         if (!preg_match($pattern, $enum_defn)) {
@@ -471,9 +472,12 @@ class PdbHelpers
         if (!empty($matches[14])) return 8;
         // timestamp
         if (!empty($matches[15])) return 4;
+
         // date + time
+        // @phpstan-ignore-next-line: it knows this is never empty, but I want to be explicit.
         if (!empty($matches[16])) return 3;
 
+        // @phpstan-ignore-next-line: default case.
         return 0;
     }
 
@@ -492,7 +496,7 @@ class PdbHelpers
      * @param int|string[] $data
      * @return string
      */
-    public static function bindPlaceholders($data): string
+    public static function bindPlaceholders(int|array $data): string
     {
         if (is_array($data)) {
             $keys = [];
@@ -517,7 +521,7 @@ class PdbHelpers
      * @param array $binds generic list of binds
      * @return array
      */
-    public static function getBindSubset(string $q, array $binds)
+    public static function getBindSubset(string $q, array $binds): array
     {
         $q = PdbHelpers::stripStrings($q);
 
@@ -601,7 +605,7 @@ class PdbHelpers
 
             $matches = [];
             preg_match('/^ +/', $line, $matches);
-            $lowest_indent = min($lowest_indent, strlen(@$matches[0]));
+            $lowest_indent = min($lowest_indent, strlen($matches[0] ?? ''));
         }
 
         if ($lowest_indent == 0) return implode("\n", $lines);

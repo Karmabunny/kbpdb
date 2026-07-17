@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -30,7 +31,7 @@ interface PdbDataFormatterInterface
      * @param object $value
      * @return string
      */
-    public function format($value): string;
+    public function format(object $value): string;
 
 
     /**

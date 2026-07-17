@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -46,7 +47,7 @@ class PdbLog
     const QUERY = 'query';
 
 
-    protected $log = [];
+    protected array $log = [];
 
 
     public function __construct(array $log = [])
@@ -95,7 +96,7 @@ class PdbLog
      * @param static|array $log
      * @return void echos output
      */
-    public static function print($log)
+    public static function print(PdbLog|array $log)
     {
         if ($log instanceof static) {
             $log = $log->getLog();

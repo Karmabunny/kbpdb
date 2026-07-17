@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -42,13 +43,13 @@ class PdbParser implements PdbSchemaInterface
 
 
     /** @var PdbTable[] name => PdbTable */
-    public $tables = [];
+    public array $tables = [];
 
     /** @var string[] name => string */
-    public $views = [];
+    public array $views = [];
 
-    /** @var string[][] name => string[] */
-    private $errors = [];
+    /** @var array<string,string[]> name => string[] */
+    private array $errors = [];
 
 
     /**
@@ -59,7 +60,7 @@ class PdbParser implements PdbSchemaInterface
      * @throws XMLException
      * @throws Exception
      **/
-    public function loadXml($dom)
+    public function loadXml(string|DOMDocument $dom): void
     {
         // If its not a DOMDocument, assume a filename
         if (!($dom instanceof DOMDocument)) {
@@ -109,7 +110,7 @@ class PdbParser implements PdbSchemaInterface
      * @return PdbSchema
      * @throws PdbParserException
      */
-    public function parseSchema($dom): PdbSchema
+    public function parseSchema(string|DOMDocument $dom): PdbSchema
     {
         try {
             $this->loadXml($dom);
@@ -136,7 +137,7 @@ class PdbParser implements PdbSchemaInterface
      * @return PdbTable
      * @throws XMLAssertException
      */
-    private function parseTable(DOMElement $table_node)
+    private function parseTable(DOMElement $table_node): PdbTable
     {
         $table_name = $table_node->getAttribute('name');
 
@@ -269,9 +270,9 @@ class PdbParser implements PdbSchemaInterface
             $table->primary_key[] = $col_name;
 
             // Also add in the 'is_primary' flag while we're here.
-            /** @var PdbColumn|null $col */
-            $col = &$table->columns[$col_name] ?? null;
-            if ($col) $col->is_primary = true;
+            if (isset($table->columns[$col_name])) {
+                $table->columns[$col_name]->is_primary = true;
+            }
         }
 
 
@@ -299,7 +300,7 @@ class PdbParser implements PdbSchemaInterface
      * @param DOMElement $view_node
      * @return string
      */
-    private function parseView(DOMElement $view_node)
+    private function parseView(DOMElement $view_node): string
     {
         return XML::text($view_node);
     }

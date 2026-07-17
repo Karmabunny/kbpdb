@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\Models;
 
@@ -13,26 +18,21 @@ use karmabunny\pdb\PdbStructWriterInterface;
  */
 class PdbForeignKey extends Collection implements PdbStructWriterInterface
 {
-    /** @var string|null */
-    public $constraint_name;
+    public ?string $constraint_name = null;
 
     /** @var string non-prefixed */
-    public $from_table;
+    public string $from_table;
 
-    /** @var string */
-    public $from_column;
+    public string $from_column;
 
     /** @var string non-prefixed */
-    public $to_table;
+    public string $to_table;
 
-    /** @var string */
-    public $to_column;
+    public string $to_column;
 
-    /** @var string */
-    public $update_rule;
+    public string $update_rule;
 
-    /** @var string */
-    public $delete_rule;
+    public string $delete_rule;
 
 
 
@@ -43,7 +43,8 @@ class PdbForeignKey extends Collection implements PdbStructWriterInterface
      * @param string $column_name
      * @return PdbColumn|null
      */
-    private static function getColumn(array $tables, string $table_name, string $column_name) {
+    private static function getColumn(array $tables, string $table_name, string $column_name): ?PdbColumn
+    {
         /** @var PdbTable|null $table */
         $table = $tables[$table_name] ?? null;
         if (!$table) return null;

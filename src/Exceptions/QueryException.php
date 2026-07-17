@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -16,10 +17,10 @@ class QueryException extends PdbException
 {
 
     /** @var string */
-    public $query;
+    public string $query = '';
 
     /** @var array */
-    public $params;
+    public array $params = [];
 
 
     /**
@@ -27,7 +28,7 @@ class QueryException extends PdbException
      * @param string $query
      * @return static
      */
-    public function setQuery(string $query)
+    public function setQuery(string $query): static
     {
         $this->query = $query;
         $this->message .= ' query was: ' . $query;
@@ -38,9 +39,9 @@ class QueryException extends PdbException
     /**
      *
      * @param array $params
-     * @return $this
+     * @return static
      */
-    public function setParams(array $params)
+    public function setParams(array $params): static
     {
         $this->params = $params;
         return $this;
@@ -52,7 +53,7 @@ class QueryException extends PdbException
      * @param PDOException $exception
      * @return string A subclass of QueryException
      */
-    protected static function getSubClass(PDOException $exception)
+    protected static function getSubClass(PDOException $exception): string
     {
         $state_class = substr($exception->getCode(), 0, 2);
         [ , $driver_code ] = $exception->errorInfo ?? [0, 0];

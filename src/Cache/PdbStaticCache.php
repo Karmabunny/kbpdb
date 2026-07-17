@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -6,7 +7,7 @@
 
 namespace karmabunny\pdb\Cache;
 
-use karmabunny\kb\Configurable;
+use karmabunny\interfaces\ConfigurableInterface;
 use karmabunny\kb\UpdateTrait;
 
 /**
@@ -24,7 +25,7 @@ use karmabunny\kb\UpdateTrait;
  *
  * @package karmabunny\pdb
  */
-class PdbStaticCache extends PdbCache implements Configurable
+class PdbStaticCache extends PdbCache implements ConfigurableInterface
 {
     use UpdateTrait;
 
@@ -40,11 +41,11 @@ class PdbStaticCache extends PdbCache implements Configurable
      * Enable expiry of keys as advised by the TTL.
      * @var bool
      */
-    public $enable_ttl = false;
+    public bool $enable_ttl = false;
 
 
     /** @inheritdoc */
-    public function store(string $key, $result, int $ttl)
+    public function store(string $key, mixed $result, int $ttl)
     {
         static::$cache[$key] = $result;
 
@@ -64,7 +65,7 @@ class PdbStaticCache extends PdbCache implements Configurable
 
 
     /** @inheritdoc */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
         $this->_clean($key);
         return static::$cache[$key] ?? null;

@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\DataBinders;
 
@@ -24,21 +29,21 @@ use karmabunny\pdb\PdbDataBinderInterface;
 class ConcatDataBinder implements PdbDataBinderInterface
 {
 
-    /** @var mixed */
-    public $value;
+    /** @var string */
+    public string $value;
 
 
     /**
-     * @param mixed $value
+     * @param string $value
      */
-    public function __construct($value)
+    public function __construct(string $value)
     {
         $this->value = $value;
     }
 
 
     /** @inheritdoc */
-    public function getBindingValue()
+    public function getBindingValue(): string
     {
         return $this->value;
     }
