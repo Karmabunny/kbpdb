@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use ArrayAccess;
 use ArrayIterator;
 use IteratorAggregate;
 use karmabunny\kb\Cli;

@@ -6,7 +6,6 @@
 
 namespace karmabunny\pdb;
 
-use DOMElement;
 use InvalidArgumentException;
 use karmabunny\kb\Cli;
 
