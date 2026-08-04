@@ -22,6 +22,7 @@ class PdbParserException extends Exception implements PdbExceptionInterface
         $this->errors = $errors;
         $tables = array_keys($errors);
         $this->message = 'Parse error for tables:' . implode(', ', $tables);
+        return $this;
     }
 
 
