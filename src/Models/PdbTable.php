@@ -67,9 +67,7 @@ class PdbTable extends Collection implements PdbStructWriterInterface
      *
      * @var string[]
      */
-    public $attributes = [
-        'charset' => 'utf8',
-    ];
+    public $attributes = [];
 
 
     /**

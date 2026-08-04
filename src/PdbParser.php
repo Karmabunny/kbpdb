@@ -189,17 +189,20 @@ class PdbParser implements PdbSchemaInterface
                 $this->errors[$table_name][] = "Duplicate column '{$name}' in table '{$table_name}'";
             }
 
-            $table->addColumn(new PdbColumn([
+            $column = new PdbColumn([
                 'name' => $name,
                 'type' => $type,
                 'is_nullable' => $is_nullable,
                 'auto_increment' => $auto_increment,
                 'default' => $default,
                 'previous_names' => $previous_names,
-                'attributes' => [
-                    'charset' => $table->attributes['charset'],
-                ],
-            ]));
+            ]);
+
+            if (isset($table->attributes['charset'])) {
+                $column->attributes['charset'] = $table->attributes['charset'];
+            }
+
+            $table->addColumn($column);
         }
 
 
