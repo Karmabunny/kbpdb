@@ -248,10 +248,19 @@ class PdbMysql extends Pdb
             ($isMaria and version_compare($version, '10.2', '>='))
             or (!$isMaria and version_compare($version, '8.0', '>='))
         ) {
-            $q = "SELECT CONSTRAINT_NAME, CHECK_CLAUSE
-                FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
-                WHERE CONSTRAINT_SCHEMA = ?
-                    AND TABLE_NAME = ?";
+            $q = "
+                SELECT
+                    cc.CONSTRAINT_NAME,
+                    cc.CHECK_CLAUSE
+                FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS AS cc
+                INNER JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS tc
+                    ON tc.CONSTRAINT_CATALOG = cc.CONSTRAINT_CATALOG
+                    AND tc.CONSTRAINT_SCHEMA = cc.CONSTRAINT_SCHEMA
+                    AND tc.CONSTRAINT_NAME = cc.CONSTRAINT_NAME
+                    AND tc.CONSTRAINT_TYPE = 'CHECK'
+                WHERE cc.CONSTRAINT_SCHEMA = ?
+                    AND tc.TABLE_NAME = ?
+            ";
             $res = $this->query($q, $params, 'pdo');
 
             while ($row = $res->fetch(PDO::FETCH_ASSOC)) {
