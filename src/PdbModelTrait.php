@@ -481,11 +481,6 @@ trait PdbModelTrait
      */
     protected static function typeCastValue(string $property, &$value): void
     {
-        // We'll drop old PHP very soon. Promise.
-        if (PHP_VERSION_ID < 74000) {
-            return;
-        }
-
         // @phpstan-ignore-next-line : already guarded.
         $type = (new ReflectionProperty(static::class, $property))->getType();
 
