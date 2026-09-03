@@ -6,8 +6,8 @@
 
 namespace karmabunny\pdb;
 
-use DOMElement;
 use InvalidArgumentException;
+use karmabunny\kb\Cli;
 
 /**
  *
@@ -35,6 +35,101 @@ class PdbHelpers
         self::TYPE_DROP,
     ];
 
+    const KEYWORDS = [
+        'SELECT',
+        'INSERT',
+        'UPDATE',
+        'CREATE',
+        'ALTER',
+        'DELETE',
+        'DROP',
+        'TABLE',
+        'COLUMN',
+        'INDEX',
+        'FOREIGN KEY',
+        'PRIMARY KEY',
+        'UNIQUE',
+        'CHECK',
+        'DEFAULT',
+        'ROLE',
+        'USER',
+        'PASSWORD',
+        'TINYINT',
+        'SMALLINT',
+        'MEDIUMINT',
+        'BIGINT',
+        'FLOAT',
+        'INT',
+        'DOUBLE',
+        'DECIMAL',
+        'NUMERIC',
+        'VARCHAR',
+        'CHAR',
+        'VARBINARY',
+        'BINARY',
+        'BLOB',
+        'TEXT',
+        'ENUM',
+        'SET',
+        'DATETIME',
+        'TIMESTAMP',
+        'DATE',
+        'TIME',
+        'YEAR',
+        'BOOLEAN',
+        'JSON',
+        'WITH GRANT OPTION',
+        'WITH',
+        'ADD',
+        'AFTER',
+        'GRANT',
+        'REVOKE',
+        'ALL PRIVILEGES',
+        'NO PRIVILEGES',
+        'FROM',
+        'WHERE',
+        'GROUP BY',
+        'HAVING',
+        'ORDER BY',
+        'LIMIT',
+        'OFFSET',
+        'ROLLUP',
+        'LEFT JOIN',
+        'RIGHT JOIN',
+        'INNER JOIN',
+        'LEFT OUTER JOIN',
+        'RIGHT OUTER JOIN',
+        'FULL OUTER JOIN',
+        'OUTER JOIN',
+        'FULL JOIN',
+        'JOIN',
+        'UNION',
+        'BEGIN',
+        'COMMIT',
+        'ROLLBACK TO',
+        'ROLLBACK',
+        'RELEASE SAVEPOINT',
+        'SAVEPOINT',
+        'AS',
+        'BY',
+        'IN',
+        'NOT',
+        'IS',
+        'NULL',
+        'TRUE',
+        'FALSE',
+        'BETWEEN',
+        'AND',
+        'OR',
+        'NOT',
+        'ILIKE',
+        'LIKE',
+        'IN',
+        'EXISTS',
+        'VALUES',
+        'SET',
+        'DEFAULT',
+    ];
 
     const RE_IDENTIFIER = '/^~?[a-z_][a-z_0-9]*$/i';
 
@@ -615,4 +710,34 @@ class PdbHelpers
         return implode("\n", $lines);
     }
 
+
+
+    /**
+     * Highlight keywords in a query with ANSI colours.
+     *
+     * @param string $query
+     * @return string
+     */
+    public static function prettyQueryAnsi(string $query): string
+    {
+        static $pattern = null;
+
+        if (!$pattern) {
+            $keywords = self::KEYWORDS;
+            $keywords = array_map('preg_quote', $keywords);
+
+            usort($keywords, function($a, $b) {
+                return strlen($b) <=> strlen($a);
+            });
+
+            $keywords = implode('|', $keywords);
+            $pattern = "/\\b(?:{$keywords}\\b|\\b[a-z_]+\(?=\\()/i";
+        }
+
+        $pretty = preg_replace_callback($pattern, function($matches) {
+            return Cli::color(strtoupper($matches[0]), Cli::FG_BLUE);
+        }, $query);
+
+        return $pretty ?? $query;
+    }
 }

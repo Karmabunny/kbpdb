@@ -14,6 +14,7 @@ use karmabunny\kb\XMLException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\SyncActions;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use PDOException;
@@ -145,38 +146,6 @@ abstract class DatabaseSync
     {
         $this->sync->migrate($this->parser, $do);
         $log = $this->sync->execute($this->act);
-
-        ob_start();
-
-        foreach ($log as [$type, $body]) {
-            switch ($type) {
-                case 'section':
-                    $body = Enc::html($body);
-                    echo "<h3>{$body}</h3>\n";
-                    break;
-
-                case 'heading':
-                    [$title, $body] = explode(' - ', $body, 2) + ['', ''];
-                    $title = Enc::html($title);
-                    $body = Enc::html($body);
-
-                    echo "<p class='heading'><b>{$title} </b>";
-                    if (!empty($body)) echo $body;
-                    echo "</p>\n";
-                    break;
-
-                case 'query':
-                    $body = Enc::html($body);
-                    echo "<pre class='query'>{$body}</pre>\n";
-                    break;
-
-                case 'message':
-                    $body = Enc::html($body);
-                    echo "<p>{$body}</p>";
-                    break;
-            }
-        }
-
-        return ob_get_clean();
+        return PdbLog::html($log);
     }
 }
