@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\DataBinders;
 
@@ -45,14 +50,14 @@ class MathBinder implements PdbDataBinderInterface
     ];
 
 
-    /** @var int */
-    public $value;
+    /** @var int|float */
+    public int|float $value;
 
     /** @var string */
-    public $operator;
+    public string $operator;
 
     /** @var bool */
-    public $inverse;
+    public bool $inverse;
 
 
     /**
@@ -62,7 +67,7 @@ class MathBinder implements PdbDataBinderInterface
      * @param string $operator one of `self::OPERATORS`
      * @param bool $inverse swap the operation: `{value} X {column}`
      */
-    public function __construct($value, string $operator, bool $inverse)
+    public function __construct(int|float $value, string $operator, bool $inverse)
     {
         if (!in_array($operator, self::OPERATORS)) {
             throw new InvalidArgumentException("Invalid operator: {$operator}");
@@ -75,7 +80,7 @@ class MathBinder implements PdbDataBinderInterface
 
 
     /** @inheritdoc */
-    public function getBindingValue()
+    public function getBindingValue(): int|float
     {
         return $this->value;
     }
@@ -102,11 +107,11 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param bool $inverse
-     * @return MathBinder
+     * @return self
      */
-    public static function add($value, $inverse = false)
+    public static function add(int|float $value, bool $inverse = false): self
     {
-        return new MathBinder($value, self::OPERATOR_ADD, $inverse);
+        return new self($value, self::OPERATOR_ADD, $inverse);
     }
 
 
@@ -115,11 +120,11 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param bool $inverse
-     * @return MathBinder
+     * @return self
      */
-    public static function subtract($value, $inverse = false)
+    public static function subtract(int|float $value, bool $inverse = false): self
     {
-        return new MathBinder($value, self::OPERATOR_SUBTRACT, $inverse);
+        return new self($value, self::OPERATOR_SUBTRACT, $inverse);
     }
 
 
@@ -128,11 +133,11 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param bool $inverse
-     * @return MathBinder
+     * @return self
      */
-    public static function multiply($value, $inverse = false)
+    public static function multiply(int|float $value, bool $inverse = false): self
     {
-        return new MathBinder($value, self::OPERATOR_MULTIPLY, $inverse);
+        return new self($value, self::OPERATOR_MULTIPLY, $inverse);
     }
 
 
@@ -141,11 +146,11 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param bool $inverse
-     * @return MathBinder
+     * @return self
      */
-    public static function divide($value, $inverse = false)
+    public static function divide(int|float $value, bool $inverse = false): self
     {
-        return new MathBinder($value, self::OPERATOR_DIVIDE, $inverse);
+        return new self($value, self::OPERATOR_DIVIDE, $inverse);
     }
 
 
@@ -154,9 +159,9 @@ class MathBinder implements PdbDataBinderInterface
      *
      * @param int|float $value
      * @param bool $inverse
-     * @return MathBinder
+     * @return self
      */
-    public static function modulo($value, $inverse = false)
+    public static function modulo(int|float $value, bool $inverse = false): self
     {
         return new MathBinder($value, self::OPERATOR_MODULO, $inverse);
     }

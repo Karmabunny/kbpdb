@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -19,13 +20,13 @@ class PdbModelQuery extends PdbQuery
 {
 
     /** @var class-string<T> */
-    protected $_model;
+    protected string $_model;
 
     /** @var bool|string */
-    public $_inflect = false;
+    public bool|string $_inflect = false;
 
     /** @var bool|null */
-    public $_deleted = null;
+    public ?bool $_deleted = null;
 
 
     /**
@@ -36,7 +37,6 @@ class PdbModelQuery extends PdbQuery
      */
     public function __construct(string $model, array $config = [])
     {
-        // @phpstan-ignore-next-line: assert doc types.
         if (!is_subclass_of($model, PdbModelInterface::class)) {
             throw new InvalidArgumentException("{$model} must implement PdbModelInterface");
         }
@@ -73,7 +73,7 @@ class PdbModelQuery extends PdbQuery
      * @return $this
      * @since v0.18
      */
-    public function inflect(bool $inflect = true)
+    public function inflect(bool $inflect = true): static
     {
         $this->_inflect = $inflect;
         return $this;
@@ -85,7 +85,7 @@ class PdbModelQuery extends PdbQuery
      * @param bool|null $deleted
      * @return $this
      */
-    public function deleted(?bool $deleted)
+    public function deleted(?bool $deleted): static
     {
         $this->_deleted = $deleted;
         return $this;

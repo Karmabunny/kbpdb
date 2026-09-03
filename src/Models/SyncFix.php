@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -14,9 +15,7 @@ use karmabunny\kb\Collection;
  */
 class SyncFix extends Collection
 {
-    /** @var string */
-    public $name;
+    public string $name;
 
-    /** @var string */
-    public $sql;
+    public string $sql;
 }

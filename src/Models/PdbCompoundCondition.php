@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -30,10 +31,10 @@ class PdbCompoundCondition implements PdbConditionInterface
     ];
 
     /** @var string */
-    public $compound;
+    public string $compound;
 
     /** @var PdbConditionInterface[] */
-    public $conditions = [];
+    public array $conditions = [];
 
 
     /**

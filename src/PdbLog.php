@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -53,10 +54,10 @@ class PdbLog implements IteratorAggregate
 
 
     /** @var array{0:string,1:string}[] */
-    protected $log = [];
+    protected array $log = [];
 
     /** @var string[] */
-    protected $errors = [];
+    protected array $errors = [];
 
 
     public function __construct(array $log = [])
@@ -132,7 +133,7 @@ class PdbLog implements IteratorAggregate
      * @param static|array $log
      * @return void echos output
      */
-    public static function print($log)
+    public static function print(PdbLog|array $log)
     {
         if ($log instanceof static) {
             $log = $log->getLog();

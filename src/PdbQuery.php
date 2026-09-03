@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -10,7 +11,7 @@ use ArrayIterator;
 use Generator;
 use InvalidArgumentException;
 use JsonSerializable;
-use karmabunny\kb\Arrayable;
+use karmabunny\interfaces\ArrayableInterface;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
@@ -22,7 +23,6 @@ use karmabunny\pdb\Models\PdbReturn;
 use PDOStatement;
 use PDO;
 use ReflectionClass;
-use ReturnTypeWillChange;
 
 /**
  *
@@ -77,11 +77,11 @@ use ReturnTypeWillChange;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
+class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializable
 {
 
     /** @var Pdb */
-    protected $pdb;
+    protected Pdb $pdb;
 
     /**
      * - true: use `pdb.config.ttl`
@@ -90,32 +90,32 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * @var int|bool
      */
-    protected $_cache_ttl = false;
+    protected int|bool $_cache_ttl = false;
 
     /**
      * Override the cache key.
      *
      * @var string|null
      */
-    protected $_cache_key = null;
+    protected ?string $_cache_key = null;
 
     /** @var array list [type, conditions, combine] */
-    protected $_where = [];
+    protected array $_where = [];
 
     /** @var array list [field, alias] */
-    protected $_select = [];
+    protected array $_select = [];
 
     /**
      * single [field, alias]
      * @var array{0:string|PdbQueryInterface,1:string|null}|array{}
     */
-    protected $_from = [];
+    protected array $_from = [];
 
     /**
      * list [ type, [table, alias], conditions, combine ]
      * @var array{0:string,1:array,2:array,3:string}[]
      */
-    protected $_joins = [];
+    protected array $_joins = [];
 
     /**
      * list [type, conditions, combine]
@@ -127,31 +127,31 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * list [query, alias]
      * @var array{0:PdbQueryInterface,1:string}[]
      */
-    protected $_with = [];
+    protected array $_with = [];
 
     /** @var PdbQueryInterface[] */
-    protected $_union = [];
+    protected array $_union = [];
 
     /** @var array list [field, order] */
-    protected $_order = [];
+    protected array $_order = [];
 
     /** @var string[] */
-    protected $_group = [];
+    protected array $_group = [];
 
     /** @var int */
-    protected $_limit = 0;
+    protected int $_limit = 0;
 
     /** @var int */
-    protected $_offset = 0;
+    protected int $_offset = 0;
 
     /** @var string|null */
-    protected $_as = null;
+    protected ?string $_as = null;
 
     /** @var bool */
-    protected $_throw = true;
+    protected bool $_throw = true;
 
     /** @var string|null */
-    protected $_keyed = null;
+    protected ?string $_keyed = null;
 
 
     /**
@@ -159,7 +159,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param Pdb|PdbConfig|array $pdb
      * @param array $config
      */
-    public function __construct($pdb, array $config = [])
+    public function __construct(Pdb|PdbConfig|array $pdb, array $config = [])
     {
         if ($pdb instanceof Pdb) {
             $this->pdb = $pdb;
@@ -207,8 +207,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
 
 
     /** @inheritdoc */
-    #[ReturnTypeWillChange]
-    public function jsonSerialize()
+    public function jsonSerialize(): array
     {
         return $this->toArray();
     }
@@ -219,7 +218,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * @return static
      */
-    public function clone()
+    public function clone(): static
     {
         return clone $this;
     }
@@ -234,7 +233,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function select(...$fields)
+    public function select(string|array ...$fields): static
     {
         $this->_select = [];
         $this->andSelect(...$fields);
@@ -251,7 +250,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function andSelect(...$fields)
+    public function andSelect(string|array ...$fields): static
     {
         $fields = Arrays::flatten($fields, true, 2);
 
@@ -298,7 +297,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function from($table, ?string $alias = null)
+    public function from(string|array|PdbQueryInterface $table, ?string $alias = null): static
     {
         if (!$alias) {
             [$table, $alias] = PdbHelpers::parseAlias($table);
@@ -323,7 +322,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function alias(string $alias)
+    public function alias(string $alias): static
     {
         Pdb::validateIdentifier($alias);
 
@@ -339,12 +338,12 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      *
      * @param string $type
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|array $conditions
+     * @param string|array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      * @throws InvalidArgumentException
      */
-    protected function _join(string $type, $table, $conditions, string $combine = 'AND')
+    protected function _join(string $type, string|array $table, string|array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         [$table, $alias] = PdbHelpers::parseAlias($table);
 
@@ -383,11 +382,11 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|array $conditions
+     * @param string|array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      */
-    public function join($table, $conditions, string $combine = 'AND')
+    public function join(string|array $table, string|array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         return $this->innerJoin($table, $conditions, $combine);
     }
@@ -396,11 +395,11 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|array $conditions
+     * @param string|array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      */
-    public function leftJoin($table, $conditions, string $combine = 'AND')
+    public function leftJoin(string|array $table, string|array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         $this->_join('LEFT', $table, $conditions, $combine);
         return $this;
@@ -410,11 +409,11 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string|string[] $table
-     * @param string|PdbConditionInterface|array $conditions
+     * @param string|array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      */
-    public function innerJoin($table, $conditions, string $combine = 'AND')
+    public function innerJoin(string|array $table, string|array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         $this->_join('INNER', $table, $conditions, $combine);
         return $this;
@@ -427,7 +426,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string $combine
      * @return static
      */
-    public function where(array $conditions, $combine = 'AND')
+    public function where(array $conditions, string $combine = 'AND'): static
     {
         $this->_where = [];
         if (!empty($conditions)) {
@@ -443,7 +442,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string $combine AND | OR
      * @return static
      */
-    public function andWhere(array $conditions, $combine = 'AND')
+    public function andWhere(array $conditions, string $combine = 'AND'): static
     {
         if (!empty($conditions)) {
             $this->_where[] = ['AND', $conditions, $combine];
@@ -458,7 +457,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string $combine AND | OR
      * @return static
      */
-    public function orWhere(array $conditions, $combine = 'OR')
+    public function orWhere(array $conditions, string $combine = 'OR'): static
     {
         if (!empty($conditions)) {
             $this->_where[] = ['OR', $conditions, $combine];
@@ -473,7 +472,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string $combine
      * @return static
      */
-    public function having(array $conditions, $combine = 'AND')
+    public function having(array $conditions, string $combine = 'AND'): static
     {
         $this->_having = [];
         if (!empty($conditions)) {
@@ -490,7 +489,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string $alias
      * @return static
      */
-    public function with(PdbQueryInterface $query, string $alias)
+    public function with(PdbQueryInterface $query, string $alias): static
     {
         Pdb::validateIdentifier($alias);
         $this->_with[] = [ $query, $alias ];
@@ -504,7 +503,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param PdbQueryInterface $query
      * @return static
      */
-    public function union(PdbQueryInterface $query)
+    public function union(PdbQueryInterface $query): static
     {
         $this->_union[] = $query;
         return $this;
@@ -516,7 +515,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string|string[] $fields
      * @return static
      */
-    public function groupBy(...$fields)
+    public function groupBy(string|array ...$fields): static
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields, false, 2);
@@ -535,7 +534,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string|string[] $fields
      * @return static
      */
-    public function orderBy(...$fields)
+    public function orderBy(string|array ...$fields): static
     {
         $fields = array_filter($fields);
         $fields = Arrays::flatten($fields, true, 3);
@@ -580,7 +579,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @deprecated use orderBy
      */
-    public function order(...$fields)
+    public function order(string|array ...$fields): static
     {
         return $this->orderBy(...$fields);
     }
@@ -592,7 +591,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @deprecated use groupBy
      */
-    public function group(...$fields)
+    public function group(string|array ...$fields): static
     {
         return $this->groupBy(...$fields);
     }
@@ -603,7 +602,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param int $limit
      * @return static
      */
-    public function limit(int $limit)
+    public function limit(int $limit): static
     {
         $this->_limit = $limit;
         return $this;
@@ -615,7 +614,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param int $offset
      * @return static
      */
-    public function offset(int $offset)
+    public function offset(int $offset): static
     {
         $this->_offset = $offset;
         return $this;
@@ -628,7 +627,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param array $conditions
      * @return static
      */
-    public function find($table, $conditions = [])
+    public function find(string|array|PdbQueryInterface $table, array $conditions = []): static
     {
         $this->from($table);
         $this->where($conditions);
@@ -642,7 +641,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @return static
      * @throws InvalidArgumentException
      */
-    public function as(?string $class)
+    public function as(?string $class): static
     {
         if (!$class) {
             $this->_as = null;
@@ -673,7 +672,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param bool $throw
      * @return static
      */
-    public function throw(bool $throw = true)
+    public function throw(bool $throw = true): static
     {
         $this->_throw = $throw;
         return $this;
@@ -691,7 +690,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param string|null $field
      * @return static
      */
-    public function indexBy($field)
+    public function indexBy(?string $field): static
     {
         $this->_keyed = $field;
         return $this;
@@ -704,7 +703,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @param int|bool $ttl seconds
      * @return static
      */
-    public function cache(?string $key = null, $ttl = true)
+    public function cache(?string $key = null, int|bool $ttl = true): static
     {
         $this->_cache_key = $key;
 
@@ -1093,7 +1092,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function one(?bool $throw = null)
+    public function one(?bool $throw = null): array|object|null
     {
         $query = clone $this;
 
@@ -1230,7 +1229,7 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function map($key = null, $value = null): array
+    public function map(string|array|null $key = null, string|null $value = null): array
     {
         $query = clone $this;
 
@@ -1354,12 +1353,12 @@ class PdbQuery implements PdbQueryInterface, Arrayable, JsonSerializable
     /**
      *
      * @param string $return_type
-     * @return array|string|int|null|PDOStatement
+     * @return mixed
      * @throws InvalidArgumentException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function execute(string $return_type)
+    public function execute(string $return_type): mixed
     {
         [$sql, $params] = $this->build();
         $config = $this->getReturnConfig($return_type);

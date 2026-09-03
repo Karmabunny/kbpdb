@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -15,8 +16,7 @@ use karmabunny\kb\Collection;
 class SyncQuery extends Collection
 {
 
-    /** @var string */
-    public $heading;
+    public string $heading;
 
 
     /**
@@ -24,13 +24,13 @@ class SyncQuery extends Collection
      *
      * @var string
      */
-    public $type;
+    public string $type;
 
 
     /**
      * @var string
      */
-    public $sql;
+    public string $sql;
 
 
     /**
@@ -38,5 +38,5 @@ class SyncQuery extends Collection
      *
      * @var string
      */
-    public $message = '';
+    public string $message = '';
 }

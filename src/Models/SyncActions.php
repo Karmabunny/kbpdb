@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -23,24 +24,17 @@ use karmabunny\kb\Collection;
  */
 class SyncActions extends Collection
 {
-    /** @var bool */
-    public $create = true;
+    public bool $create = true;
 
-    /** @var bool */
-    public $primary = true;
+    public bool $primary = true;
 
-    /** @var bool */
-    public $column = true;
+    public bool $column = true;
 
-    /** @var bool */
-    public $index = true;
+    public bool $index = true;
 
-    /** @var bool */
-    public $foreign_key = true;
+    public bool $foreign_key = true;
 
-    /** @var bool */
-    public $remove = true;
+    public bool $remove = true;
 
-    /** @var bool */
-    public $views = true;
+    public bool $views = true;
 }

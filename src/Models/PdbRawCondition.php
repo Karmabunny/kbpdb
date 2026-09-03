@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -15,11 +16,10 @@ use karmabunny\pdb\Pdb;
 class PdbRawCondition implements PdbConditionInterface
 {
 
-    /** @var string */
-    public $sql;
+    public string $sql;
 
-    /** @var array */
-    public $params = [];
+    /** @var array<int|string,mixed> */
+    public array $params = [];
 
 
     /**

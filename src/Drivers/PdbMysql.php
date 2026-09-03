@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\Drivers;
 
@@ -20,7 +25,7 @@ class PdbMysql extends Pdb
 {
 
     /** @inheritdoc */
-    public static function connect($config, array $options = [])
+    public static function connect($config, array $options = []): PDO
     {
         if (!isset($options[PDO::MYSQL_ATTR_FOUND_ROWS])) {
             // This makes UPDATE predictable and behave the same as other DBMS.
@@ -32,7 +37,7 @@ class PdbMysql extends Pdb
 
 
     /** @inheritdoc */
-    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options): void
     {
         if ($config->getHack(PdbConfig::HACK_NO_ENGINE_SUBSTITUTION)) {
             $pdo->query("SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");

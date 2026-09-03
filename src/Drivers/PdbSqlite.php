@@ -1,4 +1,10 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2024 Karmabunny
+ */
+
 
 namespace karmabunny\pdb\Drivers;
 
@@ -25,14 +31,13 @@ class PdbSqlite extends Pdb
 
 
     /** @inheritdoc */
-    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options): void
     {
         $hacks = $config->getHacks();
         $fns = $hacks[PdbConfig::HACK_SQLITE_FUNCTIONS] ?? [];
         $fns = array_intersect_key(static::$FUNCTIONS, $fns);
 
         foreach ($fns as $name => $fn) {
-            // @phpstan-ignore-next-line: it definitely supports 4 args.
             $pdo->sqliteCreateFunction($name, $fn, -1, PDO::SQLITE_DETERMINISTIC);
         }
 

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -21,7 +22,7 @@ abstract class PdbCache
      * @param int $ttl
      * @return void
      */
-    public abstract function store(string $key, $result, int $ttl);
+    public abstract function store(string $key, mixed $result, int $ttl);
 
 
     /**
@@ -37,7 +38,7 @@ abstract class PdbCache
      * @param string $key
      * @return mixed|null
      */
-    public abstract function get(string $key);
+    public abstract function get(string $key): mixed;
 
 
     /**

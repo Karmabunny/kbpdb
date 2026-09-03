@@ -1,4 +1,9 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2021 Karmabunny
+ */
 
 namespace karmabunny\pdb\Drivers;
 
@@ -19,7 +24,7 @@ class PdbPgsql extends Pdb
 
 
     /** @inheritdoc */
-    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options)
+    protected static function afterConnect(PDO $pdo, PdbConfig $config, array $options): void
     {
         // Set our TZ on the session.
         // The 'config.session' can still override this.

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -22,7 +23,7 @@ interface PdbDataInterface
      * If the result is an object, even itself, it can be still
      * be formatted by the global formatters in {@see PdbConfig}.
      *
-     * @return mixed
+     * @return string|int|float|object
      */
-    public function getBindingValue();
+    public function getBindingValue(): string|int|float|object;
 }

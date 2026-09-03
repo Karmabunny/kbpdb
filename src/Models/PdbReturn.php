@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2022 Karmabunny
@@ -7,8 +8,8 @@
 namespace karmabunny\pdb\Models;
 
 use InvalidArgumentException;
-use karmabunny\kb\Configurable;
-use karmabunny\kb\ConfigurableInit;
+use karmabunny\interfaces\ConfigurableInitInterface;
+use karmabunny\interfaces\ConfigurableInterface;
 use karmabunny\kb\DataObject;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use karmabunny\pdb\Pdb;
@@ -43,7 +44,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string
      */
-    public $type;
+    public string $type;
 
     /**
      * A class name.
@@ -57,7 +58,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $class;
+    public ?string $class = null;
 
     /**
      * A Time-to-live for the caching layer.
@@ -69,7 +70,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      * @see PdbCache
      * @var int|bool seconds
      */
-    public $cache_ttl = false;
+    public int|bool $cache_ttl = false;
 
     /**
      * The key for a query is generated as a shasum of the query + parameters.
@@ -79,7 +80,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $cache_key;
+    public ?string $cache_key = null;
 
     /**
      * Used for the return type: `map-arr`.
@@ -90,7 +91,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var string|null
      */
-    public $map_key = null;
+    public ?string $map_key = null;
 
     /**
      * Whether RowMissingException should be thrown if the row is missing.
@@ -105,7 +106,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      *
      * @var bool
      */
-    public $throw = true;
+    public bool $throw = true;
 
 
     /**
@@ -119,7 +120,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
      * @return PdbReturn
      * @throws InvalidArgumentException
      */
-    public static function parse($config): PdbReturn
+    public static function parse(string|array $config): PdbReturn
     {
         if (is_string($config)) {
             $config = [ 'type' => $config ];
@@ -239,7 +240,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
 
 
     /** @inheritdoc */
-    public function format(PDOStatement $rs)
+    public function format(PDOStatement $rs): array|string|int|null
     {
         $nullable = !$this->throw;
 
@@ -337,22 +338,22 @@ class PdbReturn extends DataObject implements PdbReturnInterface
 
 
     /** @inheritdoc */
-    public function buildClass($result)
+    public function buildClass(array $result): array|object|null
     {
         if ($class = $this->class) {
             if (is_subclass_of($class, PdbModelInterface::class)) {
-                $create = function(array $item) use ($class) {
+                $create = function(array $item) use ($class): object {
                     $object = new $class();
                     $class::populate($object, $item);
                     return $object;
                 };
             }
-            else if (is_subclass_of($class, Configurable::class)) {
-                $create = function(array $item) use ($class) {
+            else if (is_subclass_of($class, ConfigurableInterface::class)) {
+                $create = function(array $item) use ($class): object {
                     $object = new $class();
                     $object->update($item);
 
-                    if ($object instanceof ConfigurableInit) {
+                    if ($object instanceof ConfigurableInitInterface) {
                         $object->init();
                     }
 
@@ -360,7 +361,7 @@ class PdbReturn extends DataObject implements PdbReturnInterface
                 };
             }
             else {
-                $create = function(array $item) use ($class) {
+                $create = function(array $item) use ($class): object {
                     $object = new $class();
                     foreach ($item as $key => $value) {
                         $object->$key = $value;

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -17,7 +18,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function store(string $key, $result, int $ttl)
+    public function store(string $key, mixed $result, int $ttl)
     {
     }
 
@@ -30,7 +31,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function get(string $key)
+    public function get(string $key): mixed
     {
         return null;
     }

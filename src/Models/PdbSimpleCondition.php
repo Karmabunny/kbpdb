@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -57,13 +58,13 @@ class PdbSimpleCondition implements PdbConditionInterface
     ];
 
     /** @var string */
-    public $operator;
+    public string $operator;
 
     /** @var string */
-    public $column;
+    public string $column;
 
     /** @var mixed */
-    public $value;
+    public mixed $value;
 
     /**
      * This controls the bind method of the 'value'.
@@ -78,7 +79,7 @@ class PdbSimpleCondition implements PdbConditionInterface
      *
      * @var string|null Pdb::QUOTE_FIELD|QUOTE_VALUE|null
      **/
-    public $bind_type;
+    public ?string $bind_type;
 
     /**
      * Create a condition.
@@ -88,7 +89,7 @@ class PdbSimpleCondition implements PdbConditionInterface
      * @param mixed $value
      * @param string|null $bind
      */
-    public function __construct(string $operator, string $column, $value, ?string $bind = null)
+    public function __construct(string $operator, string $column, mixed $value, ?string $bind = null)
     {
         $this->operator = trim(strtoupper($operator));
         $this->column = $column;
@@ -100,26 +101,9 @@ class PdbSimpleCondition implements PdbConditionInterface
     /** @inheritdoc */
     public function validate()
     {
-        // @phpstan-ignore-next-line: assert doc types.
-        if (!is_scalar($this->operator)) {
-            $message = 'Invalid operator: ' . gettype($this->operator);
-                throw (new InvalidConditionException($message))
-                    ->withCondition($this);
-        }
-
-        if ($this->column !== null) {
-            if (!in_array($this->operator, self::OPERATORS)) {
-                $message = "Unknown operator: '{$this->operator}'";
-                throw (new InvalidConditionException($message))
-                    ->withCondition($this);
-            }
-        }
-
-        // @phpstan-ignore-next-line: assert doc types.
-        if (!is_scalar($this->column)) {
-            $message = 'Column name must be scalar';
+        if (!in_array($this->operator, self::OPERATORS)) {
+            $message = "Unknown operator: '{$this->operator}'";
             throw (new InvalidConditionException($message))
-                ->withActual($this->column)
                 ->withCondition($this);
         }
 

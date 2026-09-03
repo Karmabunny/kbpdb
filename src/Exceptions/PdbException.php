@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -26,17 +27,17 @@ class PdbException extends Exception implements PdbExceptionInterface
      *
      * @var string
      */
-    public $state = '';
+    public string $state = '';
 
 
     /**
      *
-     * @param string $state
-     * @return $this
+     * @param string|int $state
+     * @return static
      */
-    public function setState(string $state)
+    public function setState(string|int $state): static
     {
-        $this->state = $state;
+        $this->state = (string) $state;
         return $this;
     }
 
@@ -46,7 +47,7 @@ class PdbException extends Exception implements PdbExceptionInterface
      * @param PDOException $exception
      * @return static
      */
-    public static function create(PDOException $exception)
+    public static function create(PDOException $exception): static
     {
         $class = static::getSubClass($exception);
         return (new $class($exception->getMessage(), 0, $exception))
@@ -59,7 +60,7 @@ class PdbException extends Exception implements PdbExceptionInterface
      * @param PDOException $exception
      * @return string
      */
-    protected static function getSubClass(PDOException $exception)
+    protected static function getSubClass(PDOException $exception): string
     {
         return static::class;
     }

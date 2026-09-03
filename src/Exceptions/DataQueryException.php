@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -20,7 +21,7 @@ class DataQueryException extends QueryException
      * @param string $query
      * @return static
      */
-    public function setQuery(string $query)
+    public function setQuery(string $query): static
     {
         $this->query = $query;
 

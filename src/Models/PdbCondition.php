@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 /**
  * @link      https://github.com/Karmabunny
  * @copyright Copyright (c) 2021 Karmabunny
@@ -84,13 +85,25 @@ abstract class PdbCondition implements PdbConditionInterface
                     return new PdbCompoundCondition('NOT', [$condition]);
                 }
 
-                return new PdbSimpleCondition($operator, $column, $value);
+                return new PdbSimpleCondition($operator, (string) $column, $value);
             }
 
             // Value-style condition.
             // :: [FIELD, OPERATOR, VALUE]
             if ($count == 3) {
                 [$column, $operator, $value] = $item;
+
+                if (!is_scalar($operator)) {
+                    $message = 'Invalid operator: ' . gettype($operator);
+                    throw (new InvalidConditionException($message));
+                }
+
+                if (!is_scalar($column)) {
+                    $message = 'Column name must be scalar';
+                    throw (new InvalidConditionException($message))
+                        ->withActual($column);
+                }
+
                 return new PdbSimpleCondition($operator, $column, $value);
             }
 

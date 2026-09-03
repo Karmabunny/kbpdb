@@ -1,4 +1,10 @@
 <?php
+declare(strict_types=1);
+/**
+ * @link      https://github.com/Karmabunny
+ * @copyright Copyright (c) 2024 Karmabunny
+ */
+
 
 namespace karmabunny\pdb\Models;
 
@@ -14,38 +20,31 @@ use karmabunny\pdb\PdbStructWriterInterface;
  */
 class PdbColumn extends Collection implements PdbStructWriterInterface
 {
-    /** @var string */
-    public $name;
+    public string $name;
 
-    /** @var string */
-    public $type;
+    public string $type;
 
-    /** @var bool */
-    public $is_nullable = true;
+    public bool $is_nullable = true;
 
-    /** @var bool */
-    public $is_primary = false;
+    public bool $is_primary = false;
 
     /**
      * This controls whether the field is auto incrementing.
      *
      * TODO The start number is determined by the parent table.
      *
-     * @var bool
      */
-    public $auto_increment = false;
+    public bool $auto_increment = false;
 
-    /** @var string|null */
-    public $default = null;
+    public ?string $default = null;
 
     /** @var string[] */
-    public $previous_names = [];
+    public array $previous_names = [];
 
-    /** @var string */
-    public $extra = '';
+    public string $extra = '';
 
-    /** @var array */
-    public $attributes = [];
+    /** @var array<string,mixed> */
+    public array $attributes = [];
 
 
     /**

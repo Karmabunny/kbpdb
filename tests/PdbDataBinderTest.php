@@ -265,7 +265,7 @@ class BinderObject extends DataObject implements PdbDataInterface
 {
     public $value;
 
-    public function getBindingValue()
+    public function getBindingValue(): string
     {
         return serialize($this);
     }
