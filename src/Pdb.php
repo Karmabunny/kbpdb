@@ -15,8 +15,6 @@ use karmabunny\interfaces\LoggableInterface;
 use karmabunny\kb\Configure;
 use karmabunny\kb\Log;
 use karmabunny\kb\LoggerTrait;
-use karmabunny\kb\NotSerializable;
-use karmabunny\kb\SerializeTrait;
 use karmabunny\kb\Uuid;
 use karmabunny\pdb\Cache\PdbCache;
 use karmabunny\pdb\DataBinders\CallableFormatter;
@@ -40,7 +38,6 @@ use karmabunny\pdb\Models\PdbTransaction;
 use PDO;
 use PDOException;
 use PDOStatement;
-use Serializable;
 use Throwable;
 
 /**
@@ -48,10 +45,9 @@ use Throwable;
  *
  * @package karmabunny\pdb
  */
-abstract class Pdb implements LoggableInterface, Serializable, NotSerializable, PdbDriverInterface
+abstract class Pdb implements LoggableInterface, PdbDriverInterface
 {
     use LoggerTrait;
-    use SerializeTrait;
 
     /**
      * The default namespace for UUIDv5 generation.
