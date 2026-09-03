@@ -48,7 +48,7 @@ class PdbRedisCache extends PdbCache implements ConfigurableInitInterface
 
 
     /** @inheritdoc */
-    public function update($config)
+    public function update(iterable $config): void
     {
         if (!is_array($config)) {
             $config = iterator_to_array($config);
@@ -59,10 +59,8 @@ class PdbRedisCache extends PdbCache implements ConfigurableInitInterface
     }
 
 
-    /**
-     * @return void
-     */
-    public function init()
+    /** @inheritdoc */
+    public function init(): void
     {
         if (!$this->_init) return;
         $this->_init = false;
