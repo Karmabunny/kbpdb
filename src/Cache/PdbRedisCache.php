@@ -69,10 +69,10 @@ class PdbRedisCache extends PdbCache implements ConfigurableInitInterface
 
 
     /** @inheritdoc */
-    public function store(string $key, mixed $result, int $ttl)
+    public function store(string $key, mixed $result, float $ttl)
     {
         $json = Json::encode($result);
-        $this->rdb->set($key, $json, $ttl * 1000);
+        $this->rdb->set($key, $json, $ttl);
     }
 
 

@@ -45,7 +45,7 @@ class PdbStaticCache extends PdbCache implements ConfigurableInterface
 
 
     /** @inheritdoc */
-    public function store(string $key, mixed $result, int $ttl)
+    public function store(string $key, mixed $result, float $ttl)
     {
         static::$cache[$key] = $result;
 

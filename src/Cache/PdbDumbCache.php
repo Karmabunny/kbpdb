@@ -18,7 +18,7 @@ class PdbDumbCache extends PdbCache
 
 
     /** @inheritdoc */
-    public function store(string $key, mixed $result, int $ttl)
+    public function store(string $key, mixed $result, float $ttl)
     {
     }
 
