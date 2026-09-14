@@ -71,7 +71,7 @@ interface PdbModelInterface
      * @param array $conditions
      * @return static
      */
-    public static function findOne(array $conditions);
+    public static function findOne(array $conditions): object;
 
 
     /**
@@ -81,7 +81,7 @@ interface PdbModelInterface
      * @param array $conditions
      * @return static[]
      */
-    public static function findAll(array $conditions = []);
+    public static function findAll(array $conditions = []): array;
 
 
     /**
@@ -91,5 +91,5 @@ interface PdbModelInterface
      * @param array $config
      * @return void
      */
-    public static function populate($instance, array $config);
+    public static function populate(object $instance, array $config): void;
 }

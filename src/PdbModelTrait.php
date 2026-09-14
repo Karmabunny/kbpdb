@@ -59,7 +59,7 @@ trait PdbModelTrait
 {
 
     /** @var int */
-    public $id = 0;
+    public int $id = 0;
 
 
     /**
@@ -181,7 +181,7 @@ trait PdbModelTrait
      * @param array $conditions
      * @return static
      */
-    public static function findOne(array $conditions)
+    public static function findOne(array $conditions): object
     {
         /** @var static */
         return static::find($conditions)->one();
@@ -194,7 +194,7 @@ trait PdbModelTrait
      * @param array $conditions
      * @return static[]
      */
-    public static function findAll(array $conditions = [])
+    public static function findAll(array $conditions = []): array
     {
         return static::find($conditions)->all();
     }
@@ -245,7 +245,7 @@ trait PdbModelTrait
      * @param array $config
      * @return void
      */
-    public static function populate($instance, array $config)
+    public static function populate(object $instance, array $config): void
     {
         foreach ($config as $key => $value) {
             if (!property_exists($instance, $key)) {
