@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "48e44f1e8f3f0ae2c220a98d49cb240d",
+    "content-hash": "4cc0bb33395335441df2fe6fd14d91d9",
     "packages": [
         {
             "name": "karmabunny/interfaces",
@@ -298,16 +298,16 @@
         },
         {
             "name": "karmabunny/rdb",
-            "version": "v2.34.22",
+            "version": "v3.35.26",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Karmabunny/kbrdb.git",
-                "reference": "03cd9f9d064b6fa35913e070d89ad6e312539252"
+                "reference": "d6019ab9d5c2aaf2516810dfb835432016dd7554"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Karmabunny/kbrdb/zipball/03cd9f9d064b6fa35913e070d89ad6e312539252",
-                "reference": "03cd9f9d064b6fa35913e070d89ad6e312539252",
+                "url": "https://api.github.com/repos/Karmabunny/kbrdb/zipball/d6019ab9d5c2aaf2516810dfb835432016dd7554",
+                "reference": "d6019ab9d5c2aaf2516810dfb835432016dd7554",
                 "shasum": ""
             },
             "require": {
@@ -320,7 +320,7 @@
             "require-dev": {
                 "karmabunny/visor": "^2.3",
                 "phpcompatibility/php-compatibility": "^9.3",
-                "phpstan/phpstan": "^1.10",
+                "phpstan/phpstan": "^2.2",
                 "phpunit/phpunit": "^9"
             },
             "type": "library",
@@ -349,9 +349,9 @@
             ],
             "support": {
                 "issues": "https://github.com/Karmabunny/kbrdb/issues",
-                "source": "https://github.com/Karmabunny/kbrdb/tree/v2.34.22"
+                "source": "https://github.com/Karmabunny/kbrdb/tree/v3.35.26"
             },
-            "time": "2026-09-03T03:35:14+00:00"
+            "time": "2026-09-10T04:40:22+00:00"
         },
         {
             "name": "myclabs/deep-copy",
