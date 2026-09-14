@@ -12,6 +12,7 @@ use Generator;
 use InvalidArgumentException;
 use JsonSerializable;
 use karmabunny\interfaces\ArrayableInterface;
+use karmabunny\interfaces\ConfigurableInterface;
 use karmabunny\kb\Arrays;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\InvalidConditionException;
@@ -77,7 +78,7 @@ use ReflectionClass;
  *
  * @package karmabunny\pdb
  */
-class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializable
+class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializable, ConfigurableInterface
 {
 
     /** @var Pdb */
@@ -174,10 +175,10 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      *
-     * @param array $config
+     * @param iterable $config
      * @return void
      */
-    public function update(array $config)
+    public function update(iterable $config): void
     {
         foreach ($config as $key => $item) {
             if ($key === 'pdb') continue;
