@@ -9,7 +9,7 @@ namespace karmabunny\pdb;
 
 use DateTimeInterface;
 use InvalidArgumentException;
-use karmabunny\kb\ConfigurableInit;
+use karmabunny\interfaces\ConfigurableInitInterface;
 use karmabunny\kb\Configure;
 use karmabunny\kb\Json;
 use karmabunny\pdb\Exceptions\RowMissingException;
@@ -257,7 +257,7 @@ trait PdbModelTrait
         }
 
         // Preserve init() behaviour.
-        if ($instance instanceof ConfigurableInit) {
+        if ($instance instanceof ConfigurableInitInterface) {
             $instance->init();
         }
     }
