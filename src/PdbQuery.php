@@ -226,6 +226,25 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
 
     /**
+     * Get the query table alias.
+     *
+     * @return string
+     * @throws InvalidArgumentException
+     */
+    public function getAlias(): string
+    {
+        $alias = $this->_from[1] ?? $this->_from[0];
+
+        // This shouldn't really happen, it's also guarded in from().
+        if ($alias instanceof PdbQueryInterface) {
+            throw new InvalidArgumentException('Subquery is missing an alias');
+        }
+
+        return $alias;
+    }
+
+
+    /**
      * Select a list of fields.
      *
      * Note, this will replace any previous select().
