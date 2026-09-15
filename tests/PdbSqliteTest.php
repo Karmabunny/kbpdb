@@ -12,10 +12,7 @@ class PdbSqliteTest extends BasePdbCase
 {
     public function setUp(): void
     {
-        $this->pdb ??= Pdb::create([
-            'type' => PdbConfig::TYPE_SQLITE,
-            'dsn' => __DIR__ . '/db.sqlite',
-        ]);
+        $this->pdb ??= Database::getConnection('sqlite');
 
         parent::setUp();
 

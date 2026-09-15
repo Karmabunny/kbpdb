@@ -1,5 +1,6 @@
 <?php
 
+use karmabunny\pdb\PdbHelpers;
 use karmabunny\pdb\PdbLog;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
@@ -22,14 +23,18 @@ class PdbSyncTest extends TestCase
         $struct->sanityCheck();
 
         $sync->migrate($struct);
-        $log = $sync->getMigration();
+        $log = $sync->execute(false);
 
         $this->assertNotEmpty($log);
 
-        // TODO some fine-grain assertions here.
+        // PdbLog::print($log);
 
-        // foreach ($log as $item) {
-        //     echo $item, PHP_EOL;
-        // }
+        $log = $sync->getMigration();
+
+        foreach ($log as $item) {
+            echo PdbHelpers::prettyQueryAnsi($item), PHP_EOL;
+        }
+
+        // TODO some fine-grain assertions here.
     }
 }

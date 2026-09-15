@@ -4,6 +4,7 @@ namespace kbtests;
 
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Pdb;
+use karmabunny\pdb\PdbConfig;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 
@@ -11,13 +12,22 @@ final class Database
 {
     public static function getConnection($type = 'mysql'): Pdb
     {
-        static $pdb;
+        static $pdb = [];
 
-        if (!isset($pdb)) {
-            $config = require __DIR__ . '/config.php';
-            $pdb = Pdb::create($config);
+        if (!isset($pdb[$type])) {
+            if ($type === 'mysql') {
+                $config = require __DIR__ . '/config.php';
+                $pdb[$type] = Pdb::create($config);
+            }
+            else if ($type === 'sqlite') {
+                $pdb[$type] = Pdb::create([
+                    'type' => PdbConfig::TYPE_SQLITE,
+                    'dsn' => __DIR__ . '/db.sqlite',
+                ]);
+            }
         }
-        return $pdb;
+
+        return $pdb[$type];
     }
 
 
