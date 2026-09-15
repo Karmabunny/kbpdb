@@ -10,6 +10,7 @@ namespace karmabunny\pdb;
 use DateTimeInterface;
 use InvalidArgumentException;
 use karmabunny\interfaces\ConfigurableInitInterface;
+use karmabunny\kb\Cast;
 use karmabunny\kb\Configure;
 use karmabunny\kb\Json;
 use karmabunny\pdb\Exceptions\RowMissingException;
@@ -22,6 +23,7 @@ use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use ReflectionProperty;
+use Throwable;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -252,7 +254,7 @@ trait PdbModelTrait
                 continue;
             }
 
-            static::typeCastValue($key, $value);
+            static::typeCastValue($instance, $key, $value);
             $instance->$key = $value;
         }
 
@@ -475,14 +477,24 @@ trait PdbModelTrait
      * - datetime: from string
      * - string: from anything else
      *
+     * @param static $instance
      * @param string $property
      * @param mixed $value
      * @return void
      */
-    protected static function typeCastValue(string $property, &$value): void
+    protected static function typeCastValue(object $instance, string $property, &$value): void
     {
-        // @phpstan-ignore-next-line : already guarded.
-        $type = (new ReflectionProperty(static::class, $property))->getType();
+        $reflect = new ReflectionProperty($instance, $property);
+        $type = $reflect->getType();
+
+        // See if there's a cast attribute first.
+        if ($cast = Cast::find($instance, $reflect)) {
+            try {
+                $value = $cast->build($value);
+                return;
+            }
+            catch (Throwable $error) {}
+        }
 
         // Can't do anything with this.
         if (!$type instanceof ReflectionNamedType) {
