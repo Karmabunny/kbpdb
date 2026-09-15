@@ -10,9 +10,13 @@ use karmabunny\pdb\PdbSync;
 
 final class Database
 {
-    public static function getConnection($type = 'mysql'): Pdb
+    public static function getConnection($type = 'mysql', $refresh = false): Pdb
     {
         static $pdb = [];
+
+        if ($refresh) {
+            unset($pdb[$type]);
+        }
 
         if (!isset($pdb[$type])) {
             if ($type === 'mysql') {
@@ -24,6 +28,9 @@ final class Database
                     'type' => PdbConfig::TYPE_SQLITE,
                     'dsn' => __DIR__ . '/db.sqlite',
                 ]);
+            }
+            else {
+                throw new \InvalidArgumentException("Invalid database type: {$type}");
             }
         }
 
