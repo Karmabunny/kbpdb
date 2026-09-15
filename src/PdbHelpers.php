@@ -36,31 +36,15 @@ class PdbHelpers
         self::TYPE_DROP,
     ];
 
-    const KEYWORDS = [
-        'SELECT',
-        'INSERT',
-        'UPDATE',
-        'CREATE',
-        'ALTER',
-        'DELETE',
-        'DROP',
-        'TABLE',
-        'COLUMN',
-        'INDEX',
-        'FOREIGN KEY',
-        'PRIMARY KEY',
-        'UNIQUE',
-        'CHECK',
-        'DEFAULT',
-        'ROLE',
-        'USER',
-        'PASSWORD',
+    const DATA_TYPES = [
+        'INTEGER',
         'TINYINT',
         'SMALLINT',
         'MEDIUMINT',
         'BIGINT',
         'FLOAT',
         'INT',
+        'DOUBLE PRECISION',
         'DOUBLE',
         'DECIMAL',
         'NUMERIC',
@@ -68,7 +52,13 @@ class PdbHelpers
         'CHAR',
         'VARBINARY',
         'BINARY',
+        'TINYBLOB',
+        'MEDIUMBLOB',
+        'LONGBLOB',
         'BLOB',
+        'TINYTEXT',
+        'MEDIUMTEXT',
+        'LONGTEXT',
         'TEXT',
         'ENUM',
         'SET',
@@ -79,6 +69,29 @@ class PdbHelpers
         'YEAR',
         'BOOLEAN',
         'JSON',
+        'SIGNED',
+        'UNSIGNED',
+    ];
+
+    const KEYWORDS = [
+        self::TYPE_SELECT,
+        self::TYPE_INSERT,
+        self::TYPE_UPDATE,
+        self::TYPE_CREATE,
+        self::TYPE_ALTER,
+        self::TYPE_DELETE,
+        self::TYPE_DROP,
+        'TABLE',
+        'COLUMN',
+        'INDEX',
+        'FOREIGN KEY',
+        'PRIMARY KEY',
+        'AUTOINCREMENT',
+        'UNIQUE',
+        'DEFAULT',
+        'ROLE',
+        'USER',
+        'PASSWORD',
         'WITH GRANT OPTION',
         'WITH',
         'ADD',
@@ -725,23 +738,82 @@ class PdbHelpers
     public static function prettyQueryAnsi(string $query): string
     {
         static $pattern = null;
-
-        if (!$pattern) {
-            $keywords = self::KEYWORDS;
-            $keywords = array_map('preg_quote', $keywords);
-
-            usort($keywords, function($a, $b) {
-                return strlen($b) <=> strlen($a);
-            });
-
-            $keywords = implode('|', $keywords);
-            $pattern = "/\\b(?:{$keywords}\\b|\\b[a-z_]+\(?=\\()/i";
-        }
+        $pattern ??= self::preparePattern();
 
         $pretty = preg_replace_callback($pattern, function($matches) {
+            // pass-through
+            if ($matches[1]) {
+                return $matches[0];
+            }
+
+            // comments
+            if ($matches[2]) {
+                return Cli::color($matches[0], Cli::FG_GREY);
+            }
+
+            // identifiers
+            if ($matches[3]) {
+                return Cli::color($matches[0], Cli::FG_GREEN);
+            }
+
+            // data types + precision
+            if ($matches[4]) {
+                return Cli::color(strtoupper($matches[0]), Cli::FG_YELLOW);
+            }
+
+            // functions
+            if ($matches[5]) {
+                return Cli::color($matches[0], Cli::FG_PURPLE);
+            }
+
+            // all other keywords
             return Cli::color(strtoupper($matches[0]), Cli::FG_BLUE);
+
         }, $query);
 
         return $pretty ?? $query;
+    }
+
+
+    protected static function preparePattern(): string
+    {
+        $data_types = self::prepareKeywords(self::DATA_TYPES);
+        $keywords = self::prepareKeywords(self::KEYWORDS);
+
+        return "/
+            # non-colouring for data string
+            ('[^']*')
+
+            # comments
+            |(--.*$)
+
+            # identifiers
+            |(`[^`]+`|\"[^\"]+\"|\[[^\]]+\])
+
+            # data types + precision
+            |\\b({$data_types})\\b(?:\([^)]*\))?
+
+            # functions
+            |\\b([a-z_]+(?=\\())
+
+            # all other keywords
+            |\\b({$keywords})\\b
+        /ix";
+    }
+
+
+    protected static function prepareKeywords(array $keywords): string
+    {
+        $keywords = array_map('preg_quote', $keywords);
+
+        usort($keywords, function($a, $b) {
+            return strlen($b) <=> strlen($a);
+        });
+
+        $keywords = array_map(function($keyword) {
+            return str_replace(' ', '\s', $keyword);
+        }, $keywords);
+
+        return implode('|', $keywords);
     }
 }
