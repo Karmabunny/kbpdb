@@ -159,6 +159,9 @@ class PdbLog implements IteratorAggregate
                 case self::MESSAGE:
                     Cli::puts(Cli::FG_RED, '!!', $body);
                 break;
+
+                default:
+                    Cli::puts(Cli::FG_RED, '??', $type ?? 'null', $body);
             }
 
             Cli::stdout(PHP_EOL);
