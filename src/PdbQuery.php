@@ -108,9 +108,9 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      * single [field, alias]
-     * @var array{0:string|PdbQueryInterface,1:string|null}|array{}
+     * @var array{0:string|PdbQueryInterface,1:string|null}|null
     */
-    protected array $_from = [];
+    protected ?array $_from = null;
 
     /**
      * list [ type, [table, alias], conditions, combine ]
@@ -233,6 +233,10 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
      */
     public function getAlias(): string
     {
+        if (!$this->_from) {
+            throw new InvalidArgumentException('Invalid/missing from()');
+        }
+
         $alias = $this->_from[1] ?? $this->_from[0];
 
         // This shouldn't really happen, it's also guarded in from().
@@ -857,7 +861,12 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
         }
         // No select? Build a wildcard.
         else {
-            [$from, $alias] = $this->_from + [null, null];
+            $from = null;
+            $alias = null;
+
+            if ($this->_from) {
+                [$from, $alias] = $this->_from + [null, null];
+            }
 
             // Prefer the first alias, then use the table name.
             // Fallback to just a wildcard and cross your fingers.
@@ -1052,15 +1061,17 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
     {
         $ids = [];
 
-        [$table, $alias] = $this->_from;
+        if ($this->_from) {
+            [$table, $alias] = $this->_from + [null, null];
 
-        if (is_string($table)) {
-            $table = $this->pdb->getPrefix($table) . $table;
-            $alias = $alias ?: $table;
-        }
+            if (is_string($table)) {
+                $table = $this->pdb->getPrefix($table) . $table;
+                $alias = $alias ?: $table;
+            }
 
-        if ($alias) {
-            $ids[$alias] = $table;
+            if ($alias) {
+                $ids[$alias] = $table;
+            }
         }
 
         foreach ($this->_joins as $join) {
