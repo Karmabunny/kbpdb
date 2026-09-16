@@ -18,12 +18,14 @@ class PdbCompoundCondition implements PdbConditionInterface
 {
 
     const NOT = 'NOT';
+    const NOT_OR = 'NOT OR';
     const OR = 'OR';
     const AND = 'AND';
     const XOR = 'XOR';
 
     const OPERATORS = [
         self::NOT,
+        self::NOT_OR,
         self::OR,
         self::AND,
         self::XOR,
@@ -86,6 +88,10 @@ class PdbCompoundCondition implements PdbConditionInterface
             $compound = 'AND';
             $sql = 'NOT ';
         }
+        else if ($this->compound === 'NOT OR') {
+            $compound = 'OR';
+            $sql = 'NOT ';
+        }
         else {
             $compound = $this->compound;
             $sql = '';
@@ -113,6 +119,10 @@ class PdbCompoundCondition implements PdbConditionInterface
     {
         if ($this->compound === 'NOT') {
             $compound = 'AND';
+            $sql = 'NOT ';
+        }
+        else if ($this->compound === 'NOT OR') {
+            $compound = 'OR';
             $sql = 'NOT ';
         }
         else {
