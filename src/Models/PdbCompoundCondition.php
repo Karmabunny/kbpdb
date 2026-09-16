@@ -124,7 +124,6 @@ class PdbCompoundCondition implements PdbConditionInterface
                 $sql .= " {$compound} ";
             }
 
-            $sql .= ' ';
             $sql .= $condition->getPreviewSql() ?: '(!!)';
             $first = false;
         }
