@@ -150,4 +150,129 @@ class PdbParamTest extends TestCase
         $this->assertEquals($expectedSql, $sql, 'sql (sketch)');
     }
 
+
+    public static function dataQueries(): array
+    {
+        return [
+            'not null' => [
+                'not null',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NOT NULL',
+                [],
+            ],
+            'null' => [
+                'null',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NULL',
+                [],
+            ],
+            'in' => [
+                '1, 2, 3',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IN (?, ?, ?)',
+                ['1', '2', '3'],
+            ],
+            'not in' => [
+                'not in 1, 2, 3',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
+                ['1', '2', '3'],
+            ],
+            'not in (array)' => [
+                ['not in', '1', '2', '3'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
+                ['1', '2', '3'],
+            ],
+            'equal' => [
+                '1',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" = ?',
+                ['1'],
+            ],
+            'not equal' => [
+                '!= 1',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" != ?',
+                ['1'],
+            ],
+            'greater than' => [
+                '> 1',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" > ?',
+                ['1'],
+            ],
+            'less than' => [
+                '< 1',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" < ?',
+                ['1'],
+            ],
+            'between' => [
+                'between 1, 2',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" BETWEEN ? AND ?',
+                ['1', '2'],
+            ],
+            'like' => [
+                'like %abc%',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" LIKE ?',
+                ['\%abc\%'],
+            ],
+            'begins' => [
+                'begins abc',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" LIKE CONCAT(?, \'%\')',
+                ['abc'],
+            ],
+            'nested' => [
+                ['>= 10', '<= 20'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE ("id" >= ? OR "id" <= ?)',
+                ['10', '20'],
+            ],
+            'nested (and)' => [
+                ['and', '>= 10', '<= 20'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE ("id" >= ? AND "id" <= ?)',
+                ['10', '20'],
+            ],
+            'nested (not)' => [
+                ['not', '10', '20'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE NOT ("id" = ? AND "id" = ?)',
+                ['10', '20'],
+            ],
+            'nested (not or)' => [
+                ['not or', '10', '20'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE NOT ("id" = ? OR "id" = ?)',
+                ['10', '20'],
+            ],
+        ];
+    }
+
+    /** @dataProvider dataQueries */
+    public function testQueryBuilder(mixed $condition, string $expectedSql, array $expectedParams): void
+    {
+        $pdb = Database::getConnection('sqlite');
+        $query = new TestParamQuery($pdb);
+        $query->from('test', 't');
+        $query->id($condition);
+
+        [$sql, $params] = $query->build();
+        $this->assertEquals($expectedSql, $sql);
+        $this->assertEquals($expectedParams, $params);
+    }
+}
+
+
+
+class TestParamQuery extends PdbQuery
+{
+
+    public ?array $ids = null;
+
+
+    public function id(mixed $value): static
+    {
+        $this->ids = PdbParam::sketch($value);
+        return $this;
+    }
+
+
+    /** @inheritdoc */
+    public function _beforeBuild(PdbQuery &$query)
+    {
+        parent::_beforeBuild($query);
+
+        if ($this->ids !== null) {
+            $query->andWhere(PdbParam::prepare('id', $this->ids));
+        }
+    }
 }
