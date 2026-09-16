@@ -445,15 +445,17 @@ class PdbSimpleCondition implements PdbConditionInterface
 
         switch ($this->operator) {
             case self::EQUAL:
-            case self::NOT_EQUAL;
-            case self::NOT_EQUAL_ALT;
+            case self::NOT_EQUAL:
+            case self::NOT_EQUAL_ALT:
             case self::GREATER_THAN_EQUAL:
             case self::LESS_THAN_EQUAL:
             case self::LESS_THAN:
             case self::GREATER_THAN:
+                return "{$this->column} {$this->operator} ?";
+
             case self::IS:
             case self::IS_NOT:
-                return "{$this->column} {$this->operator} ?";
+                return "{$this->column} {$this->operator} NULL";
 
             case self::BETWEEN:
                 return "{$this->column} BETWEEN ? AND ?";
@@ -461,6 +463,9 @@ class PdbSimpleCondition implements PdbConditionInterface
             case self::IN:
             case self::NOT_IN:
                 return "{$this->column} {$this->operator} (...)";
+
+            case self::LIKE:
+                return "{$this->column} LIKE ?";
 
             case self::CONTAINS:
                 return "{$this->column} LIKE CONCAT('%', ?, '%')";
