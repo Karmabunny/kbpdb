@@ -100,7 +100,10 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
      */
     protected ?string $_cache_key = null;
 
-    /** @var array list [type, conditions, combine] */
+    /**
+     * list [type, conditions, combine]
+     * @var array{0:string,1:array|PdbConditionInterface,2:string}[]
+     */
     protected array $_where = [];
 
     /** @var array list [field, alias] */
@@ -114,13 +117,13 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      * list [ type, [table, alias], conditions, combine ]
-     * @var array{0:string,1:array,2:array,3:string}[]
+     * @var array{0:string,1:array,2:array|PdbConditionInterface,3:string}[]
      */
     protected array $_joins = [];
 
     /**
      * list [type, conditions, combine]
-     * @var array{0:string,1:array,2:string}[]
+     * @var array{0:string,1:array|PdbConditionInterface,2:string}[]
      */
     protected $_having = [];
 
@@ -446,11 +449,11 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      *
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      */
-    public function where(array $conditions, string $combine = 'AND'): static
+    public function where(array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         $this->_where = [];
         if (!empty($conditions)) {
@@ -462,11 +465,11 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      *
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @param string $combine AND | OR
      * @return static
      */
-    public function andWhere(array $conditions, string $combine = 'AND'): static
+    public function andWhere(array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         if (!empty($conditions)) {
             $this->_where[] = ['AND', $conditions, $combine];
@@ -477,11 +480,11 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      *
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @param string $combine AND | OR
      * @return static
      */
-    public function orWhere(array $conditions, string $combine = 'OR'): static
+    public function orWhere(array|PdbConditionInterface $conditions, string $combine = 'OR'): static
     {
         if (!empty($conditions)) {
             $this->_where[] = ['OR', $conditions, $combine];
@@ -492,11 +495,11 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
 
     /**
      *
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @param string $combine
      * @return static
      */
-    public function having(array $conditions, string $combine = 'AND'): static
+    public function having(array|PdbConditionInterface $conditions, string $combine = 'AND'): static
     {
         $this->_having = [];
         if (!empty($conditions)) {
@@ -648,10 +651,10 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
     /**
      *
      * @param string|string[]|PdbQueryInterface $table
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @return static
      */
-    public function find(string|array|PdbQueryInterface $table, array $conditions = []): static
+    public function find(string|array|PdbQueryInterface $table, array|PdbConditionInterface $conditions = []): static
     {
         $this->from($table);
         $this->where($conditions);
@@ -756,15 +759,30 @@ class PdbQuery implements PdbQueryInterface, ArrayableInterface, JsonSerializabl
     public function validate()
     {
         foreach ($this->_joins as $item) {
-            PdbCondition::fromArray($item[2], true);
+            if ($item[2] instanceof PdbConditionInterface) {
+                $item[2]->validate();
+            }
+            else {
+                PdbCondition::fromArray($item[2], true);
+            }
         }
 
         foreach ($this->_where as $item) {
-            PdbCondition::fromArray($item[1], true);
+            if ($item[1] instanceof PdbConditionInterface) {
+                $item[1]->validate();
+            }
+            else {
+                PdbCondition::fromArray($item[1], true);
+            }
         }
 
         foreach ($this->_having as $item) {
-            PdbCondition::fromArray($item[1], true);
+            if ($item[1] instanceof PdbConditionInterface) {
+                $item[1]->validate();
+            }
+            else {
+                PdbCondition::fromArray($item[1], true);
+            }
         }
     }
 
