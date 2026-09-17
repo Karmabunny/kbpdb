@@ -20,12 +20,10 @@ use karmabunny\kb\Time;
 /**
  * Parameter parser.
  *
- * This parser centres around the concept of a 'sketch' - this is sort of partial
- * condition that contains the operator and values but not the target column.
+ * This parses a form of query condition that doesn't include the target column.
  *
- * Sketches can be parsed from strings, arrays, or other sketches. They inherit
- * the operators supported by {@see PdbSimpleCondition} and nested conditions
- * supported by {@see PdbCompoundCondition}.
+ * The parser accepts strings, arrays, and operators from
+ * {@see PdbSimpleCondition} and {@see PdbCompoundCondition}.
  *
  * The aim to provide a natural language for writing conditions without
  * specifying the target column. This column is then later inserted when
@@ -38,7 +36,7 @@ use karmabunny\kb\Time;
  * $condition = $param->toCondition('id');
  * [$where, $params] = $condition->build();
  *
- * // OR directly into a query builder:
+ * // For most use-cases, use the prepare() shorthand:
  * $query = new PdbQuery($pdb);
  * $query->where(PdbParam::prepare('id', '> 20'));
  * $query->one();
@@ -57,6 +55,13 @@ use karmabunny\kb\Time;
  * | `not 10, 20`       | `NOT (id = ? AND id = ?)` |
  * | `begins abc`       | `id LIKE CONCAT(?, '%')`  |
  * | `between 1, 2`     | `id BETWEEN ? AND ?`      |
+ *
+ * The parser supports relative dates:
+ *
+ * ```
+ * PdbParam::prepare('dateCreated', '> today', ['relativeDates']);
+ * // => WHERE dateCreated > ?
+ * // => [new DateTime('today')]
  * ```
  *
  * @package karmabunny\pdb
