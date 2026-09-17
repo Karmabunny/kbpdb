@@ -17,17 +17,22 @@ use karmabunny\pdb\Pdb;
 class PdbCompoundCondition implements PdbConditionInterface
 {
 
+    const NOT = 'NOT';
+    const OR = 'OR';
+    const AND = 'AND';
+    const XOR = 'XOR';
+
     const OPERATORS = [
-        'NOT',
-        'OR',
-        'AND',
-        'XOR',
+        self::NOT,
+        self::OR,
+        self::AND,
+        self::XOR,
     ];
 
     const COMPOUNDS = [
-        'OR',
-        'AND',
-        'XOR',
+        self::OR,
+        self::AND,
+        self::XOR,
     ];
 
     /** @var string */
