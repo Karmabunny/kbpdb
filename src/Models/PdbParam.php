@@ -7,10 +7,14 @@ declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use InvalidArgumentException;
 use JsonSerializable;
 use karmabunny\interfaces\ArrayableInterface;
 use karmabunny\interfaces\JsonDeserializable;
+use karmabunny\kb\Configure;
 
 /**
  * Parameter parser.
@@ -79,9 +83,23 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      */
     public function __construct(
         public string $operator,
-        public array $values
+        public array $values,
     )
     {
+    }
+
+
+    /**
+     * Build a new param.
+     *
+     * @param string $operator
+     * @param array $values
+     * @return PdbParam
+     */
+    public static function build(string $operator, array $values): self
+    {
+        self::processValues($values);
+        return new self($operator, $values);
     }
 
 
@@ -110,7 +128,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function parse(mixed $value): self
     {
         if ($value === null) {
-            return new self(
+            return self::build(
                 PdbSimpleCondition::IS,
                 ['null'],
             );
@@ -118,7 +136,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
         // Shortcut.
         if (is_numeric($value)) {
-            return new self(
+            return self::build(
                 PdbSimpleCondition::EQUAL,
                 [$value],
             );
@@ -132,7 +150,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             return self::parseArray($value);
         }
 
-        return new self(
+        return self::build(
             PdbSimpleCondition::EQUAL,
             [$value],
         );
@@ -151,14 +169,14 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function parseString(string $value): self
     {
         if ($value === 'not null') {
-            return new self(
+            return self::build(
                 PdbSimpleCondition::IS_NOT,
                 ['null'],
             );
         }
 
         if ($value === 'null') {
-            return new self(
+            return self::build(
                 PdbSimpleCondition::IS,
                 ['null'],
             );
@@ -183,7 +201,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function parseArray(array $value): self
     {
         if (empty($value)) {
-            return new self(
+            return self::build(
                 PdbSimpleCondition::EQUAL,
                 [''],
             );
@@ -215,7 +233,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
             // We're talking compounds we'll convert scalars too.
             if (!$expression and $compound and is_scalar($item)) {
-                $expression = new self(PdbSimpleCondition::EQUAL, [$item]);
+                $expression = self::build(PdbSimpleCondition::EQUAL, [$item]);
             }
 
             // Best not mix scalar and expressions for non-compound conditions.
@@ -251,13 +269,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
                 return $value;
             }
 
-            return new self(PdbSimpleCondition::EQUAL, $values);
+            return self::build(PdbSimpleCondition::EQUAL, $values);
         }
 
         // We condense scalars into a IN, which behaves like an OR.
         $operator = $compound ?? ($scalar ? PdbSimpleCondition::IN : PdbCompoundCondition::OR);
 
-        return new self($operator, $values);
+        return self::build($operator, $values);
     }
 
 
@@ -282,7 +300,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
             if ($operator and self::isSimpleOperator($operator)) {
                 array_shift($value);
-                return new self($operator, $value);
+                return self::build($operator, $value);
             }
 
             return null;
@@ -296,7 +314,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         $operator = strtoupper($matches[1]);
 
         $value = substr($value, strlen($matches[0]));
-        return new self($operator, [$value]);
+        return self::build($operator, [$value]);
     }
 
 
@@ -352,6 +370,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         foreach ($this->values as $value) {
             if ($value instanceof self) {
                 $value = $value->toArray();
+            }
+            else if ($value instanceof DateTimeInterface) {
+                $value = json_decode(json_encode($value), true);
+                unset($value['timezone_type']);
+            }
+            else if (is_object($value)) {
+                $value = [get_class($value) => (array) $value];
             }
 
             $condition[] = $value;
@@ -468,5 +493,34 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         }
 
         return $items;
+    }
+
+
+    /**
+     * Process values in an array.
+     *
+     * @param array $values
+     * @return void
+     */
+    public static function processValues(array &$values): void
+    {
+        foreach ($values as &$value) {
+            if (is_array($value)) {
+                if (isset($value['date'])) {
+                    $tz = new DateTimeZone($value['timezone'] ?? 'UTC');
+                    $value = new DateTimeImmutable($value['date'], $tz);
+                    continue;
+                }
+
+                if (
+                    is_string($class = key($value))
+                    and class_exists($class)
+                ) {
+                    $value = reset($value) ?: [];
+                    $value = Configure::create($class, $value);
+                    continue;
+                }
+            }
+        }
     }
 }

@@ -152,6 +152,13 @@ class PdbParamTest extends TestCase
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE NOT ("id" = ? OR "id" = ?)',
                 ['10', '20'],
             ],
+            'between dates' => [
+                ['between', new DateTime('2026-01-01'), new DateTime('2026-12-31')],
+                ['BETWEEN', ['date' => '2026-01-01 00:00:00.000000', 'timezone' => 'UTC'], ['date' => '2026-12-31 00:00:00.000000', 'timezone' => 'UTC']],
+                'column BETWEEN ? AND ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" BETWEEN ? AND ?',
+                [new DateTime('2026-01-01'), new DateTime('2026-12-31')],
+            ],
         ];
     }
 
@@ -167,10 +174,6 @@ class PdbParamTest extends TestCase
         $array = $param->toArray();
         $this->assertEquals($expected, $array, 'array');
 
-        // Re-parsing the serialised form.
-        $array = PdbParam::fromJson($array)->toArray();
-        $this->assertEquals($expected, $array, 'array (re-parsed');
-
         // Simple form, midly useful.
         $condition = $param->toCondition('column');
         $sql = $condition->getPreviewSql();
@@ -184,6 +187,19 @@ class PdbParamTest extends TestCase
         [$sql, $params] = $query->build();
         $this->assertEquals($expectedSql, $sql, 'sql');
         $this->assertEquals($expectedParams, $params, 'params');
+
+        // Re-parsing the serialised form.
+        $array = PdbParam::fromJson($array)->toArray();
+        $this->assertEquals($expected, $array, 'array (re-parsed');
+
+        // Re-parsed within a query.
+        $query = new TestParamQuery($pdb);
+        $query->from('test', 't');
+        $query->id($array);
+
+        [$sql, $params] = $query->build();
+        $this->assertEquals($expectedSql, $sql, 'sql (re-parsed)');
+        $this->assertEquals($expectedParams, $params, 'params (re-parsed)');
     }
 }
 
