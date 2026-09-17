@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace karmabunny\pdb\Models;
 
+use InvalidArgumentException;
 use JsonSerializable;
 use karmabunny\interfaces\ArrayableInterface;
 use karmabunny\interfaces\JsonDeserializable;
@@ -61,7 +62,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     /**
      *
      * @param string $operator
-     * @param array<string|int|float|null|self> $values
+     * @param array $values
      * @return void
      */
     public function __construct(
@@ -73,19 +74,37 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
 
     /**
+     * Convert a value/sketch into a condition.
+     *
+     * @param string $column
+     * @param mixed $value
+     * @return PdbConditionInterface
+     */
+    public static function prepare(string $column, mixed $value): PdbConditionInterface
+    {
+        return self::parse($value)->toCondition($column);
+    }
+
+
+    /**
+     * Parse a value into a param.
+     *
+     * This accepts scalars, arrays - anything invalid raises an exception.
      *
      * @param mixed $value
-     * @return static
+     * @return self
+     * @throws InvalidArgumentException
      */
-    public static function parse(mixed $value): static
+    public static function parse(mixed $value): self
     {
         if ($value === null) {
             return new self(
                 PdbSimpleCondition::IS,
-                [null],
+                ['null'],
             );
         }
 
+        // Shortcut.
         if (is_numeric($value)) {
             return new self(
                 PdbSimpleCondition::EQUAL,
@@ -94,20 +113,6 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         }
 
         if (is_string($value)) {
-            if ($value == 'not null') {
-                return new self(
-                    PdbSimpleCondition::IS_NOT,
-                    [null],
-                );
-            }
-
-            if ($value == 'null') {
-                return new self(
-                    PdbSimpleCondition::IS,
-                    [null],
-                );
-            }
-
             return self::parseString($value);
         }
 
@@ -123,41 +128,47 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
 
     /**
+     * Parse a string expression.
+     *
+     * This can contain compound or simple conditions.
      *
      * @param string $value
-     * @return static
+     * @return self
+     * @throws InvalidArgumentException
      */
-    public static function parseString(string $value): static
+    public static function parseString(string $value): self
     {
-        $operator = PdbSimpleCondition::EQUAL;
-
-        if (preg_match('/^([^,]+) /i', $value, $matches)) {
-            $operator = strtoupper($matches[1]);
-            $value = substr($value, strlen($matches[0]));
+        if ($value === 'not null') {
+            return new self(
+                PdbSimpleCondition::IS_NOT,
+                ['null'],
+            );
         }
 
-        $value = self::splitArray($value);
-
-        if (
-            $operator === PdbSimpleCondition::EQUAL
-            and count($value) > 1
-        ) {
-            $operator = PdbSimpleCondition::IN;
+        if ($value === 'null') {
+            return new self(
+                PdbSimpleCondition::IS,
+                ['null'],
+            );
         }
 
-        return new self(
-            $operator,
-            $value,
-        );
+        // After splitting it behaves just like an array.
+        $values = self::splitArray($value);
+        return self::parseArray($values);
     }
 
 
+
     /**
+     * Parse an array of values.
+     *
+     * This can contain simple or compound conditions.
      *
      * @param array $value
-     * @return static
+     * @return self
+     * @throws InvalidArgumentException
      */
-    public static function parseArray(array $value): static
+    public static function parseArray(array $value): self
     {
         if (empty($value)) {
             return new self(
@@ -166,72 +177,136 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             );
         }
 
-        $first = reset($value);
+        // Parse the first element as a potential operator.
+        $operator = reset($value);
+        $compound = false;
 
-        if (is_string($first)) {
-            $first = strtoupper($first);
+        // We can stop here, we've got what we need.
+        if (self::isSimpleOperator($operator)) {
+            $operator = strtoupper($operator);
+            array_shift($value);
+            return new self($operator, $value);
+        }
 
-            if (in_array($first, PdbCompoundCondition::OPERATORS)) {
-                array_shift($value);
-
-                $values = [];
-
-                foreach ($value as $item) {
-                    if (is_string($item)) {
-                        $item = self::parseString($item);
-                    }
-                    else if (is_array($item)) {
-                        $item = self::parseArray($item);
-                    }
-
-                    $values[] = $item;
-                }
-
-                return new self($first, $values);
-            }
-
-            if (in_array($first, PdbSimpleCondition::OPERATORS)) {
-                array_shift($value);
-                return new self($first, $value);
-            }
+        // Trim off compound operators, we'll process the values below.
+        if (self::isCompoundOperator($operator)) {
+            $operator = strtoupper($operator);
+            array_shift($value);
+            $compound = true;
+        }
+        // Otherwise not an operator.
+        // We'll assume it's an OR/IN condition.
+        else {
+            $operator = null;
         }
 
         $values = [];
+        $scalar = null;
 
         foreach ($value as $item) {
-            if (is_string($item)) {
-                $item = self::parseString($item);
-            }
-            else if (is_array($item)) {
-                $item = self::parseArray($item);
+            $expression = self::parseExpression($item);
+
+            // We're talking compounds we'll convert scalars too.
+            if (!$expression and $compound and is_scalar($item)) {
+                $expression = new self(PdbSimpleCondition::EQUAL, [$item]);
             }
 
-            $values[] = $item;
+            // Best not mix scalar and expressions for non-compound conditions.
+            // So we set the 'scalar' flag on the first item and check that all
+            // following items are matching.
+
+            if ($expression) {
+                if ($scalar === true) {
+                    throw new InvalidArgumentException('Invalid expression: ' . json_encode($item));
+                }
+
+                $values[] = $expression;
+                $scalar = false;
+            }
+            else if (is_scalar($item)) {
+                if ($scalar === false) {
+                    throw new \InvalidArgumentException('Invalid expression: ' . json_encode($item));
+                }
+
+                $values[] = $item;
+                $scalar = true;
+            }
+            else {
+                throw new \InvalidArgumentException('Invalid expression: ' . json_encode($item));
+            }
         }
 
-        return new self('OR', $values);
-    }
+        // Special unwrapping for single items.
+        if (count($values) === 1) {
+            $value = reset($values);
 
-
-    public function toSketch(): array
-    {
-        $operator = strtoupper($this->operator);
-
-        $condition = [];
-        $condition[] = $operator;
-
-        foreach ($this->values as $value) {
             if ($value instanceof self) {
-                $value = $value->toArray();
+                return $value;
             }
 
-            $condition[] = $value;
+            return new self(PdbSimpleCondition::EQUAL, $values);
         }
 
-        return $condition;
+        // We condense scalars into a IN, which behaves like an OR.
+        $operator ??= $scalar
+            ? PdbSimpleCondition::IN
+            : PdbCompoundCondition::OR;
+
+        return new self($operator, $values);
     }
 
 
+    /**
+     * Parse a simple condition, typically nested.
+     *
+     * This accepts a string like `'> 20'` or an array like `['>', '20']`.
+     *
+     * It cannot support compound or conditions with multiple values.
+     *
+     * @param string|array $value
+     * @return null|self
+     */
+    public static function parseExpression(string|array $value): ?self
+    {
+        static $pattern = null;
+
+        if (!$pattern) {
+            $operators = PdbSimpleCondition::OPERATORS;
+            usort($operators, fn($a, $b) => strlen($b) - strlen($a));
+            $operators = implode('|', $operators);
+            $pattern = "/^($operators)\s+/i";
+        }
+
+        // Array parsing is easy.
+        if (is_array($value)) {
+            $operator = reset($value);
+
+            if ($operator and self::isSimpleOperator($operator)) {
+                array_shift($value);
+                return new self($operator, $value);
+            }
+
+            return null;
+        }
+
+        // Otherwise match the operator and trim it off.
+        if (!preg_match($pattern, $value, $matches)) {
+            return null;
+        }
+
+        $operator = strtoupper($matches[1]);
+
+        $value = substr($value, strlen($matches[0]));
+        return new self($operator, [$value]);
+    }
+
+
+    /**
+     * Convert a param into a condition for a specified column name.
+     *
+     * @param string $column
+     * @return PdbConditionInterface
+     */
     public function toCondition(string $column): PdbConditionInterface
     {
         $operator = strtoupper($this->operator);
@@ -267,63 +342,114 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     }
 
 
-    public function toShorthand(string $column): array
-    {
-        $operator = strtoupper($this->operator);
-
-        if (in_array($operator, PdbCompoundCondition::OPERATORS)) {
-            $condition = [];
-
-            foreach ($this->values as $value) {
-                if (!$value instanceof self) {
-                    continue;
-                }
-
-                $condition[$operator][] = $value->toShorthand($column);
-            }
-
-            return $condition;
-        }
-        else {
-            $value = $this->values;
-
-            if (count($value) == 1) {
-                $value = $value[0];
-            }
-
-            return [$operator, $column => $value];
-        }
-    }
-
-
     /** @inheritdoc */
     public function toArray(): array
     {
-        return $this->toSketch();
+        $operator = strtoupper($this->operator);
+
+        $condition = [];
+        $condition[] = $operator;
+
+        foreach ($this->values as $value) {
+            if ($value instanceof self) {
+                $value = $value->toArray();
+            }
+
+            $condition[] = $value;
+        }
+
+        return $condition;
     }
 
 
     /** @inheritdoc */
     public function jsonSerialize(): array
     {
-        return $this->toSketch();
+        return $this->toArray();
     }
 
 
     /** @inheritdoc */
-    public static function fromJson(array $json): static
+    public static function fromJson(mixed $value): static
     {
-        return static::parseArray($json);
+        // @phpstan-ignore-next-line
+        return self::parse($value);
     }
 
 
     /**
+     * Is this a simple operator?
+     *
+     * @param mixed $operator
+     * @return bool
+     */
+    public static function isSimpleOperator(mixed $operator): bool
+    {
+        static $operators = null;
+        $operators ??= array_fill_keys(PdbSimpleCondition::OPERATORS, true);
+
+        if (!is_string($operator)) {
+            return false;
+        }
+
+        $operator = strtoupper($operator);
+        return isset($operators[$operator]);
+    }
+
+
+    /**
+     * Is this a compound operator?
+     *
+     * @param mixed $operator
+     * @return bool
+     */
+    public static function isCompoundOperator(mixed $operator): bool
+    {
+        static $operators = null;
+        $operators ??= array_fill_keys(PdbCompoundCondition::OPERATORS, true);
+
+        if (!is_string($operator)) {
+            return false;
+        }
+
+        $operator = strtoupper($operator);
+        return isset($operators[$operator]);
+    }
+
+
+    /**
+     * Split a string into an array of values.
+     *
+     * Prefix operators are preserved as the first element.
      *
      * @param string $value
      * @return array
      */
     public static function splitArray(string $value): array
     {
+        static $pattern = null;
+
+        if (!$pattern) {
+            $operators = PdbCompoundCondition::OPERATORS;
+            $operators[] = PdbSimpleCondition::IN;
+            $operators[] = PdbSimpleCondition::NOT_IN;
+            $operators[] = PdbSimpleCondition::BETWEEN;
+
+            usort($operators, fn($a, $b) => strlen($b) - strlen($a));
+
+            $operators = implode('|', $operators);
+            $pattern = "/^($operators)\s+/i";
+        }
+
+        $operator = null;
+
+        // Find prefix operators.
+        if (preg_match($pattern, $value, $matches)) {
+            $operator = $matches[1];
+            $value = substr($value, strlen($matches[0]));
+        }
+
+        // Split on commas, unescaped.
         $value = preg_split('/(?<!\\\),/', $value);
 
         foreach ($value as &$item) {
@@ -335,31 +461,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
         $value = array_filter($value, fn($item) => $item !== '');
         $value = array_values($value);
+
+        // Tack that operator back on.
+        if ($operator) {
+            array_unshift($value, strtoupper($operator));
+        }
+
         return $value;
     }
 
-
-    /**
-     * Convert a value into a sketch.
-     *
-     * @param mixed $value
-     * @return array
-     */
-    public static function sketch(mixed $value): array
-    {
-        return self::parse($value)->toSketch();
-    }
-
-
-    /**
-     * Convert a value/sketch into a condition.
-     *
-     * @param string $column
-     * @param mixed $value
-     * @return PdbConditionInterface
-     */
-    public static function prepare(string $column, mixed $value): PdbConditionInterface
-    {
-        return self::parse($value)->toCondition($column);
-    }
 }
