@@ -14,240 +14,176 @@ class PdbParamTest extends TestCase
         return [
             'is null' => [
                 'null',
-                ['IS', null],
-                ['IS', 'column' => null],
+                ['IS', 'null'],
                 'column IS NULL',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NULL',
+                [],
             ],
             'is not null' => [
                 'not null',
-                ['IS NOT', null],
-                ['IS NOT', 'column' => null],
+                ['IS NOT', 'null'],
                 'column IS NOT NULL',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NOT NULL',
+                [],
             ],
             'equal string (implicit)' => [
                 'test',
                 ['=', 'test'],
-                ['=', 'column' => 'test'],
                 'column = ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" = ?',
+                ['test'],
             ],
             'equal numeric (implicit)' => [
                 1.23,
                 ['=', 1.23],
-                ['=', 'column' => 1.23],
                 'column = ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" = ?',
+                [1.23],
             ],
             'equal numeric (explicit)' => [
                 '= 1.23',
                 ['=', '1.23'],
-                ['=', 'column' => '1.23'],
                 'column = ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" = ?',
+                ['1.23'],
             ],
             'not equal' => [
                 '!= abc',
                 ['!=', 'abc'],
-                ['!=', 'column' => 'abc'],
                 'column != ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" != ?',
+                ['abc'],
             ],
             'greater than' => [
                 '> 1.23',
                 ['>', '1.23'],
-                ['>', 'column' => '1.23'],
                 'column > ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" > ?',
+                ['1.23'],
             ],
             'less than' => [
                 '< 1.23',
                 ['<', '1.23'],
-                ['<', 'column' => '1.23'],
                 'column < ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" < ?',
+                ['1.23'],
             ],
             'between' => [
                 'between 1, 2',
                 ['BETWEEN', '1', '2'],
-                ['BETWEEN', 'column' => ['1', '2']],
                 'column BETWEEN ? AND ?',
-            ],
-            'like' => [
-                'like %abc%',
-                ['LIKE', '%abc%'],
-                ['LIKE', 'column' => '%abc%'],
-                'column LIKE ?',
-            ],
-            'begins' => [
-                'begins abc',
-                ['BEGINS', 'abc'],
-                ['BEGINS', 'column' => 'abc'],
-                'column LIKE CONCAT(?, \'%\')',
-            ],
-            'in (implicit)' => [
-                '1, 2, 3',
-                ['IN', '1', '2', '3'],
-                ['IN', 'column' => ['1', '2', '3']],
-                'column IN (...)',
-            ],
-            'in (explicit)' => [
-                'in abc, def, ghi',
-                ['IN', 'abc', 'def', 'ghi'],
-                ['IN', 'column' => ['abc', 'def', 'ghi']],
-                'column IN (...)',
-            ],
-            'not in' => [
-                'not in abc, def, ghi',
-                ['NOT IN', 'abc', 'def', 'ghi'],
-                ['NOT IN', 'column' => ['abc', 'def', 'ghi']],
-                'column NOT IN (...)',
-            ],
-            'not in (array)' => [
-                ['not in', 'abc', 'def', 'ghi'],
-                ['NOT IN', 'abc', 'def', 'ghi'],
-                ['NOT IN', 'column' => ['abc', 'def', 'ghi']],
-                'column NOT IN (...)',
-            ],
-            'nested' => [
-                ['>= 10', '<= 20'],
-                ['OR', ['>=', '10'], ['<=', '20']],
-                ['OR' => [['>=', 'column' => '10'], ['<=', 'column' => '20']]],
-                '(column >= ? OR column <= ?)',
-            ],
-            'nested (and)' => [
-                ['and', '>= 10', '<= 20'],
-                ['AND', ['>=', '10'], ['<=', '20']],
-                ['AND' => [['>=', 'column' => '10'], ['<=', 'column' => '20']]],
-                '(column >= ? AND column <= ?)',
-            ],
-            'nested (not)' => [
-                ['not', '10', '20'],
-                ['NOT', ['=', '10'], ['=', '20']],
-                ['NOT' => [['=', 'column' => '10'], ['=', 'column' => '20']]],
-                'NOT (column = ? AND column = ?)',
-            ],
-            'nested (not or)' => [
-                ['not or', '10', '20'],
-                ['NOT OR', ['=', '10'], ['=', '20']],
-                ['NOT OR' => [['=', 'column' => '10'], ['=', 'column' => '20']]],
-                'NOT (column = ? OR column = ?)',
-            ],
-        ];
-    }
-
-
-    /** @dataProvider dataParse */
-    public function testParse(mixed $input, array $expected, array $expectedShorthand, string $expectedSql): void
-    {
-        $param = PdbParam::parse($input);
-
-        $sketch = $param->toArray();
-        $this->assertEquals($expected, $sketch, 'sketch');
-
-        $shorthand = $param->toShorthand('column');
-        $this->assertEquals($expectedShorthand, $shorthand, 'shorthand (sketch)');
-
-        $condition = $param->toCondition('column');
-        $sql = $condition->getPreviewSql();
-        $this->assertEquals($expectedSql, $sql, 'sql');
-
-        $condition = PdbParam::prepare('column', $sketch);
-        $sql = $condition->getPreviewSql();
-        $this->assertEquals($expectedSql, $sql, 'sql (sketch)');
-    }
-
-
-    public static function dataQueries(): array
-    {
-        return [
-            'not null' => [
-                'not null',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NOT NULL',
-                [],
-            ],
-            'null' => [
-                'null',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IS NULL',
-                [],
-            ],
-            'in' => [
-                '1, 2, 3',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IN (?, ?, ?)',
-                ['1', '2', '3'],
-            ],
-            'not in' => [
-                'not in 1, 2, 3',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
-                ['1', '2', '3'],
-            ],
-            'not in (array)' => [
-                ['not in', '1', '2', '3'],
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
-                ['1', '2', '3'],
-            ],
-            'equal' => [
-                '1',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" = ?',
-                ['1'],
-            ],
-            'not equal' => [
-                '!= 1',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" != ?',
-                ['1'],
-            ],
-            'greater than' => [
-                '> 1',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" > ?',
-                ['1'],
-            ],
-            'less than' => [
-                '< 1',
-                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" < ?',
-                ['1'],
-            ],
-            'between' => [
-                'between 1, 2',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" BETWEEN ? AND ?',
                 ['1', '2'],
             ],
             'like' => [
                 'like %abc%',
+                ['LIKE', '%abc%'],
+                'column LIKE ?',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" LIKE ?',
                 ['\%abc\%'],
             ],
             'begins' => [
-                'begins abc',
+                'begins abc def',
+                ['BEGINS', 'abc def'],
+                'column LIKE CONCAT(?, \'%\')',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" LIKE CONCAT(?, \'%\')',
-                ['abc'],
+                ['abc def'],
+            ],
+            'in (implicit)' => [
+                '1, 2, 3',
+                ['IN', '1', '2', '3'],
+                'column IN (...)',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IN (?, ?, ?)',
+                ['1', '2', '3'],
+            ],
+            'in (string)' => [
+                'abc def, foo\, bar, test',
+                ['IN', 'abc def', 'foo, bar', 'test'],
+                'column IN (...)',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IN (?, ?, ?)',
+                ['abc def', 'foo, bar', 'test'],
+            ],
+            'in (explicit)' => [
+                'in abc def, foo\, bar, test',
+                ['IN', 'abc def', 'foo, bar', 'test'],
+                'column IN (...)',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" IN (?, ?, ?)',
+                ['abc def', 'foo, bar', 'test'],
+            ],
+            'not in' => [
+                'not in abc, def, ghi',
+                ['NOT IN', 'abc', 'def', 'ghi'],
+                'column NOT IN (...)',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
+                ['abc', 'def', 'ghi'],
+            ],
+            'not in (array)' => [
+                ['not in', 'abc', 'def, ghi', 'ghi\, test'],
+                ['NOT IN', 'abc', 'def, ghi', 'ghi\, test'],
+                'column NOT IN (...)',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" NOT IN (?, ?, ?)',
+                ['abc', 'def, ghi', 'ghi\, test'],
             ],
             'nested' => [
-                ['>= 10', '<= 20'],
+                '>= 10, <= 20',
+                ['OR', ['>=', '10'], ['<=', '20']],
+                '(column >= ? OR column <= ?)',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE ("id" >= ? OR "id" <= ?)',
                 ['10', '20'],
             ],
             'nested (and)' => [
-                ['and', '>= 10', '<= 20'],
+                'and >= 10, <= 20',
+                ['AND', ['>=', '10'], ['<=', '20']],
+                '(column >= ? AND column <= ?)',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE ("id" >= ? AND "id" <= ?)',
                 ['10', '20'],
             ],
             'nested (not)' => [
-                ['not', '10', '20'],
+                'not 10, 20',
+                ['NOT', ['=', '10'], ['=', '20']],
+                'NOT (column = ? AND column = ?)',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE NOT ("id" = ? AND "id" = ?)',
                 ['10', '20'],
             ],
             'nested (not or)' => [
-                ['not or', '10', '20'],
+                'not or 10, 20',
+                ['NOT OR', ['=', '10'], ['=', '20']],
+                'NOT (column = ? OR column = ?)',
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE NOT ("id" = ? OR "id" = ?)',
                 ['10', '20'],
             ],
         ];
     }
 
-    /** @dataProvider dataQueries */
-    public function testQueryBuilder(mixed $condition, string $expectedSql, array $expectedParams): void
+
+    /** @dataProvider dataParse */
+    public function testParse(mixed $input, array $expected, string $expectedWhere, $expectedSql, $expectedParams): void
     {
         $pdb = Database::getConnection('sqlite');
+
+        $param = PdbParam::parse($input);
+
+        // A serialized form, that can also be parsed back in.
+        $array = $param->toArray();
+        $this->assertEquals($expected, $array, 'array');
+
+        // Re-parsing the serialised form.
+        $array = PdbParam::fromJson($array)->toArray();
+        $this->assertEquals($expected, $array, 'array (re-parsed');
+
+        // Simple form, midly useful.
+        $condition = $param->toCondition('column');
+        $sql = $condition->getPreviewSql();
+        $this->assertEquals($expectedWhere, $sql, 'where');
+
+        // Full test with a query builder.
         $query = new TestParamQuery($pdb);
         $query->from('test', 't');
-        $query->id($condition);
+        $query->id($input);
 
         [$sql, $params] = $query->build();
-        $this->assertEquals($expectedSql, $sql);
-        $this->assertEquals($expectedParams, $params);
+        $this->assertEquals($expectedSql, $sql, 'sql');
+        $this->assertEquals($expectedParams, $params, 'params');
     }
 }
 
@@ -256,12 +192,12 @@ class PdbParamTest extends TestCase
 class TestParamQuery extends PdbQuery
 {
 
-    public ?array $ids = null;
+    public mixed $ids = null;
 
 
     public function id(mixed $value): static
     {
-        $this->ids = PdbParam::sketch($value);
+        $this->ids = $value;
         return $this;
     }
 
