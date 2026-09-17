@@ -189,27 +189,22 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             );
         }
 
-        // Parse the first element as a potential operator.
-        $operator = reset($value);
-        $compound = false;
-
         // We can stop here, we've got what we need.
-        if (self::isSimpleOperator($operator)) {
-            $operator = strtoupper($operator);
-            array_shift($value);
-            return new self($operator, $value);
+        if ($expression = self::parseExpression($value)) {
+            return $expression;
         }
 
-        // Trim off compound operators, we'll process the values below.
-        if (self::isCompoundOperator($operator)) {
-            $operator = strtoupper($operator);
+        // Parse the first element as a potential compound operator.
+        $compound = reset($value);
+
+        // This is an explicit compound operator.
+        if (self::isCompoundOperator($compound)) {
+            $compound = strtoupper($compound);
             array_shift($value);
-            $compound = true;
         }
-        // Otherwise not an operator.
-        // We'll assume it's an OR/IN condition.
+        // Otherwise assume it's an OR/IN condition.
         else {
-            $operator = null;
+            $compound = null;
         }
 
         $values = [];
@@ -260,9 +255,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         }
 
         // We condense scalars into a IN, which behaves like an OR.
-        $operator ??= $scalar
-            ? PdbSimpleCondition::IN
-            : PdbCompoundCondition::OR;
+        $operator = $compound ?? ($scalar ? PdbSimpleCondition::IN : PdbCompoundCondition::OR);
 
         return new self($operator, $values);
     }
