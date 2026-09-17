@@ -181,7 +181,9 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      */
     public static function parseString(string $value, array $config = []): self
     {
-        if ($value === 'not null') {
+        $value = trim($value);
+
+        if (strcasecmp($value, 'not null') === 0) {
             return self::build(
                 PdbSimpleCondition::IS_NOT,
                 ['null'],
@@ -189,7 +191,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             );
         }
 
-        if ($value === 'null') {
+        if (strcasecmp($value, 'null') === 0) {
             return self::build(
                 PdbSimpleCondition::IS,
                 ['null'],
