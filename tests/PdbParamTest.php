@@ -213,6 +213,8 @@ class PdbParamTest extends TestCase
 
     public static function dataParseDates(): array
     {
+        $tz = date_default_timezone_get();
+
         $format = function(string $date) {
             $date = new DateTime($date);
             $date = json_decode(json_encode($date), true);
@@ -224,7 +226,7 @@ class PdbParamTest extends TestCase
             // Same as before.
             'between dates' => [
                 ['between', new DateTime('2026-01-01'), new DateTime('2026-12-31')],
-                ['BETWEEN', ['date' => '2026-01-01 00:00:00.000000', 'timezone' => 'UTC'], ['date' => '2026-12-31 00:00:00.000000', 'timezone' => 'UTC']],
+                ['BETWEEN', ['date' => '2026-01-01 00:00:00.000000', 'timezone' => $tz], ['date' => '2026-12-31 00:00:00.000000', 'timezone' => $tz]],
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" BETWEEN ? AND ?',
                 [new DateTime('2026-01-01'), new DateTime('2026-12-31')],
             ],
