@@ -59,6 +59,18 @@ use karmabunny\interfaces\JsonDeserializable;
 class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializable
 {
 
+    const OPERATORS_SIMPLE = PdbSimpleCondition::OPERATORS;
+
+    const OPERATORS_COMPOUND = PdbCompoundCondition::OPERATORS;
+
+    const OPERATORS_PREFIX = [
+        ...self::OPERATORS_COMPOUND,
+        PdbSimpleCondition::IN,
+        PdbSimpleCondition::NOT_IN,
+        PdbSimpleCondition::BETWEEN,
+    ];
+
+
     /**
      *
      * @param string $operator
@@ -153,7 +165,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         }
 
         // After splitting it behaves just like an array.
-        $values = self::splitArray($value);
+        $values = self::split($value);
         return self::parseArray($values);
     }
 
@@ -269,13 +281,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function parseExpression(string|array $value): ?self
     {
         static $pattern = null;
-
-        if (!$pattern) {
-            $operators = PdbSimpleCondition::OPERATORS;
-            usort($operators, fn($a, $b) => strlen($b) - strlen($a));
-            $operators = implode('|', $operators);
-            $pattern = "/^($operators)\s+/i";
-        }
+        $pattern ??= self::buildPattern(self::OPERATORS_SIMPLE);
 
         // Array parsing is easy.
         if (is_array($value)) {
@@ -311,7 +317,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     {
         $operator = strtoupper($this->operator);
 
-        if (in_array($operator, PdbCompoundCondition::OPERATORS)) {
+        if (in_array($operator, self::OPERATORS_COMPOUND)) {
             $conditions = [];
 
             foreach ($this->values as $value) {
@@ -319,10 +325,10 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
                     $value = $value->toCondition($column);
                 }
                 else if (is_array($value)) {
-                    $value = new PdbSimpleCondition('IN', $column, $value);
+                    $value = new PdbSimpleCondition(PdbSimpleCondition::IN, $column, $value);
                 }
                 else {
-                    $value = new PdbSimpleCondition('=', $column, $value);
+                    $value = new PdbSimpleCondition(PdbSimpleCondition::EQUAL, $column, $value);
                 }
 
                 $conditions[] = $value;
@@ -386,7 +392,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function isSimpleOperator(mixed $operator): bool
     {
         static $operators = null;
-        $operators ??= array_fill_keys(PdbSimpleCondition::OPERATORS, true);
+        $operators ??= array_fill_keys(self::OPERATORS_SIMPLE, true);
 
         if (!is_string($operator)) {
             return false;
@@ -406,7 +412,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
     public static function isCompoundOperator(mixed $operator): bool
     {
         static $operators = null;
-        $operators ??= array_fill_keys(PdbCompoundCondition::OPERATORS, true);
+        $operators ??= array_fill_keys(self::OPERATORS_COMPOUND, true);
 
         if (!is_string($operator)) {
             return false;
@@ -418,6 +424,20 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
 
     /**
+     * Build a prefix pattern for a list of operators.
+     *
+     * @param array $operators
+     * @return string
+     */
+    public static function buildPattern(array $operators): string
+    {
+        usort($operators, fn($a, $b) => strlen($b) - strlen($a));
+        $operators = implode('|', $operators);
+        return "/^($operators)\s+/i";
+    }
+
+
+    /**
      * Split a string into an array of values.
      *
      * Prefix operators are preserved as the first element.
@@ -425,49 +445,35 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * @param string $value
      * @return array
      */
-    public static function splitArray(string $value): array
+    public static function split(string $value): array
     {
         static $pattern = null;
-
-        if (!$pattern) {
-            $operators = PdbCompoundCondition::OPERATORS;
-            $operators[] = PdbSimpleCondition::IN;
-            $operators[] = PdbSimpleCondition::NOT_IN;
-            $operators[] = PdbSimpleCondition::BETWEEN;
-
-            usort($operators, fn($a, $b) => strlen($b) - strlen($a));
-
-            $operators = implode('|', $operators);
-            $pattern = "/^($operators)\s+/i";
-        }
-
-        $operator = null;
-
-        // Find prefix operators.
-        if (preg_match($pattern, $value, $matches)) {
-            $operator = $matches[1];
-            $value = substr($value, strlen($matches[0]));
-        }
+        $pattern ??= self::buildPattern(self::OPERATORS_PREFIX);
 
         // Split on commas, unescaped.
         $value = preg_split('/(?<!\\\),/', $value);
 
-        foreach ($value as &$item) {
+        $items = [];
+
+        foreach ($value as $item) {
             $item = trim($item);
             $item = str_replace('\,', ',', $item);
+
+            if ($item !== '') {
+                $items[] = $item;
+            }
         }
 
-        unset($item);
-
-        $value = array_filter($value, fn($item) => $item !== '');
-        $value = array_values($value);
-
-        // Tack that operator back on.
-        if ($operator) {
-            array_unshift($value, strtoupper($operator));
+        if (count($items) < 2) {
+            return $items;
         }
 
-        return $value;
+        // Does the first item have a prefix operator?
+        if (preg_match($pattern, $items[0], $matches)) {
+            $items[0] = substr($items[0], strlen($matches[0]));
+            array_unshift($items, strtoupper($matches[1]));
+        }
+
+        return $items;
     }
-
 }
