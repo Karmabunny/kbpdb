@@ -15,6 +15,7 @@ use JsonSerializable;
 use karmabunny\interfaces\ArrayableInterface;
 use karmabunny\interfaces\JsonDeserializable;
 use karmabunny\kb\Configure;
+use karmabunny\kb\Time;
 
 /**
  * Parameter parser.
@@ -94,11 +95,12 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      *
      * @param string $operator
      * @param array $values
+     * @param array $config
      * @return PdbParam
      */
-    public static function build(string $operator, array $values): self
+    public static function build(string $operator, array $values, array $config = []): self
     {
-        self::processValues($values);
+        self::processValues($values, $config);
         return new self($operator, $values);
     }
 
@@ -108,11 +110,12 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      *
      * @param string $column
      * @param mixed $value
+     * @param array $config
      * @return PdbConditionInterface
      */
-    public static function prepare(string $column, mixed $value): PdbConditionInterface
+    public static function prepare(string $column, mixed $value, array $config = []): PdbConditionInterface
     {
-        return self::parse($value)->toCondition($column);
+        return self::parse($value, $config)->toCondition($column);
     }
 
 
@@ -122,15 +125,17 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * This accepts scalars, arrays - anything invalid raises an exception.
      *
      * @param mixed $value
+     * @param array $config
      * @return self
      * @throws InvalidArgumentException
      */
-    public static function parse(mixed $value): self
+    public static function parse(mixed $value, array $config = []): self
     {
         if ($value === null) {
             return self::build(
                 PdbSimpleCondition::IS,
                 ['null'],
+                $config,
             );
         }
 
@@ -139,20 +144,22 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             return self::build(
                 PdbSimpleCondition::EQUAL,
                 [$value],
+                $config,
             );
         }
 
         if (is_string($value)) {
-            return self::parseString($value);
+            return self::parseString($value, $config);
         }
 
         if (is_array($value)) {
-            return self::parseArray($value);
+            return self::parseArray($value, $config);
         }
 
         return self::build(
             PdbSimpleCondition::EQUAL,
             [$value],
+            $config,
         );
     }
 
@@ -163,15 +170,17 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * This can contain compound or simple conditions.
      *
      * @param string $value
+     * @param array $config
      * @return self
      * @throws InvalidArgumentException
      */
-    public static function parseString(string $value): self
+    public static function parseString(string $value, array $config = []): self
     {
         if ($value === 'not null') {
             return self::build(
                 PdbSimpleCondition::IS_NOT,
                 ['null'],
+                $config,
             );
         }
 
@@ -179,12 +188,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
             return self::build(
                 PdbSimpleCondition::IS,
                 ['null'],
+                $config,
             );
         }
 
         // After splitting it behaves just like an array.
         $values = self::split($value);
-        return self::parseArray($values);
+        return self::parseArray($values, $config);
     }
 
 
@@ -195,20 +205,22 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * This can contain simple or compound conditions.
      *
      * @param array $value
+     * @param array $config
      * @return self
      * @throws InvalidArgumentException
      */
-    public static function parseArray(array $value): self
+    public static function parseArray(array $value, array $config = []): self
     {
         if (empty($value)) {
             return self::build(
                 PdbSimpleCondition::EQUAL,
                 [''],
+                $config,
             );
         }
 
         // We can stop here, we've got what we need.
-        if ($expression = self::parseExpression($value)) {
+        if ($expression = self::parseExpression($value, $config)) {
             return $expression;
         }
 
@@ -229,11 +241,11 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         $scalar = null;
 
         foreach ($value as $item) {
-            $expression = self::parseExpression($item);
+            $expression = self::parseExpression($item, $config);
 
             // We're talking compounds we'll convert scalars too.
             if (!$expression and $compound and is_scalar($item)) {
-                $expression = self::build(PdbSimpleCondition::EQUAL, [$item]);
+                $expression = self::build(PdbSimpleCondition::EQUAL, [$item], $config);
             }
 
             // Best not mix scalar and expressions for non-compound conditions.
@@ -269,13 +281,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
                 return $value;
             }
 
-            return self::build(PdbSimpleCondition::EQUAL, $values);
+            return self::build(PdbSimpleCondition::EQUAL, $values, $config);
         }
 
         // We condense scalars into a IN, which behaves like an OR.
         $operator = $compound ?? ($scalar ? PdbSimpleCondition::IN : PdbCompoundCondition::OR);
 
-        return self::build($operator, $values);
+        return self::build($operator, $values, $config);
     }
 
 
@@ -287,9 +299,10 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * It cannot support compound or conditions with multiple values.
      *
      * @param string|array $value
+     * @param array $config
      * @return null|self
      */
-    public static function parseExpression(string|array $value): ?self
+    public static function parseExpression(string|array $value, array $config = []): ?self
     {
         static $pattern = null;
         $pattern ??= self::buildPattern(self::OPERATORS_SIMPLE);
@@ -300,7 +313,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
 
             if ($operator and self::isSimpleOperator($operator)) {
                 array_shift($value);
-                return self::build($operator, $value);
+                return self::build($operator, $value, $config);
             }
 
             return null;
@@ -314,7 +327,7 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
         $operator = strtoupper($matches[1]);
 
         $value = substr($value, strlen($matches[0]));
-        return self::build($operator, [$value]);
+        return self::build($operator, [$value], $config);
     }
 
 
@@ -500,10 +513,13 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
      * Process values in an array.
      *
      * @param array $values
+     * @param array $config
      * @return void
      */
-    public static function processValues(array &$values): void
+    public static function processValues(array &$values, array $config): void
     {
+        $processDates = $config['relativeDates'] ?? in_array('relativeDates', $config);
+
         foreach ($values as &$value) {
             if (is_array($value)) {
                 if (isset($value['date'])) {
@@ -518,6 +534,16 @@ class PdbParam implements ArrayableInterface, JsonSerializable, JsonDeserializab
                 ) {
                     $value = reset($value) ?: [];
                     $value = Configure::create($class, $value);
+                    continue;
+                }
+            }
+
+            if ($processDates) {
+                if (
+                    is_string($value)
+                    and Time::hasRelativeKeywords($value)
+                ) {
+                    $value = Time::parse($value);
                     continue;
                 }
             }

@@ -1,5 +1,6 @@
 <?php
 
+use karmabunny\kb\Time;
 use karmabunny\pdb\Models\PdbParam;
 use karmabunny\pdb\PdbQuery;
 use kbtests\Database;
@@ -159,6 +160,13 @@ class PdbParamTest extends TestCase
                 'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" BETWEEN ? AND ?',
                 [new DateTime('2026-01-01'), new DateTime('2026-12-31')],
             ],
+            'no relative dates' => [
+                '> today',
+                ['>', 'today'],
+                'column > ?',
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "id" > ?',
+                ['today'],
+            ],
         ];
     }
 
@@ -201,6 +209,74 @@ class PdbParamTest extends TestCase
         $this->assertEquals($expectedSql, $sql, 'sql (re-parsed)');
         $this->assertEquals($expectedParams, $params, 'params (re-parsed)');
     }
+
+
+    public static function dataParseDates(): array
+    {
+        $format = function(string $date) {
+            $date = new DateTime($date);
+            $date = json_decode(json_encode($date), true);
+            unset($date['timezone_type']);
+            return $date;
+        };
+
+        return [
+            // Same as before.
+            'between dates' => [
+                ['between', new DateTime('2026-01-01'), new DateTime('2026-12-31')],
+                ['BETWEEN', ['date' => '2026-01-01 00:00:00.000000', 'timezone' => 'UTC'], ['date' => '2026-12-31 00:00:00.000000', 'timezone' => 'UTC']],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" BETWEEN ? AND ?',
+                [new DateTime('2026-01-01'), new DateTime('2026-12-31')],
+            ],
+            // Parsing relative dates.
+            'between dates (relative)' => [
+                ['between', '9am monday next week', '5pm friday next week'],
+                ['BETWEEN', $format('9am monday next week'), $format('5pm friday next week')],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" BETWEEN ? AND ?',
+                [new DateTime('9am monday next week'), new DateTime('5pm friday next week')],
+            ],
+            'older than today' => [
+                '< today',
+                ['<', $format('today')],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" < ?',
+                [new DateTime('today')],
+            ],
+            'absolute dates' => [
+                '= 2026-01-01',
+                ['=', '2026-01-01'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" = ?',
+                ['2026-01-01'],
+            ],
+            'invalid dates' => [
+                '= invalid',
+                ['=', 'invalid'],
+                'SELECT "t".* FROM "pdb_test" AS "t" WHERE "dateCreated" = ?',
+                ['invalid'],
+            ]
+        ];
+    }
+
+
+    /** @dataProvider dataParseDates */
+    public function testParseDates(mixed $input, array $expected, string $expectedSql, array $expectedParams)
+    {
+        $pdb = Database::getConnection('sqlite');
+
+        $param = PdbParam::parse($input, ['relativeDates']);
+
+        // Serialized form.
+        $array = $param->toArray();
+        $this->assertEquals($expected, $array, 'array');
+
+        // Parsed into a query.
+        $query = new TestParamQuery($pdb);
+        $query->from('test', 't');
+        $query->dateCreated($array);
+
+        [$sql, $params] = $query->build();
+        $this->assertEquals($expectedSql, $sql, 'sql');
+        $this->assertEquals($expectedParams, $params, 'params');
+    }
 }
 
 
@@ -210,10 +286,19 @@ class TestParamQuery extends PdbQuery
 
     public mixed $ids = null;
 
+    public mixed $dateCreated = null;
+
 
     public function id(mixed $value): static
     {
         $this->ids = $value;
+        return $this;
+    }
+
+
+    public function dateCreated(mixed $value): static
+    {
+        $this->dateCreated = $value;
         return $this;
     }
 
@@ -225,6 +310,10 @@ class TestParamQuery extends PdbQuery
 
         if ($this->ids !== null) {
             $query->andWhere(PdbParam::prepare('id', $this->ids));
+        }
+
+        if ($this->dateCreated !== null) {
+            $query->andWhere(PdbParam::prepare('dateCreated', $this->dateCreated));
         }
     }
 }
