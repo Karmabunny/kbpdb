@@ -57,9 +57,8 @@
     },
     "scripts": {
         "tests": "phpunit --testdox --configuration phpunit.xml tests",
-        "create-db": "bash scripts/create_db.sh",
-        "publish": "bash scripts/publish.sh",
-        "patch-locals": "@php scripts/patch_locals.php",
+        "create-db": "bash docs/create_db.sh",
+        "patch-locals": "@php docs/patch_locals.php",
         "analyse": "phpstan analyse -c phpstan.neon",
         "compat": "phpcs -p --standard=phpcs.xml --colors --extensions=php"
     }
