@@ -182,7 +182,7 @@ abstract class PdbCondition implements PdbConditionInterface
      * @see Pdb::buildClause()
      *
      * @param Pdb $pdb
-     * @param array $conditions
+     * @param array|PdbConditionInterface $conditions
      * @param array &$values
      * @param string $combine
      * @param bool $validate
@@ -191,14 +191,24 @@ abstract class PdbCondition implements PdbConditionInterface
      * @throws InvalidConditionException
      * @throws PDOException
      */
-    public static function buildClause(Pdb $pdb, array $conditions, array &$values, $combine = 'AND', $validate = true)
+    public static function buildClause(Pdb $pdb, array|PdbConditionInterface $conditions, array &$values, $combine = 'AND', $validate = true)
     {
         if ($validate and !in_array($combine, PdbCompoundCondition::COMPOUNDS)) {
             $compounds = implode(', ', PdbCompoundCondition::COMPOUNDS);
             throw new InvalidArgumentException('Combine parameter must be one of: ' . $compounds);
         }
 
-        $conditions = self::fromArray($conditions, $validate);
+        if ($conditions instanceof PdbConditionInterface) {
+            if ($validate) {
+                $conditions->validate();
+            }
+
+            $conditions = [$conditions];
+        }
+        else {
+            $conditions = self::fromArray($conditions, $validate);
+        }
+
         $combine = " {$combine} ";
         $where = '';
 

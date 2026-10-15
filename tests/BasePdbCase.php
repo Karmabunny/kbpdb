@@ -29,9 +29,13 @@ abstract class BasePdbCase extends TestCase
 
     public $tx_mode = 0;
 
+    public $tz = null;
+
 
     public function setUp(): void
     {
+        $this->tz = date_default_timezone_get();
+
         if (!$this->struct) {
             $this->struct = new PdbParser();
             $this->struct->loadXml(__DIR__ . '/db_struct.xml');
@@ -53,6 +57,10 @@ abstract class BasePdbCase extends TestCase
 
         if ($this->pdb->inTransaction()) {
             $this->pdb->rollback();
+        }
+
+        if ($this->tz) {
+            date_default_timezone_set($this->tz);
         }
     }
 
