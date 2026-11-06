@@ -407,7 +407,9 @@ trait PdbModelTrait
      */
     protected function _afterSave(array $data)
     {
-        self::populate($this, $data);
+        if (!isset($data['id'])) {
+            $this->id = $data['id'];
+        }
     }
 
 
