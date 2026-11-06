@@ -250,7 +250,7 @@ abstract class StaticPdb
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
-     * @return array|string|int|object|PDOStatement|null
+     * @return ($config is 'pdo' ? PDOStatement : array|string|int|object|null)
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
@@ -282,7 +282,7 @@ abstract class StaticPdb
      *        table prefix, e.g. ~pages will be converted to fwc_pages
      * @param array $params Parameters to bind to the query
      * @param string|array|PdbReturn $config a return type or config {@see PdbReturn}
-     * @return array|string|int|object|PDOStatement|null
+     * @return ($config is 'pdo' ? PDOStatement : array|string|int|object|null)
      * @throws InvalidArgumentException If the return type isn't valid
      * @throws QueryException If the query execution or formatting failed
      * @throws ConnectionException If the connection fails
