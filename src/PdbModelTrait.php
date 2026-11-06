@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace karmabunny\pdb;
 
+use BackedEnum;
 use DateTimeInterface;
 use InvalidArgumentException;
 use karmabunny\interfaces\ConfigurableInitInterface;
@@ -24,6 +25,7 @@ use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
 use ReflectionProperty;
 use Throwable;
+use UnitEnum;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -301,6 +303,18 @@ trait PdbModelTrait
                 continue;
             }
 
+            // Store backed enums as their scalar value.
+            if ($value instanceof BackedEnum) {
+                $value = $value->value;
+                continue;
+            }
+
+            // Store unit enums as their case name.
+            if ($value instanceof UnitEnum) {
+                $value = $value->name;
+                continue;
+            }
+
             if ($value instanceof DateTimeInterface) {
                 $value = $value->format(Pdb::FORMAT_DATE_TIME);
                 continue;
@@ -487,6 +501,8 @@ trait PdbModelTrait
      * - bool: from '0' or '1'
      * - int: from numeric string
      * - float: from numeric string
+     * - backed enum: from its scalar value
+     * - unit enum: from its case name
      * - datetime: from string
      * - string: from anything else
      *
@@ -584,10 +600,48 @@ trait PdbModelTrait
             return;
         }
 
+        $type_name = $type->getName();
+
+        // Converting backed enums from scalar values.
+        if (
+            (is_string($value) or is_int($value))
+            and is_subclass_of($type_name, BackedEnum::class)
+        ) {
+            if (is_numeric($value)) {
+                $value = (int) $value;
+            }
+
+            $enum = $type_name::tryFrom($value);
+
+            if ($enum !== null or $type->allowsNull()) {
+                $value = $enum;
+            }
+
+            return;
+        }
+
+        // Converting unit enums that match the case name.
+        if (
+            is_scalar($value)
+            and is_subclass_of($type_name, UnitEnum::class)
+        ) {
+            foreach ($type_name::cases() as $case) {
+                if ($case->name === $value) {
+                    $value = $case;
+                    return;
+                }
+            }
+
+            if ($type->allowsNull()) {
+                $value = null;
+            }
+
+            return;
+        }
+
         // Converting datetimes from strings or numeric types.
         // Numeric assumes a timestamp from the Unix epoch.
         // String is anything date-ish looking.
-        $type_name = $type->getName();
         if (
             !$value instanceof DateTimeInterface
             and (
