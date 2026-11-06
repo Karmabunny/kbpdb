@@ -6,10 +6,13 @@ use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
 use kbtests\Database;
 use PHPUnit\Framework\TestCase;
+use kbtests\Models\BackedPriority;
+use kbtests\Models\BackedStatus;
 use kbtests\Models\Club;
 use kbtests\Models\DirtyClub;
 use kbtests\Models\TypedModel;
 use kbtests\Models\SproutItem;
+use kbtests\Models\UnitDirection;
 
 class PdbModelTest extends TestCase
 {
@@ -333,6 +336,9 @@ class PdbModelTest extends TestCase
         $this->assertEquals($dummy->int_default_one, 1); // from default defined in DB
         $this->assertEquals($dummy->currency_val, $currency_val);
         $this->assertEquals($dummy->float_val, $float_val);
+        $this->assertSame(BackedStatus::Draft, $dummy->backed_status); // from default defined in DB
+        $this->assertSame(BackedPriority::Low, $dummy->backed_priority); // from default defined in DB
+        $this->assertSame(UnitDirection::North, $dummy->unit_direction); // from default defined in DB
         $this->assertEquals($dummy->options_db_default, ['a', 'b']); // from default defined in DB
         $this->assertEquals($dummy->options_model_default, ['c', 'd']); // from default defined in model
         $this->assertEquals($dummy->json_db_default, [1, 2, ['a' => 'b', 3 => 9]]); // from default defined in DB
@@ -349,6 +355,9 @@ class PdbModelTest extends TestCase
         $dummy->options_model_default = $new_options;
         $dummy->json_db_default = $new_json;
         $dummy->json_model_default = $new_json;
+        $dummy->backed_status = BackedStatus::Published;
+        $dummy->backed_priority = BackedPriority::High;
+        $dummy->unit_direction = UnitDirection::West;
         $dummy->save();
 
         // Confirm that new data saved and loaded correctly from native types
@@ -360,6 +369,9 @@ class PdbModelTest extends TestCase
         $this->assertEquals($dummy->options_model_default, $new_options);
         $this->assertEquals($dummy->json_db_default, $new_json);
         $this->assertEquals($dummy->json_model_default, $new_json);
+        $this->assertSame(BackedStatus::Published, $dummy->backed_status);
+        $this->assertSame(BackedPriority::High, $dummy->backed_priority);
+        $this->assertSame(UnitDirection::West, $dummy->unit_direction);
     }
 
 

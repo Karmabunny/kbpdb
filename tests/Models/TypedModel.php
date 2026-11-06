@@ -24,6 +24,10 @@ class TypedModel extends Record
     public float $currency_val;
     public float $float_val;
 
+    public BackedStatus $backed_status;
+    public BackedPriority $backed_priority;
+    public UnitDirection $unit_direction;
+
     /** @var string[] */
     public array $options_db_default;
 
