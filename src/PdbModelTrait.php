@@ -160,6 +160,8 @@ trait PdbModelTrait
                     $value = (string) $value;
                 }
 
+                static::typeCastValue($this, $name, $value);
+
                 if ($value === null && $type instanceof ReflectionType && !$type->allowsNull()) {
                     continue;
                 }
