@@ -83,11 +83,11 @@ class PdbForeignKey extends Collection implements PdbStructWriterInterface
             $errors[] = "Foreign key \"{$this->from_column}\" column type mismatch ({$to_column->type} vs {$from_column->type}))";
         }
 
-        if ($this->update_rule === 'set-null' and !$from_column->is_nullable) {
+        if (strtolower($this->update_rule) === 'set-null' and !$from_column->is_nullable) {
             $errors[] = "Foreign key \"{$this->from_column}\" update action to SET NULL but column doesn't allow nulls";
         }
 
-        if ($this->delete_rule == 'set-null' and !$from_column->is_nullable) {
+        if (strtolower($this->delete_rule) === 'set-null' and !$from_column->is_nullable) {
             $errors[] = "Foreign key \"{$this->from_column}\" delete action to SET NULL but column doesn't allow nulls";
         }
 

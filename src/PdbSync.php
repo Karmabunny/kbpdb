@@ -886,8 +886,8 @@ class PdbSync
                     $foreign_key->to_table != $fk->to_table or
                     $foreign_key->from_column != $fk->from_column or
                     $foreign_key->to_column != $fk->to_column or
-                    $foreign_key->update_rule != $fk->update_rule or
-                    $foreign_key->delete_rule != $fk->delete_rule
+                    strcasecmp($foreign_key->update_rule, $fk->update_rule) !== 0 or
+                    strcasecmp($foreign_key->delete_rule, $fk->delete_rule) !== 0
                 ) unset($current_fks[$id]);
             }
 
@@ -967,6 +967,16 @@ class PdbSync
             } catch (QueryException $ex) {
                 $this->storeWarning("Query error looking for invalid records; does the table '{$foreign_key->to_table}' exist?");
             }
+        }
+
+        if (!in_array(strtolower($foreign_key->update_rule), ['set-null', 'cascade', 'restrict'])) {
+            $this->storeWarning("Invalid update rule '{$foreign_key->update_rule}' for foreign key '{$foreign_key->from_column}' on table '{$table_name}'");
+            return false;
+        }
+
+        if (!in_array(strtolower($foreign_key->delete_rule), ['set-null', 'cascade', 'restrict'])) {
+            $this->storeWarning("Invalid delete rule '{$foreign_key->delete_rule}' for foreign key '{$foreign_key->from_column}' on table '{$table_name}'");
+            return false;
         }
 
         // Update the constraint.
@@ -1064,8 +1074,8 @@ class PdbSync
                     $def_fk->from_column == $fk->from_column and
                     $def_fk->to_table == $fk->to_table and
                     $def_fk->to_column == $fk->to_column and
-                    $def_fk->update_rule == $fk->update_rule and
-                    $def_fk->delete_rule == $fk->delete_rule
+                    strcasecmp($def_fk->update_rule, $fk->update_rule) === 0 and
+                    strcasecmp($def_fk->delete_rule, $fk->delete_rule) === 0
                 ) continue 2;
             }
 
