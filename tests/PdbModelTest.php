@@ -1,6 +1,13 @@
 <?php
 
+use karmabunny\kb\Event;
+use karmabunny\kb\Events;
 use karmabunny\kb\Uuid;
+use karmabunny\pdb\Events\AfterDeleteEvent;
+use karmabunny\pdb\Events\AfterPopulateEvent;
+use karmabunny\pdb\Events\AfterSaveEvent;
+use karmabunny\pdb\Events\BeforeDeleteEvent;
+use karmabunny\pdb\Events\BeforeSaveEvent;
 use karmabunny\pdb\Pdb;
 use karmabunny\pdb\PdbParser;
 use karmabunny\pdb\PdbSync;
@@ -32,7 +39,16 @@ class PdbModelTest extends TestCase
     public function setUp(): void
     {
         $pdb = Database::getConnection();
-        if (!Database::isConnected()) $this->markTestSkipped();
+        if (!Database::isConnected()) {
+            fwrite(STDERR, "host=" . getenv('SITES_DB_HOSTNAME') . "\n");
+            try {
+                $pdb->getConnection();
+            }
+            catch (Throwable $error) {
+                fwrite(STDERR, get_class($error) . ': ' . $error->getMessage() . "\n");
+            }
+            $this->markTestSkipped();
+        }
 
         $pdb->query('DROP TABLE IF EXISTS ~clubs', [], 'null');
         $pdb->query('DROP TABLE IF EXISTS ~model_property_tests', [], 'null');
@@ -403,6 +419,240 @@ class PdbModelTest extends TestCase
 
         // Useless assertion just to ensure no TypeError occurs
         $this->assertInstanceOf(TypedModel::class, $dummy);
+    }
+
+
+    /**
+     * Save, load, and delete fire model events in order.
+     */
+    public function testModelEvents()
+    {
+        $events = [];
+        $pdb = Database::getConnection();
+
+        $record = function(string $class) use (&$events, $pdb) {
+            return function(Event $event) use (&$events, $pdb, $class) {
+                /** @var Club|DirtyClub $sender */
+                $sender = $event->sender;
+                $id = $sender->id;
+
+                $row = [
+                    'class' => $class,
+                    'id' => $id,
+                    'sender' => $sender,
+                    'exists' => false,
+                ];
+
+                if ($id > 0) {
+                    $row['exists'] = $pdb->recordExists($sender->getTableName(), ['id' => $id]);
+                }
+
+                if (property_exists($event, 'insert')) {
+                    $row['insert'] = $event->insert;
+                }
+
+                if ($event instanceof AfterPopulateEvent) {
+                    $row['config'] = $event->config;
+                }
+
+                $events[] = $row;
+            };
+        };
+
+        $listen = function(string $model) use ($record) {
+            Events::off(Club::class);
+            Events::off(DirtyClub::class);
+
+            Events::on($model, BeforeSaveEvent::class, $record(BeforeSaveEvent::class));
+            Events::on($model, AfterSaveEvent::class, $record(AfterSaveEvent::class));
+            Events::on($model, AfterPopulateEvent::class, $record(AfterPopulateEvent::class));
+            Events::on($model, BeforeDeleteEvent::class, $record(BeforeDeleteEvent::class));
+            Events::on($model, AfterDeleteEvent::class, $record(AfterDeleteEvent::class));
+        };
+
+        $classes = function() use (&$events): array {
+            return array_column($events, 'class');
+        };
+
+        try {
+            $listen(Club::class);
+
+            $model = new Club();
+            $model->name = 'events';
+            $model->status = 'new';
+            $model->founded = $pdb->now();
+
+            // Insert assigns the id after the row exists.
+            $this->assertTrue($model->save());
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+                AfterSaveEvent::class,
+            ], $classes());
+
+            $this->assertTrue($events[0]['insert']);
+            $this->assertSame(0, $events[0]['id']);
+            $this->assertFalse($events[0]['exists']);
+            $this->assertSame($model, $events[0]['sender']);
+
+            $this->assertTrue($events[1]['insert']);
+            $this->assertSame($model->id, $events[1]['id']);
+            $this->assertGreaterThan(0, $events[1]['id']);
+            $this->assertTrue($events[1]['exists']);
+            $this->assertSame($model, $events[1]['sender']);
+
+            $id = $model->id;
+            $events = [];
+
+            // Update keeps the same id and reports insert as false.
+            $model->status = 'active';
+            $this->assertTrue($model->save());
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+                AfterSaveEvent::class,
+            ], $classes());
+            $this->assertFalse($events[0]['insert']);
+            $this->assertFalse($events[1]['insert']);
+            $this->assertSame($id, $events[0]['id']);
+            $this->assertSame($id, $events[1]['id']);
+            $this->assertTrue($events[0]['exists']);
+            $this->assertTrue($events[1]['exists']);
+            $this->assertSame($model, $events[0]['sender']);
+            $this->assertSame($model, $events[1]['sender']);
+
+            $events = [];
+
+            // A field list still saves, and still fires both events.
+            $model->name = 'renamed';
+            $model->status = 'retired';
+            $this->assertTrue($model->save(['name']));
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+                AfterSaveEvent::class,
+            ], $classes());
+            $this->assertFalse($events[0]['insert']);
+            $this->assertFalse($events[1]['insert']);
+            $this->assertSame($model, $events[0]['sender']);
+            $this->assertSame($model, $events[1]['sender']);
+
+            $events = [];
+
+            // Nothing to write, so after-save does not fire.
+            $model->name = 'ignored';
+            $this->assertTrue($model->save(['flags']));
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+            ], $classes());
+            $this->assertFalse($events[0]['insert']);
+            $this->assertSame($id, $events[0]['id']);
+            $this->assertSame($model, $events[0]['sender']);
+
+            $events = [];
+
+            $fresh = Club::findOne(['id' => $id]);
+            $this->assertEquals('renamed', $fresh->name);
+            $this->assertEquals('active', $fresh->status);
+            $this->assertEquals([
+                AfterPopulateEvent::class,
+            ], $classes());
+            $this->assertSame($fresh, $events[0]['sender']);
+            $this->assertSame($id, $events[0]['id']);
+            $this->assertEquals($id, $events[0]['config']['id']);
+            $this->assertEquals('renamed', $events[0]['config']['name']);
+            $this->assertEquals('active', $events[0]['config']['status']);
+
+            $other = new Club();
+            $other->name = 'other';
+            $other->status = 'new';
+            $other->founded = $pdb->now();
+            $this->assertTrue($other->save());
+
+            $events = [];
+
+            $found = Club::findAll();
+            $this->assertCount(2, $found);
+            $this->assertEquals([
+                AfterPopulateEvent::class,
+                AfterPopulateEvent::class,
+            ], $classes());
+
+            $senderIds = [];
+            foreach ($events as $event) {
+                $senderIds[] = spl_object_id($event['sender']);
+            }
+
+            $foundIds = [];
+            foreach ($found as $club) {
+                $foundIds[] = spl_object_id($club);
+            }
+
+            sort($senderIds);
+            sort($foundIds);
+            $this->assertEquals($foundIds, $senderIds);
+
+            $events = [];
+
+            // Delete fires after the row is gone. A second delete does not.
+            $this->assertTrue($model->delete());
+            $this->assertEquals([
+                BeforeDeleteEvent::class,
+                AfterDeleteEvent::class,
+            ], $classes());
+            $this->assertSame($model, $events[0]['sender']);
+            $this->assertSame($model, $events[1]['sender']);
+            $this->assertSame($id, $events[0]['id']);
+            $this->assertSame($id, $events[1]['id']);
+            $this->assertTrue($events[0]['exists']);
+            $this->assertFalse($events[1]['exists']);
+
+            $events = [];
+
+            $this->assertFalse($model->delete());
+            $this->assertEquals([
+                BeforeDeleteEvent::class,
+            ], $classes());
+            $this->assertFalse($events[0]['exists']);
+            $this->assertSame($id, $events[0]['id']);
+            $this->assertSame($model, $events[0]['sender']);
+
+            $events = [];
+            $listen(DirtyClub::class);
+
+            // An unchanged dirty model still fires before-save only.
+            $dirty = new DirtyClub();
+            $dirty->name = 'dirty';
+            $dirty->status = 'new';
+            $dirty->founded = $pdb->now();
+
+            $this->assertTrue($dirty->save());
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+                AfterSaveEvent::class,
+            ], $classes());
+            $this->assertTrue($events[0]['insert']);
+            $this->assertSame(0, $events[0]['id']);
+            $this->assertFalse($events[0]['exists']);
+            $this->assertTrue($events[1]['insert']);
+            $this->assertSame($dirty->id, $events[1]['id']);
+            $this->assertGreaterThan(0, $events[1]['id']);
+            $this->assertTrue($events[1]['exists']);
+            $this->assertSame($dirty, $events[0]['sender']);
+            $this->assertSame($dirty, $events[1]['sender']);
+
+            $events = [];
+
+            $this->assertTrue($dirty->save());
+            $this->assertEquals([
+                BeforeSaveEvent::class,
+            ], $classes());
+            $this->assertFalse($events[0]['insert']);
+            $this->assertSame($dirty->id, $events[0]['id']);
+            $this->assertTrue($events[0]['exists']);
+            $this->assertSame($dirty, $events[0]['sender']);
+        }
+        finally {
+            Events::off(Club::class);
+            Events::off(DirtyClub::class);
+        }
     }
 }
 
