@@ -91,6 +91,10 @@
         <column name="currency_val" type="DECIMAL(7,2)" allownull="0" />
         <column name="float_val" type="DOUBLE PRECISION" allownull="0" />
 
+        <column name="backed_status" type="ENUM('draft','published','archived')" allownull="0" default="draft" />
+        <column name="backed_priority" type="TINYINT UNSIGNED" allownull="0" default="1" />
+        <column name="unit_direction" type="ENUM('North','East','South','West')" allownull="0" default="North" />
+
         <column name="options_db_default" type="SET('a','b','c','d')" allownull="0" default="a,b" />
         <column name="options_model_default" type="SET('a','b','c','d')" allownull="0" />
         <column name="options_nullable" type="SET('a','b','c','d')"  allownull="1" />

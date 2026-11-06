@@ -7,6 +7,7 @@ declare(strict_types=1);
 
 namespace karmabunny\pdb;
 
+use BackedEnum;
 use DateTimeInterface;
 use InvalidArgumentException;
 use karmabunny\interfaces\ConfigurableInitInterface;
@@ -28,8 +29,10 @@ use karmabunny\pdb\Events\BeforeSaveEvent;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
+use ReflectionEnum;
 use ReflectionProperty;
 use Throwable;
+use UnitEnum;
 
 /**
  * This implements basic methods for {@see PdbModelInterface}.
@@ -155,7 +158,10 @@ trait PdbModelTrait
                 continue;
             }
 
-            if (!$property->isInitialized($this)) {
+            if (
+                !$property->isInitialized($this)
+                or $property->getValue($this) === null
+            ) {
                 $type = $property->getType();
 
                 if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {
@@ -166,16 +172,12 @@ trait PdbModelTrait
                     $value = (string) $value;
                 }
 
+                static::typeCastValue($this, $name, $value);
+
                 if ($value === null && $type instanceof ReflectionType && !$type->allowsNull()) {
                     continue;
                 }
 
-                $property->setValue($this, $value);
-                continue;
-            }
-
-            // The value is not set, so set it!
-            if ($property->getValue($this) === null) {
                 $property->setValue($this, $value);
                 continue;
             }
@@ -306,6 +308,18 @@ trait PdbModelTrait
             // Ensure booleans are integers.
             if (is_bool($value)) {
                 $value = (int) $value;
+                continue;
+            }
+
+            // Store backed enums as their scalar value.
+            if ($value instanceof BackedEnum) {
+                $value = $value->value;
+                continue;
+            }
+
+            // Store unit enums as their case name.
+            if ($value instanceof UnitEnum) {
+                $value = $value->name;
                 continue;
             }
 
@@ -518,6 +532,8 @@ trait PdbModelTrait
      * - bool: from '0' or '1'
      * - int: from numeric string
      * - float: from numeric string
+     * - backed enum: from its scalar value
+     * - unit enum: from its case name
      * - datetime: from string
      * - string: from anything else
      *
@@ -615,10 +631,50 @@ trait PdbModelTrait
             return;
         }
 
+        $type_name = $type->getName();
+
+        // Converting backed enums from scalar values.
+        if (
+            (is_string($value) or is_int($value))
+            and is_subclass_of($type_name, BackedEnum::class)
+        ) {
+            $enum_type = (new ReflectionEnum($type_name))->getBackingType();
+
+            if ($enum_type?->getName() === 'int') {
+                $value = (int) $value;
+            }
+
+            $enum = $type_name::tryFrom($value);
+
+            if ($enum !== null or $type->allowsNull()) {
+                $value = $enum;
+            }
+
+            return;
+        }
+
+        // Converting unit enums that match the case name.
+        if (
+            is_scalar($value)
+            and is_subclass_of($type_name, UnitEnum::class)
+        ) {
+            foreach ($type_name::cases() as $case) {
+                if ($case->name === $value) {
+                    $value = $case;
+                    return;
+                }
+            }
+
+            if ($type->allowsNull()) {
+                $value = null;
+            }
+
+            return;
+        }
+
         // Converting datetimes from strings or numeric types.
         // Numeric assumes a timestamp from the Unix epoch.
         // String is anything date-ish looking.
-        $type_name = $type->getName();
         if (
             !$value instanceof DateTimeInterface
             and (
