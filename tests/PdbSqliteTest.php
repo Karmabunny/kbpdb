@@ -7,6 +7,7 @@ use karmabunny\pdb\PdbConfig;
 
 /**
  *
+ * @requires extension sqlite3
  */
 class PdbSqliteTest extends BasePdbCase
 {
