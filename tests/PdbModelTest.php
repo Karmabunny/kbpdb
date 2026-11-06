@@ -118,6 +118,51 @@ class PdbModelTest extends TestCase
     }
 
 
+    public function testSaveFields()
+    {
+        $model = new Club();
+        $model->name = 'thingo';
+        $model->status = 'new';
+        $model->founded = $model->getConnection()->now();
+
+        $this->assertTrue($model->save());
+        $this->assertGreaterThan(0, $model->id);
+
+        $id = $model->id;
+        $founded = $model->founded;
+        $modified = $model->date_modified;
+        $active = $model->active;
+        $uid = $model->uid;
+        $added = $model->date_added;
+
+        sleep(1);
+
+        $model->name = 'renamed';
+        $model->status = 'retired';
+        $model->active = false;
+
+        // Only the listed columns are written. date_modified stays put too.
+        $this->assertTrue($model->save(['name', 'status']));
+
+        // Unsaved changes remain on the instance.
+        $this->assertEquals('renamed', $model->name);
+        $this->assertEquals('retired', $model->status);
+        $this->assertFalse($model->active);
+        $this->assertEquals($modified, $model->date_modified);
+
+        $fresh = Club::findOne(['id' => $id]);
+
+        $this->assertEquals('renamed', $fresh->name);
+        $this->assertEquals('retired', $fresh->status);
+        $this->assertEquals($founded, $fresh->founded);
+        $this->assertEquals($active, $fresh->active);
+        $this->assertEquals($modified, $fresh->date_modified);
+        $this->assertEquals($uid, $fresh->uid);
+        $this->assertEquals($added, $fresh->date_added);
+        $this->assertEquals($id, $fresh->id);
+    }
+
+
     public function testDirtyModel()
     {
         // A new model.

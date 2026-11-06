@@ -316,23 +316,28 @@ trait PdbModelTrait
     /**
      * Save this model.
      *
+     * @param string[] $fields Optional fields to save. If not provided, all fields will be saved.
      * @return bool
      * @throws InvalidArgumentException
      * @throws RowMissingException
      * @throws QueryException
      * @throws ConnectionException
      */
-    public function save(): bool
+    public function save(array $fields = []): bool
     {
         $pdb = static::getConnection();
 
-        return $pdb->withTransaction(function($pdb, $transaction) {
+        return $pdb->withTransaction(function($pdb, $transaction) use ($fields) {
             $this->_beforeSave();
 
             $data = $this->getSaveData();
 
+            if ($fields) {
+                $data = array_intersect_key($data, array_fill_keys($fields, true));
+            }
+
             if (empty($data)) {
-                return true;
+                return (bool) $this->id;
             }
 
             $this->_internalSave($data);
@@ -374,6 +379,10 @@ trait PdbModelTrait
      */
     protected function _internalSave(array &$data)
     {
+        if (empty($data)) {
+            return;
+        }
+
         $pdb = static::getConnection();
         $table = static::getTableName();
 
