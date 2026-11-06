@@ -151,7 +151,10 @@ trait PdbModelTrait
                 continue;
             }
 
-            if (!$property->isInitialized($this)) {
+            if (
+                !$property->isInitialized($this)
+                or $property->getValue($this) === null
+            ) {
                 $type = $property->getType();
 
                 if ($value instanceof PdbSetDefaults || $value instanceof PdbJsonDefault) {
@@ -168,12 +171,6 @@ trait PdbModelTrait
                     continue;
                 }
 
-                $property->setValue($this, $value);
-                continue;
-            }
-
-            // The value is not set, so set it!
-            if ($property->getValue($this) === null) {
                 $property->setValue($this, $value);
                 continue;
             }
