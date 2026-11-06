@@ -12,6 +12,7 @@ use InvalidArgumentException;
 use karmabunny\interfaces\ConfigurableInitInterface;
 use karmabunny\kb\Cast;
 use karmabunny\kb\Configure;
+use karmabunny\kb\Events;
 use karmabunny\kb\Json;
 use karmabunny\pdb\Exceptions\RowMissingException;
 use ReflectionClass;
@@ -19,6 +20,11 @@ use ReflectionException;
 use ReflectionNamedType;
 use ReflectionType;
 use karmabunny\kb\Reflect;
+use karmabunny\pdb\Events\AfterDeleteEvent;
+use karmabunny\pdb\Events\AfterPopulateEvent;
+use karmabunny\pdb\Events\AfterSaveEvent;
+use karmabunny\pdb\Events\BeforeDeleteEvent;
+use karmabunny\pdb\Events\BeforeSaveEvent;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
@@ -262,6 +268,10 @@ trait PdbModelTrait
         if ($instance instanceof ConfigurableInitInterface) {
             $instance->init();
         }
+
+        $event = new AfterPopulateEvent();
+        $event->config = $config;
+        Events::trigger($instance, $event);
     }
 
 
@@ -359,10 +369,16 @@ trait PdbModelTrait
      */
     protected function _beforeSave()
     {
+        $insert = empty($this->id);
+
         // Only populate defaults for new models.
-        if (empty($this->id)) {
+        if ($insert) {
             $this->populateDefaults();
         }
+
+        $event = new BeforeSaveEvent();
+        $event->insert = $insert;
+        Events::trigger($this, $event);
     }
 
 
@@ -407,9 +423,15 @@ trait PdbModelTrait
      */
     protected function _afterSave(array $data)
     {
+        $insert = empty($this->id);
+
         if (isset($data['id'])) {
-            $this->id = $data['id'];
+            $this->id = (int) $data['id'];
         }
+
+        $event = new AfterSaveEvent();
+        $event->insert = $insert;
+        Events::trigger($this, $event);
     }
 
 
@@ -425,7 +447,18 @@ trait PdbModelTrait
     {
         $pdb = static::getConnection();
         $table = static::getTableName();
-        return (bool) $pdb->delete($table, ['id' => $this->id]);
+
+        $event = new BeforeDeleteEvent();
+        Events::trigger($this, $event);
+
+        $ok = (bool) $pdb->delete($table, ['id' => $this->id]);
+
+        if ($ok) {
+            $event = new AfterDeleteEvent();
+            Events::trigger($this, $event);
+        }
+
+        return $ok;
     }
 
 
