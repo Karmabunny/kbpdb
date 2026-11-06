@@ -23,6 +23,7 @@ use karmabunny\kb\Reflect;
 use karmabunny\pdb\Exceptions\ConnectionException;
 use karmabunny\pdb\Exceptions\QueryException;
 use karmabunny\pdb\Models\PdbColumn;
+use ReflectionEnum;
 use ReflectionProperty;
 use Throwable;
 use UnitEnum;
@@ -604,7 +605,9 @@ trait PdbModelTrait
             (is_string($value) or is_int($value))
             and is_subclass_of($type_name, BackedEnum::class)
         ) {
-            if (is_numeric($value)) {
+            $enum_type = (new ReflectionEnum($type_name))->getBackingType();
+
+            if ($enum_type?->getName() === 'int') {
                 $value = (int) $value;
             }
 
